@@ -104,6 +104,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     }
   };
 
+  const handleDeleteStatus = (statusName: string) => {
+    setAvailableStatuses(prev => prev.filter(s => s.name !== statusName));
+  };
+
   const getFormattedTimeline = (timeline: string): string => {
     if (!timeline) return 'N/A';
 
@@ -285,15 +289,25 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverContent className="w-auto p-2">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                           {availableStatuses.map(status => (
-                            <Button
-                              key={status.name}
-                              variant="outline"
-                              className="flex flex-col items-center justify-center h-12 w-24 text-center text-xs font-medium rounded-none py-1"
-                              style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
-                              onClick={() => handleStatusSelect(status.name)}
-                            >
-                              {status.name}
-                            </Button>
+                            <div key={status.name} className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                className="flex-1 h-10 text-center text-xs font-medium rounded-none py-1"
+                                style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
+                                onClick={() => handleStatusSelect(status.name)}
+                              >
+                                {status.name}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteStatus(status.name)}
+                                aria-label={`Delete status ${status.name}`}
+                              >
+                                <Trash2Icon className="h-4 w-4" />
+                              </Button>
+                            </div>
                           ))}
                         </div>
                         <div className="flex flex-col gap-2 p-2 border-t pt-4">
