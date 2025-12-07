@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager';
-import { format, parseISO, isValid, isPast, isToday, isFuture } from 'date-fns';
+import { format, parseISO, isValid, startOfDay } from 'date-fns'; // Import startOfDay
 import { DateRange } from 'react-day-picker';
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 
@@ -140,7 +140,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
       dateToCheck = parseISO(timeline); // Use the single date
     }
 
-    return dateToCheck && isValid(dateToCheck) && isPast(dateToCheck) && !isToday(dateToCheck);
+    if (!dateToCheck || !isValid(dateToCheck)) return false;
+
+    const startOfDateToCheck = startOfDay(dateToCheck);
+    const startOfToday = startOfDay(new Date());
+
+    return startOfDateToCheck < startOfToday; // Is the date before today (start of day)?
   };
 
   const isTimelineFuture = (timeline: string): boolean => {
@@ -155,7 +160,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
       dateToCheck = parseISO(timeline); // Use the single date
     }
 
-    return dateToCheck && isValid(dateToCheck) && isFuture(dateToCheck) && !isToday(dateToCheck);
+    if (!dateToCheck || !isValid(dateToCheck)) return false;
+
+    const startOfDateToCheck = startOfDay(dateToCheck);
+    const startOfToday = startOfDay(new Date());
+
+    return startOfDateToCheck > startOfToday; // Is the date after today (start of day)?
   };
 
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
