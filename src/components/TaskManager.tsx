@@ -76,6 +76,13 @@ const TaskManager: React.FC = () => {
   const [availableStatuses, setAvailableStatuses] = useState<StatusOption[]>(initialStatuses);
   const [newGroupName, setNewGroupName] = useState('');
 
+  // ALL TAGS: collect unique tags across all tasks
+  const allTags = Array.from(
+    new Set(
+      groups.flatMap((g) => g.tasks.flatMap((t) => t.tags))
+    )
+  ).sort();
+
   // Removed useSynchronizedScroll({ isMaster: true })
 
   const onDragEnd = (result: DropResult) => {
@@ -232,6 +239,7 @@ const TaskManager: React.FC = () => {
               onUpdateTaskField={handleUpdateTaskField}
               availableStatuses={availableStatuses}
               setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
+              allTags={allTags} // NEW: pass all tags
             />
           ))}
         </div>

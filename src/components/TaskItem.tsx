@@ -15,6 +15,7 @@ import StatusCell from './task-item/StatusCell';
 import TimelineCell from './task-item/TimelineCell';
 import TimeTrackingCell from './task-item/TimeTrackingCell';
 import AppDrawer from './AppDrawer';
+import TagsCell from './task-item/TagsCell';
 
 interface TaskItemProps {
   task: Task;
@@ -24,6 +25,7 @@ interface TaskItemProps {
   onUpdateTaskField: <K extends keyof Task>(taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
+  allTags: string[];
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -33,7 +35,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onDeleteTask,
   onUpdateTaskField,
   availableStatuses,
-  setAvailableStatuses
+  setAvailableStatuses,
+  allTags,
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
@@ -48,6 +51,18 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const statusColor = availableStatuses.find((s) => s.name === task.status)?.color ?? '#6b7280';
 
   const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
+
+  // NEW: tag helpers
+  const handleAddTag = (tag: string) => {
+    const t = tag.trim();
+    if (!t) return;
+    if (task.tags.includes(t)) return;
+    onUpdateTaskField(task.id, 'tags', [...task.tags, t]);
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    onUpdateTaskField(task.id, 'tags', task.tags.filter((x) => x !== tag));
+  };
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'tags') {
@@ -178,7 +193,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
                   {/* Tags */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                    {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
+                    <TagsCell
+                      taskTags={task.tags}
+                      allTags={allTags}
+                      onAddTag={handleAddTag}
+                      onRemoveTag={handleRemoveTag}
+                    />
                   </div>
 
                   {/* Has Files */}

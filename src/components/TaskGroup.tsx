@@ -20,6 +20,7 @@ interface TaskGroupProps {
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>; // Add setAvailableStatuses
+  allTags: string[]; // NEW: all tags across the app
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -32,6 +33,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onUpdateTaskField,
   availableStatuses,
   setAvailableStatuses, // Destructure setAvailableStatuses
+  allTags, // NEW: receive all tags
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -144,6 +146,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
                 availableStatuses={availableStatuses}
                 setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
+                allTags={allTags} // NEW: pass down all tags
               />
             ))}
             {provided.placeholder}
