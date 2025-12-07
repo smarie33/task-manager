@@ -289,25 +289,27 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverContent className="w-auto p-2">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                           {availableStatuses.map(status => (
-                            <div key={status.name} className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                className="flex-1 h-10 text-center text-xs font-medium rounded-none py-1"
-                                style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
-                                onClick={() => handleStatusSelect(status.name)}
-                              >
-                                {status.name}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteStatus(status.name)}
+                            <Button
+                              key={status.name}
+                              variant="outline"
+                              className="flex h-10 w-full items-center justify-between text-xs font-medium rounded-none py-1 px-2"
+                              style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
+                              onClick={() => handleStatusSelect(status.name)}
+                            >
+                              <span className="flex-1 text-center">{status.name}</span>
+                              <span
+                                role="button"
                                 aria-label={`Delete status ${status.name}`}
+                                className="ml-2 text-destructive hover:text-destructive/90"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleDeleteStatus(status.name);
+                                }}
                               >
                                 <Trash2Icon className="h-4 w-4" />
-                              </Button>
-                            </div>
+                              </span>
+                            </Button>
                           ))}
                         </div>
                         <div className="flex flex-col gap-2 p-2 border-t pt-4">
