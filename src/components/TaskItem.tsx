@@ -13,6 +13,7 @@ import { cn, lightenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
 import { format, parseISO, isValid } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 
 interface TaskItemProps {
   task: Task;
@@ -46,6 +47,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     }
     return undefined;
   });
+
+  const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'timeTracking') {
@@ -197,7 +200,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
               </div>
 
               {/* Scrollable Columns Container */}
-              <div className="flex-grow overflow-x-auto">
+              <div className="flex-grow overflow-x-auto" ref={scrollItemRef} onScroll={handleItemScroll}>
                 <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">

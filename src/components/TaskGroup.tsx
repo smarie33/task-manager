@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
+import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[] };
@@ -32,6 +33,8 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
+  const { ref: scrollHeaderRef, onScroll: handleHeaderScroll } = useSynchronizedScroll();
+
 
   const handleAddTask = () => {
     if (newTaskContent.trim()) {
@@ -94,7 +97,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         </div>
 
         {/* Scrollable Headers */}
-        <div className="flex-grow overflow-x-auto">
+        <div className="flex-grow overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
           <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max">
             <div className="border-r border-gray-200 dark:border-gray-700 py-2">
               <div className="px-2 truncate">Owner</div>
