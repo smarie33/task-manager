@@ -51,8 +51,8 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md flex flex-col shadow-lg">
-      <CardHeader className="flex flex-row items-center justify-between p-4 rounded-t-lg" style={{ backgroundColor: group.color }}>
+    <Card className="w-[90vw] max-w-5xl flex flex-col shadow-lg"> {/* Adjusted width */}
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 rounded-t-lg" style={{ backgroundColor: group.color }}> {/* Reduced vertical padding */}
         {isEditingName ? (
           <Input
             value={group.name}
