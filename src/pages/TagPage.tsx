@@ -8,19 +8,52 @@ import { Button } from "@/components/ui/button";
 import { lightenHexColor } from "@/lib/utils";
 import AppDrawer from "@/components/AppDrawer";
 import { Task } from "@/types/task";
+import { Textarea } from "@/components/ui/textarea";
+import { v4 as uuidv4 } from "uuid";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
   const navigate = useNavigate();
-  const { groups } = useTaskData();
+  const { groups, setGroups, availableStatuses } = useTaskData();
 
-  // ADD: selected task for drawer
-  const [selected, setSelected] = useState<{ task: Task; groupName: string; groupColor: string } | null>(null);
+  const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
+  const [editedContent, setEditedContent] = useState("");
+  const [newCommentText, setNewCommentText] = useState("");
+
+  const statusColor = React.useMemo(() => {
+    if (!selected) return "#6b7280";
+    const s = availableStatuses.find((x) => x.name === selected.task.status);
+    return s?.color ?? "#6b7280";
+  }, [selected, availableStatuses]);
 
   const decodedTag = decodeURIComponent(tagName);
   const tasksWithTag = groups
-    .flatMap((g) => g.tasks.map((t) => ({ task: t, groupName: g.name, groupColor: g.color })))
+    .flatMap((g) => g.tasks.map((t) => ({ task: t, groupId: g.id, groupName: g.name, groupColor: g.color })))
     .filter(({ task }) => task.tags.includes(decodedTag));
+
+  React.useEffect(() => {
+    if (selected) {
+      setEditedContent(selected.task.content);
+      setNewCommentText("");
+    }
+  }, [selected]);
+
+  const updateSelectedTaskField = <K extends keyof Task>(field: K, value: Task[K]) => {
+    if (!selected) return;
+    setGroups((prev) =>
+      prev.map((group) =>
+        group.id === selected.groupId
+          ? {
+              ...group,
+              tasks: group.tasks.map((task) =>
+                task.id === selected.task.id ? { ...task, [field]: value } : task
+              ),
+            }
+          : group
+      )
+    );
+    setSelected((prev) => (prev ? { ...prev, task: { ...prev.task, [field]: value } } : prev));
+  };
 
   return (
     <div className="p-6 min-h-screen bg-black">
@@ -37,11 +70,11 @@ const TagPage: React.FC = () => {
           <p className="text-sm text-gray-300">No items with this tag.</p>
         ) : (
           <div className="space-y-4">
-            {tasksWithTag.map(({ task, groupName, groupColor }) => (
+            {tasksWithTag.map(({ task, groupId, groupName, groupColor }) => (
               <Card
                 key={task.id}
                 className="shadow-sm cursor-pointer hover:bg-gray-100"
-                onClick={() => setSelected({ task, groupName, groupColor })}
+                onClick={() => setSelected({ task, groupId, groupName, groupColor })}
                 role="button"
                 aria-label={`Open details for ${task.content}`}
               >
@@ -112,23 +145,95 @@ const TagPage: React.FC = () => {
                   <p className="text-sm text-muted-foreground">Timeline</p>
                   <p className="text-sm">{selected.task.timeline || "N/A"}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <span
+                    className="inline-flex items-center text-xs font-medium rounded-md px-2 py-1 border"
+                    style={{
+                      color: statusColor,
+                      backgroundColor: lightenHexColor(statusColor, 0.9),
+                      borderColor: statusColor,
+                    }}
+                  >
+                    {selected.task.status || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tags</p>
+                  <p className="text-sm">
+                    {selected.task.tags.length ? selected.task.tags.join(", ") : "N/A"}
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
-                <p className="text-sm">{selected.task.status || "N/A"}</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground">Tags</p>
-                <p className="text-sm">
-                  {selected.task.tags.length ? selected.task.tags.join(", ") : "N/A"}
-                </p>
-              </div>
-
-              <div>
+              {/* Item editable area (same functionality as Task Manager drawer) */}
+              <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Item</p>
-                <p className="text-sm">{selected.task.content}</p>
+                <Textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="min-h-[120px]"
+                  placeholder="Enter item text..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => {
+                      if (editedContent !== selected.task.content) {
+                        updateSelectedTaskField("content", editedContent);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              {/* Comments section (same functionality as Task Manager drawer) */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Comments</p>
+
+                <div className="space-y-2">
+                  {(selected.task.comments && selected.task.comments.length > 0) ? (
+                    selected.task.comments.map((c) => (
+                      <div key={c.id} className="rounded-md border p-2">
+                        <p className="text-sm">{c.text}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(c.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Textarea
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="min-h-[80px]"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        const text = newCommentText.trim();
+                        if (!text) return;
+                        const newComment = {
+                          id: uuidv4(),
+                          text,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const updated = [...(selected.task.comments ?? []), newComment];
+                        updateSelectedTaskField("comments", updated);
+                        setNewCommentText("");
+                      }}
+                    >
+                      Add Comment
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
