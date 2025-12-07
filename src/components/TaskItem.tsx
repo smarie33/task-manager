@@ -97,7 +97,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
           }
         }}>
           <PopoverTrigger asChild>
-            <span className="text-sm truncate cursor-pointer block px-2" onClick={() => {
+            <span className="text-sm truncate cursor-pointer block px-2 py-2" onClick={() => {
               setEditingField(field); // Set editing field when trigger is clicked
             }}>
               {displayValue || 'N/A'}
@@ -128,7 +128,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             type={inputType}
           />
         ) : (
-          <span className="text-sm truncate cursor-pointer block px-2" onClick={() => {
+          <span className="text-sm truncate cursor-pointer block px-2 py-2" onClick={() => {
             setEditValue(task[field]?.toString() || '');
             setEditingField(field);
           }}>
@@ -161,7 +161,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         >
           <CardContent className="p-0">
             <div
-              className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] p-3 items-center"
+              className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] items-center"
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
               {/* Item */}
@@ -180,7 +180,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                   value={task.status}
                   onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
                 >
-                  <SelectTrigger className="h-7 text-xs px-2">
+                  <SelectTrigger className="h-auto text-xs px-2 py-2"> {/* Adjusted padding here */}
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
                       <SelectValue placeholder="Status" />
@@ -215,12 +215,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
               </div>
 
               {/* Has Files */}
-              <div className="flex justify-center items-center"> {/* No right border for this one */}
+              <div className="flex justify-center items-center py-2"> {/* No right border for this one */}
                 {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-1 w-14 justify-end">
+              <div className="flex gap-1 w-14 justify-end py-2">
                 {editingField && (
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-500" onClick={() => handleSaveEdit(editingField, task[editingField])}>
                     <PencilIcon className="h-4 w-4" />
