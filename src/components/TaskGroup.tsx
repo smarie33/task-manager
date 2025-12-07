@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
 import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[] };
@@ -90,9 +91,36 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               <PaintbrushIcon className="h-4 w-4" />
             </Button>
           </div>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => onDeleteGroup(group.id)}>
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                aria-label="Delete group"
+              >
+                <Trash2Icon className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this group?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the group and all its tasks. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => onDeleteGroup(group.id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardHeader>
 
