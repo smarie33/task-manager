@@ -98,4 +98,26 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Custom scrollbar styling for Webkit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 1px;
+    height: 1px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: white;
+    border-radius: 0px;
+    border: 0px solid transparent;
+  }
+
+  /* Custom scrollbar styling for Firefox */
+  html {
+    scrollbar-width: thin; /* "auto" or "thin" */
+    scrollbar-color: white transparent; /* thumb and track color */
+  }
 }
