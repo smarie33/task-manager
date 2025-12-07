@@ -18,18 +18,18 @@ const TagPage: React.FC = () => {
     .filter(({ task }) => task.tags.includes(decodedTag));
 
   return (
-    <div className="p-6 min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="p-6 min-h-screen bg-black">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Button variant="outline" onClick={() => navigate("/")}>
             ← Back to Task Manager
           </Button>
-          <h1 className="text-2xl font-bold">{decodedTag}</h1>
+          <h1 className="text-2xl font-bold text-white"># {decodedTag}</h1>
           <div className="w-24" />
         </div>
 
         {tasksWithTag.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No items with this tag.</p>
+          <p className="text-sm text-gray-300">No items with this tag.</p>
         ) : (
           <div className="space-y-4">
             {tasksWithTag.map(({ task, groupName, groupColor }) => (
@@ -52,10 +52,6 @@ const TagPage: React.FC = () => {
                     <div>
                       <p className="text-muted-foreground">Owner</p>
                       <p>{task.owner || "N/A"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Status</p>
-                      <p>{task.status || "N/A"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Timeline</p>
