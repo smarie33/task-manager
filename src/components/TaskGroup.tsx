@@ -19,6 +19,7 @@ interface TaskGroupProps {
   onDeleteTask: (groupId: string, taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
+  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>; // Add setAvailableStatuses
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -30,6 +31,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onDeleteTask,
   onUpdateTaskField,
   availableStatuses,
+  setAvailableStatuses, // Destructure setAvailableStatuses
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -141,6 +143,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
                 onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
                 availableStatuses={availableStatuses}
+                setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
               />
             ))}
             {provided.placeholder}

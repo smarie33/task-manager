@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
+import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
 import { cn, lightenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
 import { format, parseISO, isValid } from 'date-fns';
@@ -21,9 +21,10 @@ interface TaskItemProps {
   onDeleteTask: (taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
+  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>; // Add setAvailableStatuses
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskField, availableStatuses }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskField, availableStatuses, setAvailableStatuses }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
   const [editedOwner, setEditedOwner] = useState(task.owner);
@@ -33,6 +34,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false); // State for status popover
+  const [newStatusName, setNewStatusName] = useState(''); // State for new status name
+  const [newStatusColor, setNewStatusColor] = useState('#60a5fa'); // State for new status color (default blue-400)
+
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(() => {
     if (task.timeline) {
       const parts = task.timeline.split(' - ');
@@ -90,6 +94,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const handleStatusSelect = (statusName: string) => {
     onUpdateTaskField(task.id, 'status', statusName);
     setStatusPopoverOpen(false); // Close popover after selection
+  };
+
+  const handleAddStatus = () => {
+    if (newStatusName.trim() && !availableStatuses.some(s => s.name === newStatusName.trim())) {
+      setAvailableStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor }]);
+      setNewStatusName('');
+      setNewStatusColor('#60a5fa'); // Reset to default
+    }
   };
 
   const getFormattedTimeline = (timeline: string): string => {
@@ -227,19 +239,46 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                           </span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {availableStatuses.map(status => (
-                          <Button
-                            key={status.name}
-                            variant="outline"
-                            className="flex flex-col items-center justify-center h-20 w-20 text-center text-xs font-medium"
-                            style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
-                            onClick={() => handleStatusSelect(status.name)}
-                          >
-                            <span className="w-4 h-4 rounded-full mb-1" style={{ backgroundColor: status.color }}></span>
-                            {status.name}
-                          </Button>
-                        ))}
+                      <PopoverContent className="w-auto p-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                          {availableStatuses.map(status => (
+                            <Button
+                              key={status.name}
+                              variant="outline"
+                              className="flex flex-col items-center justify-center h-20 w-20 text-center text-xs font-medium"
+                              style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
+                              onClick={() => handleStatusSelect(status.name)}
+                            >
+                              <span className="w-4 h-4 rounded-full mb-1" style={{ backgroundColor: status.color }}></span>
+                              {status.name}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex flex-col gap-2 p-2 border-t pt-4">
+                          <h4 className="text-sm font-semibold">Add New Status</h4>
+                          <Input
+                            type="text"
+                            placeholder="New status name..."
+                            value={newStatusName}
+                            onChange={(e) => setNewStatusName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleAddStatus();
+                            }}
+                            className="w-full"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="color"
+                              value={newStatusColor}
+                              onChange={(e) => setNewStatusColor(e.target.value)}
+                              className="w-10 h-10 p-0 border-none cursor-pointer"
+                              title="Choose status color"
+                            />
+                            <Button onClick={handleAddStatus} className="flex-grow">
+                              <PlusIcon className="h-4 w-4 mr-2" /> Add Status
+                            </Button>
+                          </div>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>

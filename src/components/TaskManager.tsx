@@ -71,8 +71,6 @@ const TaskManager: React.FC = () => {
   const [groups, setGroups] = useState<TaskGroupData[]>(initialGroups);
   const [availableStatuses, setAvailableStatuses] = useState<StatusOption[]>(initialStatuses);
   const [newGroupName, setNewGroupName] = useState('');
-  const [newStatusName, setNewStatusName] = useState('');
-  const [newStatusColor, setNewStatusColor] = useState('#60a5fa'); // Default blue-400
 
   // Removed useSynchronizedScroll({ isMaster: true })
 
@@ -145,14 +143,6 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  const handleAddStatus = () => {
-    if (newStatusName.trim() && !availableStatuses.some(s => s.name === newStatusName.trim())) {
-      setAvailableStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor }]);
-      setNewStatusName('');
-      setNewStatusColor('#60a5fa'); // Reset to default
-    }
-  };
-
   const handleUpdateGroupName = (groupId: string, newName: string) => {
     setGroups(prevGroups =>
       prevGroups.map(group =>
@@ -220,25 +210,6 @@ const TaskManager: React.FC = () => {
             <PlusIcon className="h-4 w-4 mr-2" /> Add Group
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="text"
-            placeholder="New status name..."
-            value={newStatusName}
-            onChange={(e) => setNewStatusName(e.target.value)}
-            className="w-40"
-          />
-          <Input
-            type="color"
-            value={newStatusColor}
-            onChange={(e) => setNewStatusColor(e.target.value)}
-            className="w-10 h-10 p-0 border-none cursor-pointer"
-            title="Choose status color"
-          />
-          <Button onClick={handleAddStatus}>
-            <PlusIcon className="h-4 w-4 mr-2" /> Add Status
-          </Button>
-        </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         {/* This div no longer acts as the master scroll container */}
@@ -254,6 +225,7 @@ const TaskManager: React.FC = () => {
               onDeleteTask={handleDeleteTask}
               onUpdateTaskField={handleUpdateTaskField}
               availableStatuses={availableStatuses}
+              setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
             />
           ))}
         </div>
