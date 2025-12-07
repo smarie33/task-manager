@@ -39,9 +39,9 @@ export function darkenHexColor(hex: string, percent: number): string {
   let g = parseInt(hexValue.substring(2, 4), 16);
   let b = parseInt(hexValue.substring(4, 6), 16);
 
-  r = Math.max(0, r - r * percent * r); // Darken proportionally
-  g = Math.max(0, g - g * percent * g);
-  b = Math.max(0, b - b * percent * b);
+  r = Math.max(0, Math.round(r * (1 - percent)));
+  g = Math.max(0, Math.round(g * (1 - percent)));
+  b = Math.max(0, Math.round(b * (1 - percent)));
 
   const toHex = (c: number) => Math.round(c).toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;

@@ -146,6 +146,28 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     return dateToCheck && isValid(dateToCheck) && isPast(dateToCheck) && !isToday(dateToCheck);
   };
 
+  const isTimelineFuture = (timeline: string): boolean => {
+    if (!timeline || timeline === 'N/A') return false;
+
+    const parts = timeline.split(' - ');
+    let dateToCheck: Date | null = null;
+
+    if (parts.length === 2) {
+      dateToCheck = parseISO(parts[1]); // Use the end date for ranges
+    } else {
+      dateToCheck = parseISO(timeline); // Use the single date
+    }
+
+    if (dateToCheck && isValid(dateToCheck)) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize today to start of day
+      const checkDate = new Date(dateToCheck);
+      checkDate.setHours(0, 0, 0, 0); // Normalize checkDate to start of day
+      return checkDate > today;
+    }
+    return false;
+  };
+
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
     const isCurrentlyEditing = editingField === field;
     const inputType = field === 'timeTracking' ? 'number' : 'text';
@@ -209,6 +231,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const currentStatusOption = availableStatuses.find(s => s.name === task.status);
   const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280'; // Default gray if status not found
   const isPastDue = isTimelinePast(task.timeline);
+  const isDoneAndFuture = task.status === 'Done' && isTimelineFuture(task.timeline);
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -303,8 +326,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
                   {/* Timeline */}
                   <div className={cn(
-                    "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center", // Added text-center
-                    isPastDue && "bg-red-500 text-white" // Conditional styling
+                    "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center",
+                    isPastDue && "bg-red-500 text-white", // Existing styling
+                    isDoneAndFuture && "bg-white text-black" // New styling
                   )}>
                     {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
                   </div>
