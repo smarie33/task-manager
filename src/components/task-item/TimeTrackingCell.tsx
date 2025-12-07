@@ -1,0 +1,187 @@
+"use client";
+
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PencilIcon, PlayIcon, PauseIcon } from "lucide-react";
+import { Task } from "../TaskManager";
+import { darkenHexColor } from "@/lib/utils";
+import { format } from "date-fns";
+
+type TimeTrackingCellProps = {
+  task: Task;
+  groupColor: string;
+  onUpdateTimeTracking: (hours: number) => void;
+  onUpdateTimeLogs: (logs: NonNullable<Task["timeLogs"]>) => void;
+};
+
+const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
+  task,
+  groupColor,
+  onUpdateTimeTracking,
+  onUpdateTimeLogs,
+}) => {
+  const [isTimerRunning, setIsTimerRunning] = React.useState(false);
+  const [displayedSeconds, setDisplayedSeconds] = React.useState(() => Math.round(task.timeTracking * 3600));
+  const intervalRef = React.useRef<number | null>(null);
+  const startRef = React.useRef<number | null>(null);
+  const baseSecondsRef = React.useRef<number>(Math.round(task.timeTracking * 3600));
+  const lastPersistMinuteRef = React.useRef<number>(Math.floor(task.timeTracking * 60));
+
+  const [timeLogsOpen, setTimeLogsOpen] = React.useState(false);
+
+  const [editingTime, setEditingTime] = React.useState(false);
+  const [editedTimeTracking, setEditedTimeTracking] = React.useState((task.timeTracking || 0).toString());
+
+  // Keep displayed time in sync when not running
+  React.useEffect(() => {
+    if (!isTimerRunning) {
+      const secs = Math.round(task.timeTracking * 3600);
+      baseSecondsRef.current = secs;
+      setDisplayedSeconds(secs);
+      lastPersistMinuteRef.current = Math.floor(secs / 60);
+      setEditedTimeTracking((secs / 3600).toFixed(2));
+    }
+  }, [task.timeTracking, isTimerRunning]);
+
+  // Clear interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const formatDuration = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
+  };
+
+  const startTimer = () => {
+    if (isTimerRunning) return;
+    setIsTimerRunning(true);
+    startRef.current = Date.now();
+    intervalRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (startRef.current || Date.now())) / 1000);
+      const newSeconds = baseSecondsRef.current + elapsed;
+      setDisplayedSeconds(newSeconds);
+
+      const currentMinutes = Math.floor(newSeconds / 60);
+      if (currentMinutes > lastPersistMinuteRef.current) {
+        lastPersistMinuteRef.current = currentMinutes;
+        onUpdateTimeTracking(newSeconds / 3600);
+      }
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsTimerRunning(false);
+    const sessionSeconds = displayedSeconds - (baseSecondsRef.current || 0);
+    const sessionDate = format(new Date(startRef.current ?? Date.now()), "yyyy-MM-dd");
+
+    onUpdateTimeTracking(displayedSeconds / 3600);
+
+    const newLogs = [...(task.timeLogs || []), { durationSeconds: Math.max(0, sessionSeconds), date: sessionDate }];
+    onUpdateTimeLogs(newLogs);
+
+    baseSecondsRef.current = displayedSeconds;
+  };
+
+  const commitManualTime = () => {
+    const numValue = parseFloat(editedTimeTracking);
+    if (!isNaN(numValue)) {
+      const secs = Math.round(numValue * 3600);
+      baseSecondsRef.current = secs;
+      setDisplayedSeconds(secs);
+      onUpdateTimeTracking(numValue);
+    }
+    setEditingTime(false);
+  };
+
+  return (
+    <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+      {editingTime ? (
+        <Input
+          value={editedTimeTracking}
+          onChange={(e) => setEditedTimeTracking(e.target.value)}
+          onBlur={commitManualTime}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitManualTime();
+          }}
+          className="h-7 text-sm p-1 px-2 rounded-none border-2"
+          autoFocus
+          type="number"
+          style={{
+            borderColor: darkenHexColor(groupColor, 0.5),
+            boxShadow: `inset 0 0 0 1px ${groupColor}`,
+          }}
+        />
+      ) : (
+        <div className="flex items-center justify-between px-2 py-2">
+          <div className="flex items-center gap-1">
+            <Popover open={timeLogsOpen} onOpenChange={setTimeLogsOpen}>
+              <PopoverTrigger asChild>
+                <span
+                  className="text-sm truncate cursor-pointer"
+                  onClick={() => setTimeLogsOpen(true)}
+                  title="View time logs"
+                >
+                  {formatDuration(displayedSeconds)}
+                </span>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2">
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold">Time Logs</div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {task.timeLogs && task.timeLogs.length > 0 ? (
+                      task.timeLogs.map((log, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm py-1">
+                          <span>{formatDuration(log.durationSeconds)}</span>
+                          <span className="text-gray-500">{log.date}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-500">No time logs yet.</div>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-500 hover:text-blue-500"
+              onClick={() => {
+                setEditedTimeTracking((displayedSeconds / 3600).toFixed(2));
+                setEditingTime(true);
+              }}
+              aria-label="Edit time"
+              title="Edit time"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-gray-500 hover:text-blue-500"
+            onClick={() => (isTimerRunning ? pauseTimer() : startTimer())}
+            aria-label={isTimerRunning ? "Pause timer" : "Start timer"}
+            title={isTimerRunning ? "Pause" : "Play"}
+          >
+            {isTimerRunning ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TimeTrackingCell;
