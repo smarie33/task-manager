@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
+import { Trash2Icon, PencilIcon, FileIcon, PlusIcon, PlayIcon, PauseIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
@@ -32,6 +32,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const [editedTimeTracking, setEditedTimeTracking] = useState(task.timeTracking.toString());
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
 
+  // ADD: timer state and refs
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [displayedSeconds, setDisplayedSeconds] = useState(() => Math.round(task.timeTracking * 3600));
+  const intervalRef = React.useRef<number | null>(null);
+  const startRef = React.useRef<number | null>(null);
+  const baseSecondsRef = React.useRef<number>(Math.round(task.timeTracking * 3600));
+  const lastPersistMinuteRef = React.useRef<number>(Math.floor(task.timeTracking * 60));
+
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [newStatusName, setNewStatusName] = useState('');
@@ -54,10 +62,37 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
   const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
 
+  // Keep displayed time in sync when not running
+  React.useEffect(() => {
+    if (!isTimerRunning) {
+      const secs = Math.round(task.timeTracking * 3600);
+      baseSecondsRef.current = secs;
+      setDisplayedSeconds(secs);
+      lastPersistMinuteRef.current = Math.floor(secs / 60);
+    }
+  }, [task.timeTracking, isTimerRunning]);
+
+  // Clear interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'timeTracking') {
+      // If editing while running, pause first
+      if (isTimerRunning) {
+        if (intervalRef.current) window.clearInterval(intervalRef.current);
+        setIsTimerRunning(false);
+      }
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue !== task.timeTracking) {
+        const secs = Math.round(numValue * 3600);
+        baseSecondsRef.current = secs;
+        setDisplayedSeconds(secs);
         onUpdateTaskField(task.id, field, numValue);
       }
     } else if (field === 'tags') {
@@ -170,6 +205,42 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     const startOfToday = startOfDay(new Date());
 
     return startOfDateToCheck > startOfToday; // Is the date after today (start of day)?
+  };
+
+  // ADD: duration formatter
+  const formatDuration = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
+  };
+
+  // ADD: start/pause handlers
+  const startTimer = () => {
+    if (isTimerRunning) return;
+    setIsTimerRunning(true);
+    startRef.current = Date.now();
+    intervalRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (startRef.current || Date.now())) / 1000);
+      const newSeconds = baseSecondsRef.current + elapsed;
+      setDisplayedSeconds(newSeconds);
+
+      // Persist roughly every minute to reduce re-renders
+      const currentMinutes = Math.floor(newSeconds / 60);
+      if (currentMinutes > lastPersistMinuteRef.current) {
+        lastPersistMinuteRef.current = currentMinutes;
+        onUpdateTaskField(task.id, 'timeTracking', newSeconds / 3600);
+      }
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsTimerRunning(false);
+    baseSecondsRef.current = displayedSeconds;
+    onUpdateTaskField(task.id, 'timeTracking', displayedSeconds / 3600);
   };
 
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
@@ -356,7 +427,43 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
                   {/* Time Tracking */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                    {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
+                    {editingField === 'timeTracking' ? (
+                      <Input
+                        value={editedTimeTracking}
+                        onChange={(e) => setEditedTimeTracking(e.target.value)}
+                        onBlur={() => handleSaveEdit('timeTracking', editedTimeTracking)}
+                        onKeyDown={(e) => handleKeyDown(e, 'timeTracking', editedTimeTracking)}
+                        className="h-7 text-sm p-1 px-2 rounded-none border-2"
+                        autoFocus
+                        type="number"
+                        style={{
+                          borderColor: darkenHexColor(groupColor, 0.5),
+                          boxShadow: `inset 0 0 0 1px ${groupColor}`,
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between px-2 py-2">
+                        <span
+                          className="text-sm truncate cursor-pointer"
+                          onClick={() => {
+                            setEditedTimeTracking((displayedSeconds / 3600).toFixed(2));
+                            setEditingField('timeTracking');
+                          }}
+                        >
+                          {formatDuration(displayedSeconds)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-500 hover:text-blue-500"
+                          onClick={() => (isTimerRunning ? pauseTimer() : startTimer())}
+                          aria-label={isTimerRunning ? "Pause timer" : "Start timer"}
+                          title={isTimerRunning ? "Pause" : "Play"}
+                        >
+                          {isTimerRunning ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Tags */}
