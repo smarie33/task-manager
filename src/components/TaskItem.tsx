@@ -12,6 +12,7 @@ import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 import StatusCell from './task-item/StatusCell';
 import TimelineCell from './task-item/TimelineCell';
 import TimeTrackingCell from './task-item/TimeTrackingCell';
+import AppDrawer from './AppDrawer';
 
 interface TaskItemProps {
   task: Task;
@@ -37,6 +38,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const [editedOwner, setEditedOwner] = useState(task.owner);
   const [editedTimeline, setEditedTimeline] = useState(task.timeline);
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
 
@@ -123,7 +125,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
             >
               {/* Sticky Item Column */}
               <div className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-                {renderField('content', task.content, editedContent, setEditedContent)}
+                <span
+                  className="text-sm truncate cursor-pointer block px-2 py-2"
+                  onClick={() => setIsDrawerOpen(true)}
+                >
+                  {task.content}
+                </span>
               </div>
 
               {/* Scrollable Columns Container */}
@@ -197,6 +204,54 @@ const TaskItem: React.FC<TaskItemProps> = ({
               </div>
             </div>
           </CardContent>
+          {/* App-wide side drawer for Item details */}
+          <AppDrawer
+            open={isDrawerOpen}
+            onOpenChange={setIsDrawerOpen}
+            title="Task Details"
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Item</p>
+                <p className="text-base font-medium">{task.content}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Owner</p>
+                  <p className="text-sm">{task.owner || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-sm">{task.status}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Timeline</p>
+                  <p className="text-sm">{task.timeline || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Time Tracking (hrs)</p>
+                  <p className="text-sm">{task.timeTracking ?? 0}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">Tags</p>
+                  <p className="text-sm">{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="default" onClick={() => setIsDrawerOpen(false)}>Close</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setEditingField('content');
+                    setEditedContent(task.content);
+                  }}
+                >
+                  Edit Item
+                </Button>
+              </div>
+            </div>
+          </AppDrawer>
         </Card>
       )}
     </Draggable>
