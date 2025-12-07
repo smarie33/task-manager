@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2Icon, PencilIcon } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Import cn utility for conditional class names
+import { cn } from '@/lib/utils';
 
 interface TaskItemProps {
   task: { id: string; content: string };
@@ -44,9 +44,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, onDeleteTask, onUpdate
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={cn(
-            "bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing rounded-none", // Added rounded-none
+            "shadow-sm cursor-grab active:cursor-grabbing rounded-none",
+            "hover:bg-gray-100 dark:hover:bg-gray-700", // Hover effect
             {
-              "border-t-0": index !== 0 && !snapshot.isDragging, // Remove top border if not first and not dragging
+              "border-t-0": index !== 0 && !snapshot.isDragging,
+              "bg-gray-50 dark:bg-gray-700": isEditing, // Lighter background when editing
+              "bg-white dark:bg-gray-800": !isEditing, // Default background when not editing
             }
           )}
         >
