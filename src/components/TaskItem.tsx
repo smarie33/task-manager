@@ -5,7 +5,6 @@ import { Draggable } from 'react-beautiful-dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
@@ -33,6 +32,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
 
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false); // State for status popover
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(() => {
     if (task.timeline) {
       const parts = task.timeline.split(' - ');
@@ -48,7 +48,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     return undefined;
   });
 
-  const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll(); // RE-ADDED onScroll here
+  const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'timeTracking') {
@@ -85,6 +85,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     onUpdateTaskField(task.id, 'timeline', newTimelineString);
     setEditedTimeline(newTimelineString); // Update local state for display
     // setCalendarOpen(false); // Optionally close popover after selection
+  };
+
+  const handleStatusSelect = (statusName: string) => {
+    onUpdateTaskField(task.id, 'status', statusName);
+    setStatusPopoverOpen(false); // Close popover after selection
   };
 
   const getFormattedTimeline = (timeline: string): string => {
@@ -191,7 +196,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         >
           <CardContent className="p-0">
             <div
-              className="grid grid-cols-2 items-center" // Use grid grid-cols-2 here
+              className="grid grid-cols-2 items-center"
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
               {/* Sticky Item Column - First column of the grid */}
@@ -209,27 +214,34 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
                   {/* Status */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                    <Select
-                      value={task.status}
-                      onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
-                    >
-                      <SelectTrigger className="h-auto text-xs px-2 py-2">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
-                          <SelectValue placeholder="Status" />
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent>
+                    <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="w-full h-auto text-xs px-2 py-2 justify-start"
+                          style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
+                            {task.status}
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {availableStatuses.map(status => (
-                          <SelectItem key={status.name} value={status.name}>
-                            <span className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }}></span>
-                              {status.name}
-                            </span>
-                          </SelectItem>
+                          <Button
+                            key={status.name}
+                            variant="outline"
+                            className="flex flex-col items-center justify-center h-20 w-20 text-center text-xs font-medium"
+                            style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
+                            onClick={() => handleStatusSelect(status.name)}
+                          >
+                            <span className="w-4 h-4 rounded-full mb-1" style={{ backgroundColor: status.color }}></span>
+                            {status.name}
+                          </Button>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Timeline */}
