@@ -188,74 +188,79 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         >
           <CardContent className="p-0">
             <div
-              className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] items-center"
+              className="flex items-center" // Use flex to align sticky and scrollable parts
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
-              {/* Item */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+              {/* Sticky Item Column */}
+              <div className="w-[150px] sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
                 {renderField('content', task.content, editedContent, setEditedContent)}
               </div>
 
-              {/* Owner */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
-              </div>
+              {/* Scrollable Columns Container */}
+              <div className="flex-grow overflow-x-auto">
+                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max items-center">
+                  {/* Owner */}
+                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                    {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
+                  </div>
 
-              {/* Status */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                <Select
-                  value={task.status}
-                  onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
-                >
-                  <SelectTrigger className="h-auto text-xs px-2 py-2"> {/* Adjusted padding here */}
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
-                      <SelectValue placeholder="Status" />
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableStatuses.map(status => (
-                      <SelectItem key={status.name} value={status.name}>
+                  {/* Status */}
+                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                    <Select
+                      value={task.status}
+                      onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
+                    >
+                      <SelectTrigger className="h-auto text-xs px-2 py-2">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }}></span>
-                          {status.name}
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
+                          <SelectValue placeholder="Status" />
                         </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStatuses.map(status => (
+                          <SelectItem key={status.name} value={status.name}>
+                            <span className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }}></span>
+                              {status.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* Timeline */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
-              </div>
+                  {/* Timeline */}
+                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                    {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
+                  </div>
 
-              {/* Time Tracking */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
-              </div>
+                  {/* Time Tracking */}
+                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                    {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
+                  </div>
 
-              {/* Tags */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
-              </div>
+                  {/* Tags */}
+                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                    {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
+                  </div>
 
-              {/* Has Files */}
-              <div className="flex justify-center items-center py-2"> {/* No right border for this one */}
-                {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
-              </div>
+                  {/* Has Files */}
+                  <div className="flex justify-center items-center py-2">
+                    {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
+                  </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-1 w-14 justify-end py-2">
-                {editingField && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-500" onClick={() => handleSaveEdit(editingField, task[editingField])}>
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-500" onClick={() => onDeleteTask(task.id)}>
-                  <Trash2Icon className="h-4 w-4" />
-                </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 w-14 justify-end py-2">
+                    {editingField && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-500" onClick={() => handleSaveEdit(editingField, task[editingField])}>
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-red-500" onClick={() => onDeleteTask(task.id)}>
+                      <Trash2Icon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

@@ -87,29 +87,36 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       </CardHeader>
 
       {/* Column Headers */}
-      <div className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+      <div className="flex text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+        {/* Sticky Item Header */}
+        <div className="w-[150px] sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
           <div className="px-2 truncate">Item</div>
         </div>
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Owner</div>
+
+        {/* Scrollable Headers */}
+        <div className="flex-grow overflow-x-auto">
+          <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max">
+            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+              <div className="px-2 truncate">Owner</div>
+            </div>
+            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+              <div className="px-2 truncate">Status</div>
+            </div>
+            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+              <div className="px-2 truncate">Timeline</div>
+            </div>
+            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+              <div className="px-2 truncate">Time Tracking</div>
+            </div>
+            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+              <div className="px-2 truncate">Tags</div>
+            </div>
+            <div className="py-2"> {/* No right border */}
+              <div className="px-2 truncate text-center">Files</div>
+            </div>
+            <div className="w-14 py-2"></div> {/* Placeholder for action buttons, no border */}
+          </div>
         </div>
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Status</div>
-        </div>
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Timeline</div>
-        </div>
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Time Tracking</div>
-        </div>
-        <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Tags</div>
-        </div>
-        <div className="py-2"> {/* No right border */}
-          <div className="px-2 truncate text-center">Files</div>
-        </div>
-        <div className="w-14 py-2"></div> {/* Placeholder for action buttons, no border */}
       </div>
 
       <Droppable droppableId={group.id}>
