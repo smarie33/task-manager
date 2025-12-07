@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
-import { Task } from './TaskManager'; // Import Task interface
+import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
 
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[] };
@@ -17,6 +17,7 @@ interface TaskGroupProps {
   onDeleteGroup: (groupId: string) => void;
   onDeleteTask: (groupId: string, taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
+  availableStatuses: StatusOption[];
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -27,6 +28,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onDeleteGroup,
   onDeleteTask,
   onUpdateTaskField,
+  availableStatuses,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -86,14 +88,14 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 
       {/* Column Headers */}
       <div className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] gap-2 p-3 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-        <div className="truncate">Item</div>
-        <div className="truncate">Owner</div>
-        <div className="truncate">Status</div>
-        <div className="truncate">Timeline</div>
-        <div className="truncate">Time Tracking</div>
-        <div className="truncate">Tags</div>
-        <div className="truncate text-center">Files</div>
-        <div className="w-14"></div> {/* Placeholder for action buttons */}
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Item</div>
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Owner</div>
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Status</div>
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Timeline</div>
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Time Tracking</div>
+        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Tags</div>
+        <div className="truncate text-center pr-2">Files</div> {/* No right border for the last content column */}
+        <div className="w-14"></div> {/* Placeholder for action buttons, no border */}
       </div>
 
       <Droppable droppableId={group.id}>
@@ -114,6 +116,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 groupColor={group.color}
                 onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
                 onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
+                availableStatuses={availableStatuses}
               />
             ))}
             {provided.placeholder}

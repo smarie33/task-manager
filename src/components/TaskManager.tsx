@@ -8,11 +8,16 @@ import { Input } from '@/components/ui/input';
 import { PlusIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
+export interface StatusOption {
+  name: string;
+  color: string;
+}
+
 export interface Task {
   id: string;
   content: string; // Item
   owner: string;
-  status: 'To Do' | 'In Progress' | 'Done' | 'Blocked';
+  status: string; // Now references StatusOption.name
   timeline: string; // e.g., "2023-12-31" or "Q4 2023"
   timeTracking: number; // in hours
   tags: string[];
@@ -25,6 +30,13 @@ interface TaskGroupData {
   color: string;
   tasks: Task[];
 }
+
+const initialStatuses: StatusOption[] = [
+  { name: 'To Do', color: '#ef4444' }, // red-500
+  { name: 'In Progress', color: '#f97316' }, // orange-500
+  { name: 'Done', color: '#22c55e' }, // green-500
+  { name: 'Blocked', color: '#6b7280' }, // gray-500
+];
 
 const initialGroups: TaskGroupData[] = [
   {
@@ -56,7 +68,10 @@ const initialGroups: TaskGroupData[] = [
 
 const TaskManager: React.FC = () => {
   const [groups, setGroups] = useState<TaskGroupData[]>(initialGroups);
+  const [availableStatuses, setAvailableStatuses] = useState<StatusOption[]>(initialStatuses);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newStatusName, setNewStatusName] = useState('');
+  const [newStatusColor, setNewStatusColor] = useState('#60a5fa'); // Default blue-400
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -100,7 +115,7 @@ const TaskManager: React.FC = () => {
                 id: uuidv4(),
                 content,
                 owner: '',
-                status: 'To Do',
+                status: availableStatuses[0]?.name || 'To Do', // Default to first available status
                 timeline: '',
                 timeTracking: 0,
                 tags: [],
@@ -124,6 +139,14 @@ const TaskManager: React.FC = () => {
         },
       ]);
       setNewGroupName('');
+    }
+  };
+
+  const handleAddStatus = () => {
+    if (newStatusName.trim() && !availableStatuses.some(s => s.name === newStatusName.trim())) {
+      setAvailableStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor }]);
+      setNewStatusName('');
+      setNewStatusColor('#60a5fa'); // Reset to default
     }
   };
 
@@ -179,19 +202,40 @@ const TaskManager: React.FC = () => {
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Task Manager</h1>
       <div className="flex flex-wrap gap-6 justify-center mb-8">
-        <Input
-          type="text"
-          placeholder="New group name..."
-          value={newGroupName}
-          onChange={(e) => setNewGroupName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAddGroup();
-          }}
-          className="w-64"
-        />
-        <Button onClick={handleAddGroup}>
-          <PlusIcon className="h-4 w-4 mr-2" /> Add Group
-        </Button>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="New group name..."
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddGroup();
+            }}
+            className="w-40"
+          />
+          <Button onClick={handleAddGroup}>
+            <PlusIcon className="h-4 w-4 mr-2" /> Add Group
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="New status name..."
+            value={newStatusName}
+            onChange={(e) => setNewStatusName(e.target.value)}
+            className="w-40"
+          />
+          <Input
+            type="color"
+            value={newStatusColor}
+            onChange={(e) => setNewStatusColor(e.target.value)}
+            className="w-10 h-10 p-0 border-none cursor-pointer"
+            title="Choose status color"
+          />
+          <Button onClick={handleAddStatus}>
+            <PlusIcon className="h-4 w-4 mr-2" /> Add Status
+          </Button>
+        </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col items-center gap-6">
@@ -205,6 +249,7 @@ const TaskManager: React.FC = () => {
               onDeleteGroup={handleDeleteGroup}
               onDeleteTask={handleDeleteTask}
               onUpdateTaskField={handleUpdateTaskField}
+              availableStatuses={availableStatuses}
             />
           ))}
         </div>

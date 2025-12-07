@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor } from '@/lib/utils';
-import { Task } from './TaskManager'; // Import Task interface
+import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
 
 interface TaskItemProps {
   task: Task;
@@ -16,9 +16,10 @@ interface TaskItemProps {
   groupColor: string;
   onDeleteTask: (taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(taskId: string, field: K, value: Task[K]) => void;
+  availableStatuses: StatusOption[];
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskField }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskField, availableStatuses }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
   const [editedOwner, setEditedOwner] = useState(task.owner);
@@ -54,7 +55,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     const inputType = field === 'timeTracking' ? 'number' : 'text';
 
     return (
-      <div className="flex-grow min-w-0">
+      <>
         {isCurrentlyEditing ? (
           <Input
             value={editValue}
@@ -73,11 +74,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             {displayValue}
           </span>
         )}
-      </div>
+      </>
     );
   };
 
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
+  const currentStatusOption = availableStatuses.find(s => s.name === task.status);
+  const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280'; // Default gray if status not found
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -101,40 +104,57 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
               {/* Item */}
-              {renderField('content', task.content, editedContent, setEditedContent)}
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+                {renderField('content', task.content, editedContent, setEditedContent)}
+              </div>
 
               {/* Owner */}
-              {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+                {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
+              </div>
 
               {/* Status */}
-              <div className="flex-grow min-w-0">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
                 <Select
                   value={task.status}
-                  onValueChange={(value: 'To Do' | 'In Progress' | 'Done' | 'Blocked') => onUpdateTaskField(task.id, 'status', value)}
+                  onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
                 >
                   <SelectTrigger className="h-7 text-xs">
-                    <SelectValue placeholder="Status" />
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
+                      <SelectValue placeholder="Status" />
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="To Do">To Do</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Done">Done</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    {availableStatuses.map(status => (
+                      <SelectItem key={status.name} value={status.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }}></span>
+                          {status.name}
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Timeline */}
-              {renderField('timeline', task.timeline || 'N/A', editedTimeline, setEditedTimeline)}
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+                {renderField('timeline', task.timeline || 'N/A', editedTimeline, setEditedTimeline)}
+              </div>
 
               {/* Time Tracking */}
-              {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+                {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
+              </div>
 
               {/* Tags */}
-              {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+                {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
+              </div>
 
               {/* Has Files */}
-              <div className="flex justify-center items-center">
+              <div className="flex justify-center items-center pr-2"> {/* No right border for this one */}
                 {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
               </div>
 
