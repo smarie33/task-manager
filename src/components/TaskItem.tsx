@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { v4 as uuidv4 } from 'uuid';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
-import { Task, StatusOption } from './TaskManager';
+import { Task, StatusOption } from '@/types/task';
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 import StatusCell from './task-item/StatusCell';
 import TimelineCell from './task-item/TimelineCell';

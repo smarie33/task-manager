@@ -1,96 +1,30 @@
 "use client";
 
-import React, { useState } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import TaskGroup from './TaskGroup';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusIcon } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-// Removed useSynchronizedScroll import as it's not used here anymore
-
-export interface StatusOption {
-  name: string;
-  color: string;
-}
-
-export interface Task {
-  id: string;
-  content: string; // Item
-  owner: string;
-  status: string; // Now references StatusOption.name
-  timeline: string; // e.g., "2023-12-31" or "Q4 2023"
-  timeTracking: number; // in hours
-  tags: string[];
-  hasFiles: boolean;
-  // ADD: per-session time logs
-  timeLogs?: { durationSeconds: number; date: string }[];
-  // ADDED: comments array
-  comments?: { id: string; text: string; createdAt: string }[];
-}
-
-interface TaskGroupData {
-  id: string;
-  name: string;
-  color: string;
-  tasks: Task[];
-}
-
-const initialStatuses: StatusOption[] = [
-  { name: 'To Do', color: '#ef4444' }, // red-500
-  { name: 'In Progress', color: '#f97316' }, // orange-500
-  { name: 'Done', color: '#22c55e' }, // green-500
-  { name: 'Blocked', color: '#6b7280' }, // gray-500
-];
-
-const initialGroups: TaskGroupData[] = [
-  {
-    id: uuidv4(),
-    name: 'To Do',
-    color: '#ef4444', // red-500
-    tasks: [
-      { id: uuidv4(), content: 'Buy groceries', owner: 'Alice', status: 'To Do', timeline: 'Next Week', timeTracking: 0, tags: ['personal', 'urgent'], hasFiles: false, timeLogs: [], comments: [] },
-      { id: uuidv4(), content: 'Walk the dog', owner: 'Bob', status: 'To Do', timeline: 'Today', timeTracking: 0, tags: ['home'], hasFiles: true, timeLogs: [], comments: [] },
-    ],
-  },
-  {
-    id: uuidv4(),
-    name: 'In Progress',
-    color: '#f97316', // orange-500
-    tasks: [
-      { id: uuidv4(), content: 'Work on project', owner: 'Charlie', status: 'In Progress', timeline: 'End of Month', timeTracking: 10, tags: ['work', 'development'], hasFiles: true, timeLogs: [], comments: [] },
-    ],
-  },
-  {
-    id: uuidv4(),
-    name: 'Done',
-    color: '#22c55e', // green-500
-    tasks: [
-      { id: uuidv4(), content: 'Finish report', owner: 'Alice', status: 'Done', timeline: 'Last Week', timeTracking: 5, tags: ['work'], hasFiles: false, timeLogs: [], comments: [] },
-    ],
-  },
-];
+import React, { useState } from "react";
+import { DragDropContext, DropResult } from "react-beautiful-dnd";
+import TaskGroup from "./TaskGroup";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PlusIcon } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
+import { useTaskData } from "@/context/task-data-context";
+import { Task, StatusOption } from "@/types/task";
 
 const TaskManager: React.FC = () => {
-  const [groups, setGroups] = useState<TaskGroupData[]>(initialGroups);
-  const [availableStatuses, setAvailableStatuses] = useState<StatusOption[]>(initialStatuses);
-  const [newGroupName, setNewGroupName] = useState('');
+  const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
+  const [newGroupName, setNewGroupName] = useState("");
 
   // ALL TAGS: collect unique tags across all tasks
-  const allTags = Array.from(
-    new Set(
-      groups.flatMap((g) => g.tasks.flatMap((t) => t.tags))
-    )
-  ).sort();
+  const allTags = Array.from(new Set(groups.flatMap((g) => g.tasks.flatMap((t) => t.tags)))).sort();
 
   // NEW: delete a tag globally (remove from all tasks in all groups)
   const handleDeleteGlobalTag = (tagToDelete: string) => {
-    setGroups(prev =>
-      prev.map(group => ({
+    setGroups((prev) =>
+      prev.map((group) => ({
         ...group,
-        tasks: group.tasks.map(task => ({
+        tasks: group.tasks.map((task) => ({
           ...task,
-          tags: task.tags.filter(t => t !== tagToDelete),
+          tags: task.tags.filter((t) => t !== tagToDelete),
         })),
       }))
     );
@@ -98,54 +32,46 @@ const TaskManager: React.FC = () => {
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    if (!destination) {
-      return;
-    }
-
-    // If dropped in the same place, do nothing
-    if (source.droppableId === destination.droppableId && source.index === destination.index) {
-      return;
-    }
-
-    const sourceGroupIndex = groups.findIndex(group => group.id === source.droppableId);
-    const destinationGroupIndex = groups.findIndex(group => group.id === destination.droppableId);
+    const sourceGroupIndex = groups.findIndex((group) => group.id === source.droppableId);
+    const destinationGroupIndex = groups.findIndex((group) => group.id === destination.droppableId);
 
     const newGroups = Array.from(groups);
     const sourceGroup = newGroups[sourceGroupIndex];
     const destinationGroup = newGroups[destinationGroupIndex];
 
-    // Find the task being dragged
-    const task = sourceGroup.tasks.find(t => t.id === draggableId);
+    const task = sourceGroup.tasks.find((t) => t.id === draggableId);
     if (!task) return;
 
-    // Remove task from source group
     sourceGroup.tasks.splice(source.index, 1);
-
-    // Add task to destination group
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
   };
 
   const handleAddTask = (groupId: string, content: string) => {
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
+    setGroups((prevGroups) =>
+      prevGroups.map((group) =>
         group.id === groupId
           ? {
               ...group,
-              tasks: [...group.tasks, {
-                id: uuidv4(),
-                content,
-                owner: '',
-                status: availableStatuses[0]?.name || 'To Do', // Default to first available status
-                timeline: '',
-                timeTracking: 0,
-                tags: [],
-                hasFiles: false,
-                timeLogs: [], // ADD: initialize logs
-                comments: [], // ADDED: initialize comments
-              }],
+              tasks: [
+                ...group.tasks,
+                {
+                  id: uuidv4(),
+                  content,
+                  owner: "",
+                  status: availableStatuses[0]?.name || "To Do",
+                  timeline: "",
+                  timeTracking: 0,
+                  tags: [],
+                  hasFiles: false,
+                  timeLogs: [],
+                  comments: [],
+                },
+              ],
             }
           : group
       )
@@ -154,61 +80,60 @@ const TaskManager: React.FC = () => {
 
   const handleAddGroup = () => {
     if (newGroupName.trim()) {
-      setGroups(prevGroups => [
+      setGroups((prevGroups) => [
         ...prevGroups,
         {
           id: uuidv4(),
           name: newGroupName.trim(),
-          color: '#60a5fa', // blue-400 default color
+          color: "#60a5fa",
           tasks: [],
         },
       ]);
-      setNewGroupName('');
+      setNewGroupName("");
     }
   };
 
   const handleUpdateGroupName = (groupId: string, newName: string) => {
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
-        group.id === groupId ? { ...group, name: newName } : group
-      )
+    setGroups((prevGroups) =>
+      prevGroups.map((group) => (group.id === groupId ? { ...group, name: newName } : group))
     );
   };
 
   const handleUpdateGroupColor = (groupId: string, newColor: string) => {
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
-        group.id === groupId ? { ...group, color: newColor } : group
-      )
+    setGroups((prevGroups) =>
+      prevGroups.map((group) => (group.id === groupId ? { ...group, color: newColor } : group))
     );
   };
 
   const handleDeleteGroup = (groupId: string) => {
-    setGroups(prevGroups => prevGroups.filter(group => group.id !== groupId));
+    setGroups((prevGroups) => prevGroups.filter((group) => group.id !== groupId));
   };
 
   const handleDeleteTask = (groupId: string, taskId: string) => {
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
+    setGroups((prevGroups) =>
+      prevGroups.map((group) =>
         group.id === groupId
           ? {
               ...group,
-              tasks: group.tasks.filter(task => task.id !== taskId),
+              tasks: group.tasks.filter((task) => task.id !== taskId),
             }
           : group
       )
     );
   };
 
-  const handleUpdateTaskField = <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => {
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
+  const handleUpdateTaskField = <K extends keyof Task>(
+    groupId: string,
+    taskId: string,
+    field: K,
+    value: Task[K]
+  ) => {
+    setGroups((prevGroups) =>
+      prevGroups.map((group) =>
         group.id === groupId
           ? {
               ...group,
-              tasks: group.tasks.map(task =>
-                task.id === taskId ? { ...task, [field]: value } : task
-              ),
+              tasks: group.tasks.map((task) => (task.id === taskId ? { ...task, [field]: value } : task)),
             }
           : group
       )
@@ -226,7 +151,7 @@ const TaskManager: React.FC = () => {
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAddGroup();
+              if (e.key === "Enter") handleAddGroup();
             }}
             className="w-40"
           />

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PlayIcon, PauseIcon } from "lucide-react";
-import { Task } from "../TaskManager";
+import { Task } from "@/types/task";
 import { darkenHexColor } from "@/lib/utils";
 import { format } from "date-fns";
 

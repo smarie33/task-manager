@@ -5,6 +5,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { XIcon, PlusIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface TagsCellProps {
   taskTags: string[];
@@ -17,6 +18,7 @@ interface TagsCellProps {
 const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemoveTag, onDeleteGlobalTag }) => {
   const [open, setOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const navigate = useNavigate();
 
   const handleAddNewTag = () => {
     const tag = newTag.trim();
@@ -49,7 +51,15 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                     onClick={() => onRemoveTag(tag)}
                     aria-label={`Remove ${tag}`}
                   >
-                    <span className="text-xs">{tag}</span>
+                    <span
+                      className="text-xs underline decoration-dotted hover:decoration-solid"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/tags/${encodeURIComponent(tag)}`);
+                      }}
+                    >
+                      {tag}
+                    </span>
                     <XIcon className="h-3 w-3 ml-1" />
                   </Button>
                 ))}
@@ -77,7 +87,15 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                       {!hasTag ? (
                         <>
                           <PlusIcon className="h-3 w-3 mr-1" />
-                          <span className="text-xs">{tag}</span>
+                          <span
+                            className="text-xs underline decoration-dotted hover:decoration-solid"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tags/${encodeURIComponent(tag)}`);
+                            }}
+                          >
+                            {tag}
+                          </span>
                           <span
                             className="ml-1 inline-flex items-center justify-center rounded-full hover:bg-muted px-1"
                             onClick={(e) => {
@@ -92,7 +110,15 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                         </>
                       ) : (
                         <>
-                          <span className="text-xs">{tag}</span>
+                          <span
+                            className="text-xs underline decoration-dotted hover:decoration-solid"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tags/${encodeURIComponent(tag)}`);
+                            }}
+                          >
+                            {tag}
+                          </span>
                           <XIcon className="h-3 w-3 ml-1" />
                         </>
                       )}

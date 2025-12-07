@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Trash2Icon, PlusIcon } from "lucide-react";
-import { StatusOption } from "../TaskManager";
+import { StatusOption } from "@/types/task";
 import { lightenHexColor } from "@/lib/utils";
 
 type StatusCellProps = {

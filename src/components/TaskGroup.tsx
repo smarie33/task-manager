@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
-import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
+import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 
 interface TaskGroupProps {
