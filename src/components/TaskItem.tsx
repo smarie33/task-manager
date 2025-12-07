@@ -40,6 +40,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // ADDED: current status color for drawer display
+  const statusColor = availableStatuses.find((s) => s.name === task.status)?.color ?? '#6b7280';
+
   const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
@@ -211,10 +214,6 @@ const TaskItem: React.FC<TaskItemProps> = ({
             title="Task Details"
           >
             <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Item</p>
-                <p className="text-base font-medium">{task.content}</p>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Owner</p>
@@ -222,33 +221,30 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="text-sm">{task.status}</p>
+                  <span
+                    className="inline-flex items-center text-xs font-medium rounded-md px-2 py-1 border"
+                    style={{
+                      color: statusColor,
+                      backgroundColor: lightenHexColor(statusColor, 0.9),
+                      borderColor: statusColor,
+                    }}
+                  >
+                    {task.status}
+                  </span>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Timeline</p>
                   <p className="text-sm">{task.timeline || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Time Tracking (hrs)</p>
-                  <p className="text-sm">{task.timeTracking ?? 0}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Tags</p>
                   <p className="text-sm">{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="default" onClick={() => setIsDrawerOpen(false)}>Close</Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    setEditingField('content');
-                    setEditedContent(task.content);
-                  }}
-                >
-                  Edit Item
-                </Button>
+
+              <div>
+                <p className="text-sm text-muted-foreground">Item</p>
+                <p className="text-base font-medium">{task.content}</p>
               </div>
             </div>
           </AppDrawer>
