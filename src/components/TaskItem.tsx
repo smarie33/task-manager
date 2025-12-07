@@ -6,17 +6,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2Icon, PencilIcon } from 'lucide-react';
-import { cn, lightenHexColor } from '@/lib/utils'; // Import lightenHexColor
+import { cn } from '@/lib/utils';
 
 interface TaskItemProps {
   task: { id: string; content: string };
   index: number;
-  groupColor: string; // New prop for the group's color
   onDeleteTask: (taskId: string) => void;
   onUpdateTaskContent: (taskId: string, newContent: string) => void;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskContent }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, index, onDeleteTask, onUpdateTaskContent }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(task.content);
 
@@ -37,9 +36,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     }
   };
 
-  // Calculate the lighter background color when editing
-  const editingBackgroundColor = isEditing ? lightenHexColor(groupColor, 0.75) : undefined; // Changed from 0.5 to 0.75
-
   return (
     <Draggable draggableId={task.id} index={index}>
       {(provided, snapshot) => (
@@ -52,10 +48,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             "hover:bg-gray-100 dark:hover:bg-gray-700", // Hover effect
             {
               "border-t-0": index !== 0 && !snapshot.isDragging,
+              "bg-gray-50 dark:bg-gray-700": isEditing, // Lighter background when editing
               "bg-white dark:bg-gray-800": !isEditing, // Default background when not editing
             }
           )}
-          style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}} // Apply dynamic background
         >
           <CardContent className="p-3 flex items-center justify-between gap-2">
             {isEditing ? (

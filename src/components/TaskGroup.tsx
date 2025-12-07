@@ -102,7 +102,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 key={task.id}
                 task={task}
                 index={index}
-                groupColor={group.color} // Pass group.color here
                 onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
                 onUpdateTaskContent={(taskId, newContent) => onUpdateTaskContent(group.id, taskId, newContent)}
               />
