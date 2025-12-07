@@ -246,7 +246,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full h-auto text-xs px-2 py-2 justify-center rounded-none"
+                          className="w-full text-sm px-2 py-2 justify-center rounded-none" // Changed text-xs to text-sm and removed h-auto
                           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
                         >
                           <span className="flex items-center gap-2">
