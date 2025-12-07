@@ -44,7 +44,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, onDeleteTask, onUpdate
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={cn(
-            "bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing",
+            "bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing rounded-none", // Added rounded-none
             {
               "border-t-0": index !== 0 && !snapshot.isDragging, // Remove top border if not first and not dragging
             }

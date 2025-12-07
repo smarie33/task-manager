@@ -51,8 +51,8 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   };
 
   return (
-    <Card className="w-[90vw] max-w-5xl flex flex-col shadow-lg"> {/* Adjusted width */}
-      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 rounded-t-lg" style={{ backgroundColor: group.color }}> {/* Reduced vertical padding */}
+    <Card className="w-[90vw] max-w-5xl flex flex-col shadow-lg">
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 rounded-t-lg" style={{ backgroundColor: group.color }}>
         {isEditingName ? (
           <Input
             value={group.name}
@@ -92,10 +92,10 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           <CardContent
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`p-4 flex-grow ${snapshot.isDraggingOver ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'} transition-colors duration-200`}
+            className={`p-0 flex-grow ${snapshot.isDraggingOver ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'} transition-colors duration-200`}
           >
             {group.tasks.length === 0 && !snapshot.isDraggingOver && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">Drag tasks here or add a new one below.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-4">Drag tasks here or add a new one below.</p>
             )}
             {group.tasks.map((task, index) => (
               <TaskItem
