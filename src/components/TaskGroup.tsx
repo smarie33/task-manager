@@ -92,7 +92,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       {/* Column Headers */}
       <div className="flex text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
         {/* Sticky Item Header */}
-        <div className="w-[150px] sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
+        <div className="w-1/2 sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
           <div className="px-2 truncate">Item</div>
         </div>
 

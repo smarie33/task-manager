@@ -195,7 +195,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
               {/* Sticky Item Column */}
-              <div className="w-[150px] sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+              <div className="w-1/2 sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
                 {renderField('content', task.content, editedContent, setEditedContent)}
               </div>
 
