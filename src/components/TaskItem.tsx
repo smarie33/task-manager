@@ -48,7 +48,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     return undefined;
   });
 
-  const { ref: scrollItemRef, onScroll: handleItemScroll } = useSynchronizedScroll();
+  const { ref: scrollItemRef } = useSynchronizedScroll(); // No onScroll here, it's a follower
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'timeTracking') {
@@ -199,8 +199,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                 {renderField('content', task.content, editedContent, setEditedContent)}
               </div>
 
-              {/* Scrollable Columns Container */}
-              <div className="flex-grow overflow-x-auto" ref={scrollItemRef} onScroll={handleItemScroll}>
+              {/* Scrollable Columns Container - REMOVED overflow-x-auto and onScroll */}
+              <div className="flex-grow" ref={scrollItemRef}>
                 <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">

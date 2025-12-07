@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlusIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 
 export interface StatusOption {
   name: string;
@@ -72,6 +73,8 @@ const TaskManager: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [newStatusName, setNewStatusName] = useState('');
   const [newStatusColor, setNewStatusColor] = useState('#60a5fa'); // Default blue-400
+
+  const { ref: masterScrollRef, onScroll: handleMasterScroll } = useSynchronizedScroll({ isMaster: true });
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -238,20 +241,23 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col items-center gap-6">
-          {groups.map((group) => (
-            <TaskGroup
-              key={group.id}
-              group={group}
-              onAddTask={handleAddTask}
-              onUpdateGroupName={handleUpdateGroupName}
-              onUpdateGroupColor={handleUpdateGroupColor}
-              onDeleteGroup={handleDeleteGroup}
-              onDeleteTask={handleDeleteTask}
-              onUpdateTaskField={handleUpdateTaskField}
-              availableStatuses={availableStatuses}
-            />
-          ))}
+        {/* This div will be the single scrollable container for all groups' scrollable content */}
+        <div className="overflow-x-auto pb-4" ref={masterScrollRef} onScroll={handleMasterScroll}>
+          <div className="flex flex-col items-center gap-6 min-w-max"> {/* min-w-max ensures content dictates width */}
+            {groups.map((group) => (
+              <TaskGroup
+                key={group.id}
+                group={group}
+                onAddTask={handleAddTask}
+                onUpdateGroupName={handleUpdateGroupName}
+                onUpdateGroupColor={handleUpdateGroupColor}
+                onDeleteGroup={handleDeleteGroup}
+                onDeleteTask={handleDeleteTask}
+                onUpdateTaskField={handleUpdateTaskField}
+                availableStatuses={availableStatuses}
+              />
+            ))}
+          </div>
         </div>
       </DragDropContext>
     </div>
