@@ -42,7 +42,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, onDeleteTask, onUpdate
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className="mb-2 bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing"
+          className="bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing first:mt-0 last:mb-0" // Removed mb-2, added first/last for potential edge cases
         >
           <CardContent className="p-3 flex items-center justify-between gap-2">
             {isEditing ? (
