@@ -30,6 +30,7 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
   const lastPersistMinuteRef = React.useRef<number>(Math.floor(task.timeTracking * 60));
 
   const [timeLogsOpen, setTimeLogsOpen] = React.useState(false);
+  const [timeLogsDraft, setTimeLogsDraft] = React.useState<NonNullable<Task["timeLogs"]>>([]);
 
   const [editingTime, setEditingTime] = React.useState(false);
   const [editedTimeTracking, setEditedTimeTracking] = React.useState((task.timeTracking || 0).toString());
@@ -126,30 +127,140 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
       ) : (
         <div className="flex items-center justify-between px-2 py-2">
           <div className="flex items-center gap-1">
-            <Popover open={timeLogsOpen} onOpenChange={setTimeLogsOpen}>
+            <Popover
+              open={timeLogsOpen}
+              onOpenChange={(open) => {
+                setTimeLogsOpen(open);
+                if (open) {
+                  setTimeLogsDraft(task.timeLogs || []);
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <span
                   className="text-sm truncate cursor-pointer"
                   onClick={() => setTimeLogsOpen(true)}
-                  title="View time logs"
+                  title="View and edit time logs"
                 >
                   {formatDuration(displayedSeconds)}
                 </span>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-2">
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold">Time Logs</div>
-                  <div className="max-h-48 overflow-y-auto">
-                    {task.timeLogs && task.timeLogs.length > 0 ? (
-                      task.timeLogs.map((log, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm py-1">
-                          <span>{formatDuration(log.durationSeconds)}</span>
-                          <span className="text-gray-500">{log.date}</span>
-                        </div>
-                      ))
+              <PopoverContent className="w-80 sm:w-[22rem] p-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Time Logs</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setTimeLogsDraft((prev) => [
+                          ...prev,
+                          {
+                            durationSeconds: 0,
+                            date: format(new Date(), "yyyy-MM-dd"),
+                          },
+                        ])
+                      }
+                    >
+                      Add Log
+                    </Button>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                    {timeLogsDraft.length > 0 ? (
+                      timeLogsDraft.map((log, idx) => {
+                        const hours = Math.floor(log.durationSeconds / 3600);
+                        const minutes = Math.floor((log.durationSeconds % 3600) / 60);
+                        return (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={hours}
+                                onChange={(e) => {
+                                  const newHours = Math.max(0, parseInt(e.target.value || "0", 10));
+                                  const newSeconds = newHours * 3600 + minutes * 60;
+                                  setTimeLogsDraft((prev) =>
+                                    prev.map((l, i) => (i === idx ? { ...l, durationSeconds: newSeconds } : l))
+                                  );
+                                }}
+                                className="w-16 h-8 text-sm"
+                                aria-label="Hours"
+                              />
+                              <span className="text-xs text-gray-600">h</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={59}
+                                step={1}
+                                value={minutes}
+                                onChange={(e) => {
+                                  const newMinutes = Math.min(59, Math.max(0, parseInt(e.target.value || "0", 10)));
+                                  const newSeconds = hours * 3600 + newMinutes * 60;
+                                  setTimeLogsDraft((prev) =>
+                                    prev.map((l, i) => (i === idx ? { ...l, durationSeconds: newSeconds } : l))
+                                  );
+                                }}
+                                className="w-16 h-8 text-sm"
+                                aria-label="Minutes"
+                              />
+                              <span className="text-xs text-gray-600">m</span>
+                            </div>
+
+                            <Input
+                              type="date"
+                              value={log.date}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                setTimeLogsDraft((prev) =>
+                                  prev.map((l, i) => (i === idx ? { ...l, date: newDate } : l))
+                                );
+                              }}
+                              className="h-8 text-sm"
+                              aria-label="Date"
+                            />
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-500 hover:text-red-500 ml-auto"
+                              onClick={() => {
+                                setTimeLogsDraft((prev) => prev.filter((_, i) => i !== idx));
+                              }}
+                              title="Delete log"
+                              aria-label="Delete log"
+                            >
+                              {/* Simple × icon using text to avoid extra imports */}
+                              <span className="text-lg leading-none">&times;</span>
+                            </Button>
+                          </div>
+                        );
+                      })
                     ) : (
                       <div className="text-xs text-gray-500">No time logs yet.</div>
                     )}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setTimeLogsOpen(false);
+                        setTimeLogsDraft(task.timeLogs || []);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        onUpdateTimeLogs(timeLogsDraft);
+                        setTimeLogsOpen(false);
+                      }}
+                    >
+                      Save Logs
+                    </Button>
                   </div>
                 </div>
               </PopoverContent>
