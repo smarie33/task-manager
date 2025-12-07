@@ -5,6 +5,7 @@ import { Draggable } from 'react-beautiful-dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager';
@@ -242,9 +243,26 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 </div>
               </div>
 
-              <div>
+              {/* Item editable area */}
+              <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Item</p>
-                <p className="text-base font-medium">{task.content}</p>
+                <Textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="min-h-[120px]"
+                  placeholder="Enter item text..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => {
+                      if (editedContent !== task.content) {
+                        onUpdateTaskField(task.id, 'content', editedContent);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
               </div>
             </div>
           </AppDrawer>
