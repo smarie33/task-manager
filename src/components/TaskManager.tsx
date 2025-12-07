@@ -83,7 +83,18 @@ const TaskManager: React.FC = () => {
     )
   ).sort();
 
-  // Removed useSynchronizedScroll({ isMaster: true })
+  // NEW: delete a tag globally (remove from all tasks in all groups)
+  const handleDeleteGlobalTag = (tagToDelete: string) => {
+    setGroups(prev =>
+      prev.map(group => ({
+        ...group,
+        tasks: group.tasks.map(task => ({
+          ...task,
+          tags: task.tags.filter(t => t !== tagToDelete),
+        })),
+      }))
+    );
+  };
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -225,7 +236,6 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        {/* This div no longer acts as the master scroll container */}
         <div className="flex flex-col items-center gap-6 pb-4">
           {groups.map((group) => (
             <TaskGroup
@@ -238,8 +248,9 @@ const TaskManager: React.FC = () => {
               onDeleteTask={handleDeleteTask}
               onUpdateTaskField={handleUpdateTaskField}
               availableStatuses={availableStatuses}
-              setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
-              allTags={allTags} // NEW: pass all tags
+              setAvailableStatuses={setAvailableStatuses}
+              allTags={allTags}
+              onDeleteGlobalTag={handleDeleteGlobalTag}
             />
           ))}
         </div>

@@ -26,6 +26,8 @@ interface TaskItemProps {
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
   allTags: string[];
+  // NEW: delete a tag globally
+  onDeleteGlobalTag: (tag: string) => void;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -37,6 +39,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   availableStatuses,
   setAvailableStatuses,
   allTags,
+  onDeleteGlobalTag, // NEW
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
@@ -198,6 +201,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       allTags={allTags}
                       onAddTag={handleAddTag}
                       onRemoveTag={handleRemoveTag}
+                      // NEW: global delete handler
+                      onDeleteGlobalTag={onDeleteGlobalTag}
                     />
                   </div>
 

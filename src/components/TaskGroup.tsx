@@ -19,8 +19,10 @@ interface TaskGroupProps {
   onDeleteTask: (groupId: string, taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
-  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>; // Add setAvailableStatuses
-  allTags: string[]; // NEW: all tags across the app
+  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
+  allTags: string[];
+  // NEW: global delete for tags
+  onDeleteGlobalTag: (tag: string) => void;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -32,8 +34,9 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onDeleteTask,
   onUpdateTaskField,
   availableStatuses,
-  setAvailableStatuses, // Destructure setAvailableStatuses
-  allTags, // NEW: receive all tags
+  setAvailableStatuses,
+  allTags,
+  onDeleteGlobalTag, // NEW
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -145,8 +148,10 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
                 onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
                 availableStatuses={availableStatuses}
-                setAvailableStatuses={setAvailableStatuses} // Pass setAvailableStatuses
-                allTags={allTags} // NEW: pass down all tags
+                setAvailableStatuses={setAvailableStatuses}
+                allTags={allTags}
+                // NEW: pass global tag deletion
+                onDeleteGlobalTag={onDeleteGlobalTag}
               />
             ))}
             {provided.placeholder}

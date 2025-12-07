@@ -11,9 +11,10 @@ interface TagsCellProps {
   allTags: string[];
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
+  onDeleteGlobalTag: (tag: string) => void;
 }
 
-const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemoveTag }) => {
+const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemoveTag, onDeleteGlobalTag }) => {
   const [open, setOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
 
@@ -77,6 +78,17 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                         <>
                           <PlusIcon className="h-3 w-3 mr-1" />
                           <span className="text-xs">{tag}</span>
+                          <span
+                            className="ml-1 inline-flex items-center justify-center rounded-full hover:bg-muted px-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteGlobalTag(tag);
+                            }}
+                            aria-label={`Delete ${tag} globally`}
+                            role="button"
+                          >
+                            <XIcon className="h-3 w-3" />
+                          </span>
                         </>
                       ) : (
                         <>
