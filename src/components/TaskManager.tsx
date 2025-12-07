@@ -8,9 +8,15 @@ import { Input } from '@/components/ui/input';
 import { PlusIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-interface Task {
+export interface Task {
   id: string;
-  content: string;
+  content: string; // Item
+  owner: string;
+  status: 'To Do' | 'In Progress' | 'Done' | 'Blocked';
+  timeline: string; // e.g., "2023-12-31" or "Q4 2023"
+  timeTracking: number; // in hours
+  tags: string[];
+  hasFiles: boolean;
 }
 
 interface TaskGroupData {
@@ -26,8 +32,8 @@ const initialGroups: TaskGroupData[] = [
     name: 'To Do',
     color: '#ef4444', // red-500
     tasks: [
-      { id: uuidv4(), content: 'Buy groceries' },
-      { id: uuidv4(), content: 'Walk the dog' },
+      { id: uuidv4(), content: 'Buy groceries', owner: 'Alice', status: 'To Do', timeline: 'Next Week', timeTracking: 0, tags: ['personal', 'urgent'], hasFiles: false },
+      { id: uuidv4(), content: 'Walk the dog', owner: 'Bob', status: 'To Do', timeline: 'Today', timeTracking: 0, tags: ['home'], hasFiles: true },
     ],
   },
   {
@@ -35,14 +41,16 @@ const initialGroups: TaskGroupData[] = [
     name: 'In Progress',
     color: '#f97316', // orange-500
     tasks: [
-      { id: uuidv4(), content: 'Work on project' },
+      { id: uuidv4(), content: 'Work on project', owner: 'Charlie', status: 'In Progress', timeline: 'End of Month', timeTracking: 10, tags: ['work', 'development'], hasFiles: true },
     ],
   },
   {
     id: uuidv4(),
     name: 'Done',
     color: '#22c55e', // green-500
-    tasks: [],
+    tasks: [
+      { id: uuidv4(), content: 'Finish report', owner: 'Alice', status: 'Done', timeline: 'Last Week', timeTracking: 5, tags: ['work'], hasFiles: false },
+    ],
   },
 ];
 
@@ -88,7 +96,16 @@ const TaskManager: React.FC = () => {
         group.id === groupId
           ? {
               ...group,
-              tasks: [...group.tasks, { id: uuidv4(), content }],
+              tasks: [...group.tasks, {
+                id: uuidv4(),
+                content,
+                owner: '',
+                status: 'To Do',
+                timeline: '',
+                timeTracking: 0,
+                tags: [],
+                hasFiles: false,
+              }],
             }
           : group
       )
@@ -143,14 +160,14 @@ const TaskManager: React.FC = () => {
     );
   };
 
-  const handleUpdateTaskContent = (groupId: string, taskId: string, newContent: string) => {
+  const handleUpdateTaskField = <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => {
     setGroups(prevGroups =>
       prevGroups.map(group =>
         group.id === groupId
           ? {
               ...group,
               tasks: group.tasks.map(task =>
-                task.id === taskId ? { ...task, content: newContent } : task
+                task.id === taskId ? { ...task, [field]: value } : task
               ),
             }
           : group
@@ -177,7 +194,7 @@ const TaskManager: React.FC = () => {
         </Button>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col items-center gap-6"> {/* Changed to flex-col for groups in their own row */}
+        <div className="flex flex-col items-center gap-6">
           {groups.map((group) => (
             <TaskGroup
               key={group.id}
@@ -187,7 +204,7 @@ const TaskManager: React.FC = () => {
               onUpdateGroupColor={handleUpdateGroupColor}
               onDeleteGroup={handleDeleteGroup}
               onDeleteTask={handleDeleteTask}
-              onUpdateTaskContent={handleUpdateTaskContent}
+              onUpdateTaskField={handleUpdateTaskField}
             />
           ))}
         </div>

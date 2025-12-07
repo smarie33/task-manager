@@ -7,11 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
-
-interface Task {
-  id: string;
-  content: string;
-}
+import { Task } from './TaskManager'; // Import Task interface
 
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[] };
@@ -20,7 +16,7 @@ interface TaskGroupProps {
   onUpdateGroupColor: (groupId: string, newColor: string) => void;
   onDeleteGroup: (groupId: string) => void;
   onDeleteTask: (groupId: string, taskId: string) => void;
-  onUpdateTaskContent: (groupId: string, taskId: string, newContent: string) => void;
+  onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -30,7 +26,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onUpdateGroupColor,
   onDeleteGroup,
   onDeleteTask,
-  onUpdateTaskContent,
+  onUpdateTaskField,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -87,6 +83,19 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           </Button>
         </div>
       </CardHeader>
+
+      {/* Column Headers */}
+      <div className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] gap-2 p-3 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+        <div className="truncate">Item</div>
+        <div className="truncate">Owner</div>
+        <div className="truncate">Status</div>
+        <div className="truncate">Timeline</div>
+        <div className="truncate">Time Tracking</div>
+        <div className="truncate">Tags</div>
+        <div className="truncate text-center">Files</div>
+        <div className="w-14"></div> {/* Placeholder for action buttons */}
+      </div>
+
       <Droppable droppableId={group.id}>
         {(provided, snapshot) => (
           <CardContent
@@ -102,9 +111,9 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 key={task.id}
                 task={task}
                 index={index}
-                groupColor={group.color} // Pass group.color here
+                groupColor={group.color}
                 onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
-                onUpdateTaskContent={(taskId, newContent) => onUpdateTaskContent(group.id, taskId, newContent)}
+                onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
               />
             ))}
             {provided.placeholder}
