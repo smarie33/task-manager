@@ -38,7 +38,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   };
 
   // Calculate the lighter background color when editing
-  const editingBackgroundColor = isEditing ? lightenHexColor(groupColor, 0.5) : undefined;
+  const editingBackgroundColor = isEditing ? lightenHexColor(groupColor, 0.75) : undefined; // Changed from 0.5 to 0.75
 
   return (
     <Draggable draggableId={task.id} index={index}>
