@@ -15,7 +15,7 @@ export interface Task {
   tags: string[];
   hasFiles: boolean;
   timeLogs?: { durationSeconds: number; date: string }[];
-  comments?: { id: string; text: string; createdAt: string }[];
+  comments?: { id: string; text: string; createdAt: string; author?: string }[];
 }
 
 export interface TaskGroupData {

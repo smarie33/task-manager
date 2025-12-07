@@ -9,6 +9,7 @@ import { lightenHexColor } from "@/lib/utils";
 import AppDrawer from "@/components/AppDrawer";
 import { Task } from "@/types/task";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { v4 as uuidv4 } from "uuid";
 
 const TagPage: React.FC = () => {
@@ -19,6 +20,7 @@ const TagPage: React.FC = () => {
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
+  const [newCommentAuthor, setNewCommentAuthor] = useState("");
 
   const statusColor = React.useMemo(() => {
     if (!selected) return "#6b7280";
@@ -35,6 +37,7 @@ const TagPage: React.FC = () => {
     if (selected) {
       setEditedContent(selected.task.content);
       setNewCommentText("");
+      setNewCommentAuthor("");
     }
   }, [selected]);
 
@@ -197,9 +200,14 @@ const TagPage: React.FC = () => {
                     selected.task.comments.map((c) => (
                       <div key={c.id} className="rounded-md border p-2">
                         <p className="text-sm">{c.text}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(c.createdAt).toLocaleString()}
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(c.createdAt).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {c.author || "Anonymous"}
+                          </p>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -214,20 +222,29 @@ const TagPage: React.FC = () => {
                     placeholder="Write a comment..."
                     className="min-h-[80px]"
                   />
+                  <Input
+                    value={newCommentAuthor}
+                    onChange={(e) => setNewCommentAuthor(e.target.value)}
+                    placeholder="Your name (optional)"
+                    className="h-9"
+                  />
                   <div className="flex justify-end">
                     <Button
                       variant="default"
                       onClick={() => {
                         const text = newCommentText.trim();
                         if (!text) return;
+                        const author = newCommentAuthor.trim() || "Anonymous";
                         const newComment = {
                           id: uuidv4(),
                           text,
                           createdAt: new Date().toISOString(),
+                          author,
                         };
                         const updated = [...(selected.task.comments ?? []), newComment];
                         updateSelectedTaskField("comments", updated);
                         setNewCommentText("");
+                        setNewCommentAuthor("");
                       }}
                     >
                       Add Comment
