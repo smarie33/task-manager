@@ -2,11 +2,9 @@
 
 import React, { useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { XIcon, PlusIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface TagsCellProps {
   taskTags: string[];
@@ -42,18 +40,17 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
             {taskTags.length ? (
               <div className="flex flex-wrap gap-2">
                 {taskTags.map((tag) => (
-                  <div key={tag} className="flex items-center gap-1">
-                    <Badge variant="secondary">{tag}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      aria-label={`Remove ${tag}`}
-                      onClick={() => onRemoveTag(tag)}
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <Button
+                    key={tag}
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 rounded-full px-2 flex items-center gap-1"
+                    onClick={() => onRemoveTag(tag)}
+                    aria-label={`Remove ${tag}`}
+                  >
+                    <span className="text-xs">{tag}</span>
+                    <XIcon className="h-3 w-3 ml-1" />
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -72,16 +69,19 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                       key={tag}
                       variant={hasTag ? "secondary" : "outline"}
                       size="sm"
-                      className={cn("h-7")}
-                      disabled={hasTag}
-                      onClick={() => onAddTag(tag)}
+                      className="h-7 rounded-full px-2 flex items-center gap-1"
+                      onClick={() => (hasTag ? onRemoveTag(tag) : onAddTag(tag))}
+                      aria-label={hasTag ? `Remove ${tag}` : `Add ${tag}`}
                     >
-                      {hasTag ? (
-                        tag
-                      ) : (
+                      {!hasTag ? (
                         <>
                           <PlusIcon className="h-3 w-3 mr-1" />
-                          {tag}
+                          <span className="text-xs">{tag}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs">{tag}</span>
+                          <XIcon className="h-3 w-3 ml-1" />
                         </>
                       )}
                     </Button>
