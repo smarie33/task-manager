@@ -4,7 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PencilIcon, PlayIcon, PauseIcon } from "lucide-react";
+import { PlayIcon, PauseIcon } from "lucide-react";
 import { Task } from "../TaskManager";
 import { darkenHexColor } from "@/lib/utils";
 import { format } from "date-fns";
@@ -265,19 +265,6 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
                 </div>
               </PopoverContent>
             </Popover>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-gray-500 hover:text-blue-500"
-              onClick={() => {
-                setEditedTimeTracking((displayedSeconds / 3600).toFixed(2));
-                setEditingTime(true);
-              }}
-              aria-label="Edit time"
-              title="Edit time"
-            >
-              <PencilIcon className="h-4 w-4" />
-            </Button>
           </div>
           <Button
             variant="ghost"
