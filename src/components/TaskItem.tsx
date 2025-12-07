@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
 import { cn, lightenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isPast, isToday } from 'date-fns'; // Import isPast and isToday
 import { DateRange } from 'react-day-picker';
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 
@@ -131,6 +131,21 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     return timeline; // Fallback to original if parsing fails
   };
 
+  const isTimelinePast = (timeline: string): boolean => {
+    if (!timeline || timeline === 'N/A') return false;
+
+    const parts = timeline.split(' - ');
+    let dateToCheck: Date | null = null;
+
+    if (parts.length === 2) {
+      dateToCheck = parseISO(parts[1]); // Use the end date for ranges
+    } else {
+      dateToCheck = parseISO(timeline); // Use the single date
+    }
+
+    return dateToCheck && isValid(dateToCheck) && isPast(dateToCheck) && !isToday(dateToCheck);
+  };
+
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
     const isCurrentlyEditing = editingField === field;
     const inputType = field === 'timeTracking' ? 'number' : 'text';
@@ -189,6 +204,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
   const currentStatusOption = availableStatuses.find(s => s.name === task.status);
   const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280'; // Default gray if status not found
+  const isPastDue = isTimelinePast(task.timeline);
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -230,7 +246,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full h-auto text-xs px-2 py-2 justify-center rounded-none" // Changed justify-start to justify-center
+                          className="w-full h-auto text-xs px-2 py-2 justify-center rounded-none"
                           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
                         >
                           <span className="flex items-center gap-2">
@@ -282,7 +298,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                   </div>
 
                   {/* Timeline */}
-                  <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
+                  <div className={cn(
+                    "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center", // Added text-center
+                    isPastDue && "bg-red-500 text-white" // Conditional styling
+                  )}>
                     {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
                   </div>
 
