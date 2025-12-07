@@ -201,7 +201,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
               {/* Scrollable Columns Container - RE-ADDED overflow-x-auto and onScroll */}
               <div className="flex-grow overflow-x-auto" ref={scrollItemRef} onScroll={handleItemScroll}>
-                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-max items-center">
+                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                     {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
