@@ -70,7 +70,7 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
                       key={tag}
                       variant={hasTag ? "secondary" : "outline"}
                       size="sm"
-                      className="h-7 rounded-full px-2 flex items-center gap-1"
+                      className="h-8 rounded-md px-2 flex items-center gap-1"
                       onClick={() => (hasTag ? onRemoveTag(tag) : onAddTag(tag))}
                       aria-label={hasTag ? `Remove ${tag}` : `Add ${tag}`}
                     >
