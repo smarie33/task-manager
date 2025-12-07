@@ -191,17 +191,17 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         >
           <CardContent className="p-0">
             <div
-              className="flex items-center" // Use flex to align sticky and scrollable parts
+              className="grid grid-cols-2 items-center" // Use grid grid-cols-2 here
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
-              {/* Sticky Item Column */}
-              <div className="w-1/2 sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+              {/* Sticky Item Column - First column of the grid */}
+              <div className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
                 {renderField('content', task.content, editedContent, setEditedContent)}
               </div>
 
-              {/* Scrollable Columns Container - RE-ADDED overflow-x-auto and onScroll */}
-              <div className="flex-grow overflow-x-auto" ref={scrollItemRef} onScroll={handleItemScroll}>
-                <div className="grid w-full grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] items-center">
+              {/* Scrollable Columns Container - Second column of the grid */}
+              <div className="overflow-x-auto" ref={scrollItemRef} onScroll={handleItemScroll}>
+                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px] items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                     {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}

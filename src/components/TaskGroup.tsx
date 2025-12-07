@@ -90,15 +90,15 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       </CardHeader>
 
       {/* Column Headers */}
-      <div className="flex text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-        {/* Sticky Item Header */}
-        <div className="w-1/2 sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
+      <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+        {/* Sticky Item Header - First column of the grid */}
+        <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
           <div className="px-2 truncate">Item</div>
         </div>
 
-        {/* Scrollable Headers - RE-ADDED overflow-x-auto and onScroll */}
-        <div className="flex-grow overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
-          <div className="grid w-full grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto]">
+        {/* Scrollable Headers - Second column of the grid */}
+        <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
+          <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px]">
             <div className="border-r border-gray-200 dark:border-gray-700 py-2">
               <div className="px-2 truncate">Owner</div>
             </div>
