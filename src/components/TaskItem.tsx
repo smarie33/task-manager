@@ -84,6 +84,33 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     // setCalendarOpen(false); // Optionally close popover after selection
   };
 
+  const getFormattedTimeline = (timeline: string): string => {
+    if (!timeline) return 'N/A';
+
+    const parts = timeline.split(' - ');
+    if (parts.length === 2) {
+      const from = parseISO(parts[0]);
+      const to = parseISO(parts[1]);
+
+      if (isValid(from) && isValid(to)) {
+        if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()) {
+          // Same month, same year: "MMM DD - DD"
+          return `${format(from, 'MMM dd')} - ${format(to, 'dd')}`;
+        } else {
+          // Different months or years: "MMM DD - MMM DD"
+          return `${format(from, 'MMM dd')} - ${format(to, 'MMM dd')}`;
+        }
+      }
+    } else {
+      const singleDate = parseISO(timeline);
+      if (isValid(singleDate)) {
+        // Single date: "MMM DD"
+        return format(singleDate, 'MMM dd');
+      }
+    }
+    return timeline; // Fallback to original if parsing fails
+  };
+
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
     const isCurrentlyEditing = editingField === field;
     const inputType = field === 'timeTracking' ? 'number' : 'text';
@@ -201,7 +228,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
               {/* Timeline */}
               <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                {renderField('timeline', task.timeline || 'N/A', editedTimeline, setEditedTimeline)}
+                {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
               </div>
 
               {/* Time Tracking */}
