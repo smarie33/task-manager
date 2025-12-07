@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { v4 as uuidv4 } from 'uuid';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager';
@@ -36,6 +37,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
+  // ADDED: local state for new comment
+  const [newCommentText, setNewCommentText] = useState('');
   const [editedOwner, setEditedOwner] = useState(task.owner);
   const [editedTimeline, setEditedTimeline] = useState(task.timeline);
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
@@ -262,6 +265,56 @@ const TaskItem: React.FC<TaskItemProps> = ({
                   >
                     Save
                   </Button>
+                </div>
+              </div>
+
+              {/* Comments section */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Comments</p>
+
+                {/* Existing comments list */}
+                <div className="space-y-2">
+                  {(task.comments && task.comments.length > 0) ? (
+                    task.comments.map((c) => (
+                      <div key={c.id} className="rounded-md border p-2">
+                        <p className="text-sm">{c.text}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(c.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                  )}
+                </div>
+
+                {/* Add new comment */}
+                <div className="space-y-2">
+                  <Textarea
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="min-h-[80px]"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        const text = newCommentText.trim();
+                        if (!text) return;
+                        const newComment = {
+                          id: uuidv4(),
+                          text,
+                          createdAt: new Date().toISOString(),
+                        };
+                        const updatedComments = [...(task.comments ?? []), newComment];
+                        onUpdateTaskField(task.id, 'comments', updatedComments);
+                        setNewCommentText('');
+                      }}
+                    >
+                      Add Comment
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

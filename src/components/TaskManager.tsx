@@ -25,6 +25,8 @@ export interface Task {
   hasFiles: boolean;
   // ADD: per-session time logs
   timeLogs?: { durationSeconds: number; date: string }[];
+  // ADDED: comments array
+  comments?: { id: string; text: string; createdAt: string }[];
 }
 
 interface TaskGroupData {
@@ -47,8 +49,8 @@ const initialGroups: TaskGroupData[] = [
     name: 'To Do',
     color: '#ef4444', // red-500
     tasks: [
-      { id: uuidv4(), content: 'Buy groceries', owner: 'Alice', status: 'To Do', timeline: 'Next Week', timeTracking: 0, tags: ['personal', 'urgent'], hasFiles: false, timeLogs: [] },
-      { id: uuidv4(), content: 'Walk the dog', owner: 'Bob', status: 'To Do', timeline: 'Today', timeTracking: 0, tags: ['home'], hasFiles: true, timeLogs: [] },
+      { id: uuidv4(), content: 'Buy groceries', owner: 'Alice', status: 'To Do', timeline: 'Next Week', timeTracking: 0, tags: ['personal', 'urgent'], hasFiles: false, timeLogs: [], comments: [] },
+      { id: uuidv4(), content: 'Walk the dog', owner: 'Bob', status: 'To Do', timeline: 'Today', timeTracking: 0, tags: ['home'], hasFiles: true, timeLogs: [], comments: [] },
     ],
   },
   {
@@ -56,7 +58,7 @@ const initialGroups: TaskGroupData[] = [
     name: 'In Progress',
     color: '#f97316', // orange-500
     tasks: [
-      { id: uuidv4(), content: 'Work on project', owner: 'Charlie', status: 'In Progress', timeline: 'End of Month', timeTracking: 10, tags: ['work', 'development'], hasFiles: true, timeLogs: [] },
+      { id: uuidv4(), content: 'Work on project', owner: 'Charlie', status: 'In Progress', timeline: 'End of Month', timeTracking: 10, tags: ['work', 'development'], hasFiles: true, timeLogs: [], comments: [] },
     ],
   },
   {
@@ -64,7 +66,7 @@ const initialGroups: TaskGroupData[] = [
     name: 'Done',
     color: '#22c55e', // green-500
     tasks: [
-      { id: uuidv4(), content: 'Finish report', owner: 'Alice', status: 'Done', timeline: 'Last Week', timeTracking: 5, tags: ['work'], hasFiles: false, timeLogs: [] },
+      { id: uuidv4(), content: 'Finish report', owner: 'Alice', status: 'Done', timeline: 'Last Week', timeTracking: 5, tags: ['work'], hasFiles: false, timeLogs: [], comments: [] },
     ],
   },
 ];
@@ -124,6 +126,7 @@ const TaskManager: React.FC = () => {
                 tags: [],
                 hasFiles: false,
                 timeLogs: [], // ADD: initialize logs
+                comments: [], // ADDED: initialize comments
               }],
             }
           : group
