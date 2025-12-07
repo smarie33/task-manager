@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2Icon, PencilIcon } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Import cn utility for conditional class names
 
 interface TaskItemProps {
   task: { id: string; content: string };
@@ -37,12 +38,17 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, onDeleteTask, onUpdate
 
   return (
     <Draggable draggableId={task.id} index={index}>
-      {(provided) => (
+      {(provided, snapshot) => (
         <Card
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className="bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing first:mt-0 last:mb-0" // Removed mb-2, added first/last for potential edge cases
+          className={cn(
+            "bg-white dark:bg-gray-800 shadow-sm cursor-grab active:cursor-grabbing",
+            {
+              "border-t-0": index !== 0 && !snapshot.isDragging, // Remove top border if not first and not dragging
+            }
+          )}
         >
           <CardContent className="p-3 flex items-center justify-between gap-2">
             {isEditing ? (
