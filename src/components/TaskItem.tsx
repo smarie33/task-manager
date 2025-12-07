@@ -6,9 +6,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
+import { format, parseISO, isValid } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 interface TaskItemProps {
   task: Task;
@@ -26,6 +30,22 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const [editedTimeline, setEditedTimeline] = useState(task.timeline);
   const [editedTimeTracking, setEditedTimeTracking] = useState(task.timeTracking.toString());
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
+
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(() => {
+    if (task.timeline) {
+      const parts = task.timeline.split(' - ');
+      if (parts.length === 2) {
+        const from = parseISO(parts[0]);
+        const to = parseISO(parts[1]);
+        if (isValid(from) && isValid(to)) return { from, to };
+      } else {
+        const from = parseISO(task.timeline);
+        if (isValid(from)) return { from };
+      }
+    }
+    return undefined;
+  });
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
     if (field === 'timeTracking') {
@@ -50,9 +70,50 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
     }
   };
 
+  const handleDateSelect = (range: DateRange | undefined) => {
+    setSelectedDateRange(range);
+    let newTimelineString = '';
+    if (range?.from) {
+      newTimelineString = format(range.from, 'yyyy-MM-dd');
+      if (range.to && range.to !== range.from) {
+        newTimelineString += ` - ${format(range.to, 'yyyy-MM-dd')}`;
+      }
+    }
+    onUpdateTaskField(task.id, 'timeline', newTimelineString);
+    setEditedTimeline(newTimelineString); // Update local state for display
+    // setCalendarOpen(false); // Optionally close popover after selection
+  };
+
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
     const isCurrentlyEditing = editingField === field;
     const inputType = field === 'timeTracking' ? 'number' : 'text';
+
+    if (field === 'timeline') {
+      return (
+        <Popover open={calendarOpen} onOpenChange={(open) => {
+          setCalendarOpen(open);
+          if (!open) {
+            setEditingField(null); // Close editing mode when popover closes
+          }
+        }}>
+          <PopoverTrigger asChild>
+            <span className="text-sm truncate cursor-pointer block px-2" onClick={() => {
+              setEditingField(field); // Set editing field when trigger is clicked
+            }}>
+              {displayValue || 'N/A'}
+            </span>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="range"
+              selected={selectedDateRange}
+              onSelect={handleDateSelect}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      );
+    }
 
     return (
       <>
@@ -62,12 +123,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={() => handleSaveEdit(field, editValue)}
             onKeyDown={(e) => handleKeyDown(e, field, editValue)}
-            className="h-7 text-sm p-1"
+            className="h-7 text-sm p-1 px-2"
             autoFocus
             type={inputType}
           />
         ) : (
-          <span className="text-sm truncate cursor-pointer block" onClick={() => {
+          <span className="text-sm truncate cursor-pointer block px-2" onClick={() => {
             setEditValue(task[field]?.toString() || '');
             setEditingField(field);
           }}>
@@ -100,26 +161,26 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         >
           <CardContent className="p-0">
             <div
-              className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] gap-2 p-3 items-center"
+              className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] p-3 items-center"
               style={editingBackgroundColor ? { backgroundColor: editingBackgroundColor } : {}}
             >
               {/* Item */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 {renderField('content', task.content, editedContent, setEditedContent)}
               </div>
 
               {/* Owner */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 {renderField('owner', task.owner || 'N/A', editedOwner, setEditedOwner)}
               </div>
 
               {/* Status */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 <Select
                   value={task.status}
                   onValueChange={(value: string) => onUpdateTaskField(task.id, 'status', value)}
                 >
-                  <SelectTrigger className="h-7 text-xs">
+                  <SelectTrigger className="h-7 text-xs px-2">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
                       <SelectValue placeholder="Status" />
@@ -139,22 +200,22 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
               </div>
 
               {/* Timeline */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 {renderField('timeline', task.timeline || 'N/A', editedTimeline, setEditedTimeline)}
               </div>
 
               {/* Time Tracking */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 {renderField('timeTracking', `${task.timeTracking}h` || '0h', editedTimeTracking, setEditedTimeTracking)}
               </div>
 
               {/* Tags */}
-              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 pr-2">
+              <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                 {renderField('tags', task.tags.join(', ') || 'N/A', editedTags, setEditedTags)}
               </div>
 
               {/* Has Files */}
-              <div className="flex justify-center items-center pr-2"> {/* No right border for this one */}
+              <div className="flex justify-center items-center"> {/* No right border for this one */}
                 {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
               </div>
 

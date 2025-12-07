@@ -87,14 +87,28 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       </CardHeader>
 
       {/* Column Headers */}
-      <div className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] gap-2 p-3 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Item</div>
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Owner</div>
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Status</div>
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Timeline</div>
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Time Tracking</div>
-        <div className="truncate border-r border-gray-200 dark:border-gray-700 pr-2">Tags</div>
-        <div className="truncate text-center pr-2">Files</div> {/* No right border for the last content column */}
+      <div className="grid grid-cols-[minmax(150px,_2fr)_repeat(5,_1fr)_minmax(50px,_0.5fr)_auto] p-3 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Item</div>
+        </div>
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Owner</div>
+        </div>
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Status</div>
+        </div>
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Timeline</div>
+        </div>
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Time Tracking</div>
+        </div>
+        <div className="border-r border-gray-200 dark:border-gray-700">
+          <div className="px-2 truncate">Tags</div>
+        </div>
+        <div> {/* No right border */}
+          <div className="px-2 truncate text-center">Files</div>
+        </div>
         <div className="w-14"></div> {/* Placeholder for action buttons, no border */}
       </div>
 
