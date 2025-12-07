@@ -297,18 +297,22 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                               onClick={() => handleStatusSelect(status.name)}
                             >
                               <span className="flex-1 text-center">{status.name}</span>
-                              <span
-                                role="button"
-                                aria-label={`Delete status ${status.name}`}
-                                className="ml-2 text-destructive hover:text-destructive/90"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  handleDeleteStatus(status.name);
-                                }}
-                              >
-                                <Trash2Icon className="h-4 w-4" />
-                              </span>
+                              {
+                                !['done', 'in progress'].includes(status.name.toLowerCase()) && (
+                                  <span
+                                    role="button"
+                                    aria-label={`Delete status ${status.name}`}
+                                    className="ml-2 text-destructive hover:text-destructive/90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      handleDeleteStatus(status.name);
+                                    }}
+                                  >
+                                    <Trash2Icon className="h-4 w-4" />
+                                  </span>
+                                )
+                              }
                             </Button>
                           ))}
                         </div>
