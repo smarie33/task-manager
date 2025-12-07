@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
-import { cn, lightenHexColor } from '@/lib/utils';
+import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils'; // Import darkenHexColor
 import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
 import { format, parseISO, isValid, isPast, isToday } from 'date-fns'; // Import isPast and isToday
 import { DateRange } from 'react-day-picker';
@@ -185,10 +185,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={() => handleSaveEdit(field, editValue)}
             onKeyDown={(e) => handleKeyDown(e, field, editValue)}
-            className="h-7 text-sm p-1 px-2 rounded-none" // Added rounded-none
+            className="h-7 text-sm p-1 px-2 rounded-none border-2" // Added border-2 for the outer border
             autoFocus
             type={inputType}
-            style={{ borderColor: groupColor }} // Set border color
+            style={{
+              borderColor: darkenHexColor(groupColor, 0.5), // Darker outer border
+              boxShadow: `inset 0 0 0 1px ${groupColor}`, // Inner border
+            }}
           />
         ) : (
           <span className="text-sm truncate cursor-pointer block px-2 py-2" onClick={() => {

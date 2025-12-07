@@ -25,3 +25,24 @@ export function lightenHexColor(hex: string, percent: number): string {
   const toHex = (c: number) => Math.round(c).toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
+
+/**
+ * Darkens a hex color by blending it with black.
+ * @param hex The hex color string (e.g., "#RRGGBB" or "RRGGBB").
+ * @param percent The percentage to darken (0.0 to 1.0, where 1.0 is pure black).
+ * @returns The darkened hex color string.
+ */
+export function darkenHexColor(hex: string, percent: number): string {
+  const hexValue = hex.startsWith('#') ? hex.slice(1) : hex;
+
+  let r = parseInt(hexValue.substring(0, 2), 16);
+  let g = parseInt(hexValue.substring(2, 4), 16);
+  let b = parseInt(hexValue.substring(4, 6), 16);
+
+  r = Math.max(0, r - r * percent * r); // Darken proportionally
+  g = Math.max(0, g - g * percent * g);
+  b = Math.max(0, b - b * percent * b);
+
+  const toHex = (c: number) => Math.round(c).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
