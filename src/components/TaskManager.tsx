@@ -242,7 +242,7 @@ const TaskManager: React.FC = () => {
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         {/* This div no longer acts as the master scroll container */}
-        <div className="flex flex-col items-center gap-6 min-w-max pb-4"> {/* min-w-max ensures content dictates width */}
+        <div className="flex flex-col items-center gap-6 pb-4">
           {groups.map((group) => (
             <TaskGroup
               key={group.id}

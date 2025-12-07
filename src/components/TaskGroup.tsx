@@ -98,7 +98,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 
         {/* Scrollable Headers - RE-ADDED overflow-x-auto and onScroll */}
         <div className="flex-grow overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
-          <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto]">
+          <div className="grid w-full grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto]">
             <div className="border-r border-gray-200 dark:border-gray-700 py-2">
               <div className="px-2 truncate">Owner</div>
             </div>
