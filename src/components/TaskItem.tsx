@@ -40,6 +40,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const baseSecondsRef = React.useRef<number>(Math.round(task.timeTracking * 3600));
   const lastPersistMinuteRef = React.useRef<number>(Math.floor(task.timeTracking * 60));
 
+  // ADD: open state for time logs popover
+  const [timeLogsOpen, setTimeLogsOpen] = useState(false);
+
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [newStatusName, setNewStatusName] = useState('');
@@ -239,8 +242,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
       intervalRef.current = null;
     }
     setIsTimerRunning(false);
-    baseSecondsRef.current = displayedSeconds;
+    // Compute this session's duration BEFORE updating baseSeconds
+    const sessionSeconds = displayedSeconds - (baseSecondsRef.current || 0);
+    const sessionDate = format(new Date(startRef.current ?? Date.now()), 'yyyy-MM-dd');
+
+    // Persist total time
     onUpdateTaskField(task.id, 'timeTracking', displayedSeconds / 3600);
+
+    // Persist session log
+    const newLogs = [...(task.timeLogs || []), { durationSeconds: Math.max(0, sessionSeconds), date: sessionDate }];
+    onUpdateTaskField(task.id, 'timeLogs', newLogs);
+
+    // Update base to the new displayed value
+    baseSecondsRef.current = displayedSeconds;
   };
 
   const renderField = (field: keyof Task, displayValue: React.ReactNode, editValue: string | number, setEditValue: (value: string) => void) => {
@@ -443,15 +457,51 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       />
                     ) : (
                       <div className="flex items-center justify-between px-2 py-2">
-                        <span
-                          className="text-sm truncate cursor-pointer"
-                          onClick={() => {
-                            setEditedTimeTracking((displayedSeconds / 3600).toFixed(2));
-                            setEditingField('timeTracking');
-                          }}
-                        >
-                          {formatDuration(displayedSeconds)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          {/* Time display opens logs popover */}
+                          <Popover open={timeLogsOpen} onOpenChange={setTimeLogsOpen}>
+                            <PopoverTrigger asChild>
+                              <span
+                                className="text-sm truncate cursor-pointer"
+                                onClick={() => setTimeLogsOpen(true)}
+                                title="View time logs"
+                              >
+                                {formatDuration(displayedSeconds)}
+                              </span>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-2">
+                              <div className="space-y-2">
+                                <div className="text-sm font-semibold">Time Logs</div>
+                                <div className="max-h-48 overflow-y-auto">
+                                  {task.timeLogs && task.timeLogs.length > 0 ? (
+                                    task.timeLogs.map((log, idx) => (
+                                      <div key={idx} className="flex items-center justify-between text-sm py-1">
+                                        <span>{formatDuration(log.durationSeconds)}</span>
+                                        <span className="text-gray-500">{log.date}</span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="text-xs text-gray-500">No time logs yet.</div>
+                                  )}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          {/* Edit manual time value */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-500 hover:text-blue-500"
+                            onClick={() => {
+                              setEditedTimeTracking((displayedSeconds / 3600).toFixed(2));
+                              setEditingField('timeTracking');
+                            }}
+                            aria-label="Edit time"
+                            title="Edit time"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
