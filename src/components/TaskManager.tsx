@@ -126,6 +126,38 @@ const TaskManager: React.FC = () => {
     );
   };
 
+  const handleDeleteGroup = (groupId: string) => {
+    setGroups(prevGroups => prevGroups.filter(group => group.id !== groupId));
+  };
+
+  const handleDeleteTask = (groupId: string, taskId: string) => {
+    setGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              tasks: group.tasks.filter(task => task.id !== taskId),
+            }
+          : group
+      )
+    );
+  };
+
+  const handleUpdateTaskContent = (groupId: string, taskId: string, newContent: string) => {
+    setGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              tasks: group.tasks.map(task =>
+                task.id === taskId ? { ...task, content: newContent } : task
+              ),
+            }
+          : group
+      )
+    );
+  };
+
   return (
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Task Manager</h1>
@@ -145,7 +177,7 @@ const TaskManager: React.FC = () => {
         </Button>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-wrap gap-6 justify-center">
+        <div className="flex flex-col items-center gap-6"> {/* Changed to flex-col for groups in their own row */}
           {groups.map((group) => (
             <TaskGroup
               key={group.id}
@@ -153,6 +185,9 @@ const TaskManager: React.FC = () => {
               onAddTask={handleAddTask}
               onUpdateGroupName={handleUpdateGroupName}
               onUpdateGroupColor={handleUpdateGroupColor}
+              onDeleteGroup={handleDeleteGroup}
+              onDeleteTask={handleDeleteTask}
+              onUpdateTaskContent={handleUpdateTaskContent}
             />
           ))}
         </div>

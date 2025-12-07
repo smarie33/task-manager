@@ -6,7 +6,7 @@ import TaskItem from './TaskItem';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, PaintbrushIcon } from 'lucide-react';
+import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -18,9 +18,20 @@ interface TaskGroupProps {
   onAddTask: (groupId: string, content: string) => void;
   onUpdateGroupName: (groupId: string, newName: string) => void;
   onUpdateGroupColor: (groupId: string, newColor: string) => void;
+  onDeleteGroup: (groupId: string) => void;
+  onDeleteTask: (groupId: string, taskId: string) => void;
+  onUpdateTaskContent: (groupId: string, taskId: string, newContent: string) => void;
 }
 
-const TaskGroup: React.FC<TaskGroupProps> = ({ group, onAddTask, onUpdateGroupName, onUpdateGroupColor }) => {
+const TaskGroup: React.FC<TaskGroupProps> = ({
+  group,
+  onAddTask,
+  onUpdateGroupName,
+  onUpdateGroupColor,
+  onDeleteGroup,
+  onDeleteTask,
+  onUpdateTaskContent,
+}) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
 
@@ -40,7 +51,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({ group, onAddTask, onUpdateGroupNa
   };
 
   return (
-    <Card className="w-80 flex flex-col shadow-lg">
+    <Card className="w-full max-w-md flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between p-4 rounded-t-lg" style={{ backgroundColor: group.color }}>
         {isEditingName ? (
           <Input
@@ -58,16 +69,21 @@ const TaskGroup: React.FC<TaskGroupProps> = ({ group, onAddTask, onUpdateGroupNa
             {group.name}
           </CardTitle>
         )}
-        <div className="relative">
-          <Input
-            type="color"
-            value={group.color}
-            onChange={handleColorChange}
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-            aria-label="Change group color"
-          />
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
-            <PaintbrushIcon className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Input
+              type="color"
+              value={group.color}
+              onChange={handleColorChange}
+              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              aria-label="Change group color"
+            />
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+              <PaintbrushIcon className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => onDeleteGroup(group.id)}>
+            <Trash2Icon className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
@@ -82,7 +98,13 @@ const TaskGroup: React.FC<TaskGroupProps> = ({ group, onAddTask, onUpdateGroupNa
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center">Drag tasks here or add a new one below.</p>
             )}
             {group.tasks.map((task, index) => (
-              <TaskItem key={task.id} task={task} index={index} />
+              <TaskItem
+                key={task.id}
+                task={task}
+                index={index}
+                onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
+                onUpdateTaskContent={(taskId, newContent) => onUpdateTaskContent(group.id, taskId, newContent)}
+              />
             ))}
             {provided.placeholder}
           </CardContent>
