@@ -230,7 +230,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full h-auto text-xs px-2 py-2 justify-start rounded-none"
+                          className="w-full h-auto text-xs px-2 py-2 justify-center rounded-none" // Changed justify-start to justify-center
                           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
                         >
                           <span className="flex items-center gap-2">
@@ -244,7 +244,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                             <Button
                               key={status.name}
                               variant="outline"
-                              className="flex flex-col items-center justify-center h-12 w-24 text-center text-xs font-medium rounded-none py-1" // Adjusted height and padding
+                              className="flex flex-col items-center justify-center h-12 w-24 text-center text-xs font-medium rounded-none py-1"
                               style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
                               onClick={() => handleStatusSelect(status.name)}
                             >
