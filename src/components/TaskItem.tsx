@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
 import { Task, StatusOption } from './TaskManager';
-import { format, parseISO, isValid, startOfDay } from 'date-fns'; // Import startOfDay
+import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 
@@ -232,16 +232,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280';
   const isPastDue = isTimelinePast(task.timeline);
   const isDoneAndFuture = task.status === 'Done' && isTimelineFuture(task.timeline);
-
-  // --- Console logs for debugging ---
-  console.log(`Task: ${task.content}`);
-  console.log(`  Status: ${task.status}`);
-  console.log(`  Timeline: ${task.timeline}`);
-  console.log(`  isTimelinePast: ${isTimelinePast(task.timeline)}`);
-  console.log(`  isTimelineFuture: ${isTimelineFuture(task.timeline)}`);
-  console.log(`  isPastDue (red condition): ${isPastDue}`);
-  console.log(`  isDoneAndFuture (white condition): ${isDoneAndFuture}`);
-  // ----------------------------------
+  const isDoneAndPast = task.status === 'Done' && isTimelinePast(task.timeline); // New condition
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -337,8 +328,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                   {/* Timeline */}
                   <div className={cn(
                     "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center",
-                    isPastDue && "bg-red-500 text-white",
-                    isDoneAndFuture && "bg-white text-black"
+                    isPastDue && task.status !== 'Done' && "bg-red-500 text-white", // Only apply red if not 'Done'
+                    (isDoneAndFuture || isDoneAndPast) && "bg-white text-black" // Apply white/black for 'Done' tasks, whether future or past
                   )}>
                     {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
                   </div>
