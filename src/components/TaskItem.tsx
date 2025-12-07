@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Trash2Icon, PencilIcon, FileIcon, PlusIcon } from 'lucide-react';
-import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils'; // Import darkenHexColor
-import { Task, StatusOption } from './TaskManager'; // Import Task and StatusOption interfaces
-import { format, parseISO, isValid, isPast, isToday, isFuture } from 'date-fns'; // Import isPast, isToday, and isFuture
+import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
+import { Task, StatusOption } from './TaskManager';
+import { format, parseISO, isValid, isPast, isToday, isFuture } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
+import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 
 interface TaskItemProps {
   task: Task;
@@ -21,7 +21,7 @@ interface TaskItemProps {
   onDeleteTask: (taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
-  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>; // Add setAvailableStatuses
+  setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTask, onUpdateTaskField, availableStatuses, setAvailableStatuses }) => {
@@ -33,9 +33,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
   const [editedTags, setEditedTags] = useState(task.tags.join(', '));
 
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false); // State for status popover
-  const [newStatusName, setNewStatusName] = useState(''); // State for new status name
-  const [newStatusColor, setNewStatusColor] = useState('#60a5fa'); // State for new status color (default blue-400)
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
+  const [newStatusName, setNewStatusName] = useState('');
+  const [newStatusColor, setNewStatusColor] = useState('#60a5fa');
 
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(() => {
     if (task.timeline) {
@@ -87,20 +87,20 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
       }
     }
     onUpdateTaskField(task.id, 'timeline', newTimelineString);
-    setEditedTimeline(newTimelineString); // Update local state for display
+    setEditedTimeline(newTimelineString);
     // setCalendarOpen(false); // Optionally close popover after selection
   };
 
   const handleStatusSelect = (statusName: string) => {
     onUpdateTaskField(task.id, 'status', statusName);
-    setStatusPopoverOpen(false); // Close popover after selection
+    setStatusPopoverOpen(false);
   };
 
   const handleAddStatus = () => {
     if (newStatusName.trim() && !availableStatuses.some(s => s.name === newStatusName.trim())) {
       setAvailableStatuses(prev => [...prev, { name: newStatusName.trim(), color: newStatusColor }]);
       setNewStatusName('');
-      setNewStatusColor('#60a5fa'); // Reset to default
+      setNewStatusColor('#60a5fa');
     }
   };
 
@@ -114,21 +114,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
       if (isValid(from) && isValid(to)) {
         if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()) {
-          // Same month, same year: "MMM DD - DD"
           return `${format(from, 'MMM dd')} - ${format(to, 'dd')}`;
         } else {
-          // Different months or years: "MMM DD - MMM DD"
           return `${format(from, 'MMM dd')} - ${format(to, 'MMM dd')}`;
         }
       }
     } else {
       const singleDate = parseISO(timeline);
       if (isValid(singleDate)) {
-        // Single date: "MMM DD"
         return format(singleDate, 'MMM dd');
       }
     }
-    return timeline; // Fallback to original if parsing fails
+    return timeline;
   };
 
   const isTimelinePast = (timeline: string): boolean => {
@@ -170,12 +167,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
         <Popover open={calendarOpen} onOpenChange={(open) => {
           setCalendarOpen(open);
           if (!open) {
-            setEditingField(null); // Close editing mode when popover closes
+            setEditingField(null);
           }
         }}>
           <PopoverTrigger asChild>
             <span className="text-sm truncate cursor-pointer block px-2 py-2" onClick={() => {
-              setEditingField(field); // Set editing field when trigger is clicked
+              setEditingField(field);
             }}>
               {displayValue || 'N/A'}
             </span>
@@ -200,12 +197,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={() => handleSaveEdit(field, editValue)}
             onKeyDown={(e) => handleKeyDown(e, field, editValue)}
-            className="h-7 text-sm p-1 px-2 rounded-none border-2" // Added border-2 for the outer border
+            className="h-7 text-sm p-1 px-2 rounded-none border-2"
             autoFocus
             type={inputType}
             style={{
-              borderColor: darkenHexColor(groupColor, 0.5), // Darker outer border
-              boxShadow: `inset 0 0 0 1px ${groupColor}`, // Inner border
+              borderColor: darkenHexColor(groupColor, 0.5),
+              boxShadow: `inset 0 0 0 1px ${groupColor}`,
             }}
           />
         ) : (
@@ -222,9 +219,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
 
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
   const currentStatusOption = availableStatuses.find(s => s.name === task.status);
-  const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280'; // Default gray if status not found
+  const statusColor = currentStatusOption ? currentStatusOption.color : '#6b7280';
   const isPastDue = isTimelinePast(task.timeline);
   const isDoneAndFuture = task.status === 'Done' && isTimelineFuture(task.timeline);
+
+  // --- Console logs for debugging ---
+  console.log(`Task: ${task.content}`);
+  console.log(`  Status: ${task.status}`);
+  console.log(`  Timeline: ${task.timeline}`);
+  console.log(`  isTimelinePast: ${isTimelinePast(task.timeline)}`);
+  console.log(`  isTimelineFuture: ${isTimelineFuture(task.timeline)}`);
+  console.log(`  isPastDue (red condition): ${isPastDue}`);
+  console.log(`  isDoneAndFuture (white condition): ${isDoneAndFuture}`);
+  // ----------------------------------
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -266,7 +273,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0" // Added h-auto min-h-0
+                          className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0"
                           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
                         >
                           <span className="flex items-center gap-2">
@@ -320,8 +327,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                   {/* Timeline */}
                   <div className={cn(
                     "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center",
-                    isPastDue && "bg-red-500 text-white", // Existing conditional styling
-                    isDoneAndFuture && "bg-white text-black" // New conditional styling
+                    isPastDue && "bg-red-500 text-white",
+                    isDoneAndFuture && "bg-white text-black"
                   )}>
                     {renderField('timeline', getFormattedTimeline(task.timeline), editedTimeline, setEditedTimeline)}
                   </div>
