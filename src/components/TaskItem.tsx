@@ -230,11 +230,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                       <PopoverTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full h-auto text-xs px-2 py-2 justify-start"
+                          className="w-full h-auto text-xs px-2 py-2 justify-start rounded-none" // Removed rounded-full
                           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
                         >
                           <span className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor }}></span>
+                            {/* Removed the status dot */}
                             {task.status}
                           </span>
                         </Button>
@@ -245,11 +245,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
                             <Button
                               key={status.name}
                               variant="outline"
-                              className="flex flex-col items-center justify-center h-20 w-20 text-center text-xs font-medium"
+                              className="flex flex-col items-center justify-center h-20 w-20 text-center text-xs font-medium rounded-none" // Removed rounded-full
                               style={{ backgroundColor: lightenHexColor(status.color, 0.8), color: status.color, borderColor: status.color }}
                               onClick={() => handleStatusSelect(status.name)}
                             >
-                              <span className="w-4 h-4 rounded-full mb-1" style={{ backgroundColor: status.color }}></span>
+                              {/* Removed the status dot */}
                               {status.name}
                             </Button>
                           ))}
