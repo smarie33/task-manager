@@ -185,9 +185,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, groupColor, onDeleteTa
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={() => handleSaveEdit(field, editValue)}
             onKeyDown={(e) => handleKeyDown(e, field, editValue)}
-            className="h-7 text-sm p-1 px-2"
+            className="h-7 text-sm p-1 px-2 rounded-none" // Added rounded-none
             autoFocus
             type={inputType}
+            style={{ borderColor: groupColor }} // Set border color
           />
         ) : (
           <span className="text-sm truncate cursor-pointer block px-2 py-2" onClick={() => {
