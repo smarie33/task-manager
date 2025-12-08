@@ -12,6 +12,22 @@ const AdminPanel: React.FC = () => {
   const { toast } = useToast();
   const { users, addUser, approveUser, changeRole, deleteUser } = useAdminUsers();
 
+  // Added: handlers that wrap hook actions and show toasts
+  const handleApprove = (id: string) => {
+    approveUser(id);
+    toast({ title: "User approved", description: "The user can now access the app." });
+  };
+
+  const handleChangeRole = (id: string, role: Role) => {
+    changeRole(id, role);
+    toast({ title: "Role updated", description: `Role changed to ${role}.` });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteUser(id);
+    toast({ title: "User deleted", description: "The user was removed." });
+  };
+
   const pending = users.filter((u) => u.status === "pending");
   const active = users.filter((u) => u.status === "active");
 
