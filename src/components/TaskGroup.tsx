@@ -24,6 +24,8 @@ interface TaskGroupProps {
   allTags: string[];
   // NEW: global delete for tags
   onDeleteGlobalTag: (tag: string) => void;
+  // NEW: readOnly flag
+  readOnly?: boolean;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -38,6 +40,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   setAvailableStatuses,
   allTags,
   onDeleteGlobalTag, // NEW
+  readOnly = false,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -65,16 +68,22 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         {isEditingName ? (
           <Input
             value={group.name}
-            onChange={handleNameChange}
+            onChange={(e) => onUpdateGroupName(group.id, e.target.value)}
             onBlur={() => setIsEditingName(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') setIsEditingName(false);
             }}
             className="text-lg font-semibold bg-transparent border-none focus:ring-0 focus:outline-none text-white"
             autoFocus
+            disabled={readOnly}
           />
         ) : (
-          <CardTitle className="text-lg font-semibold text-white cursor-pointer" onClick={() => setIsEditingName(true)}>
+          <CardTitle
+            className={`text-lg font-semibold text-white ${readOnly ? "" : "cursor-pointer"}`}
+            onClick={() => {
+              if (!readOnly) setIsEditingName(true);
+            }}
+          >
             {group.name}
           </CardTitle>
         )}
@@ -83,44 +92,47 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
             <Input
               type="color"
               value={group.color}
-              onChange={handleColorChange}
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              onChange={(e) => onUpdateGroupColor(group.id, e.target.value)}
+              className={`absolute inset-0 opacity-0 w-full h-full ${readOnly ? "pointer-events-none" : "cursor-pointer"}`}
               aria-label="Change group color"
+              disabled={readOnly}
             />
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+            <Button variant="ghost" size="icon" className={`text-white ${readOnly ? "" : "hover:bg-white/20"}`} disabled={readOnly}>
               <PaintbrushIcon className="h-4 w-4" />
             </Button>
           </div>
           
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20"
-                aria-label="Delete group"
-              >
-                <Trash2Icon className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this group?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete the group and all its tasks. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => onDeleteGroup(group.id)}
+          {!readOnly && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  aria-label="Delete group"
                 >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2Icon className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this group?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the group and all its tasks. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => onDeleteGroup(group.id)}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </CardHeader>
 
@@ -180,6 +192,8 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 allTags={allTags}
                 // NEW: pass global tag deletion
                 onDeleteGlobalTag={onDeleteGlobalTag}
+                // NEW: readOnly
+                readOnly={readOnly}
               />
             ))}
             {provided.placeholder}
@@ -193,11 +207,30 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           value={newTaskContent}
           onChange={(e) => setNewTaskContent(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAddTask();
+            if (e.key === 'Enter') {
+              if (!readOnly) {
+                if (newTaskContent.trim()) {
+                  onAddTask(group.id, newTaskContent.trim());
+                  setNewTaskContent('');
+                }
+              }
+            }
           }}
           className="flex-grow mr-2"
+          disabled={readOnly}
         />
-        <Button onClick={handleAddTask} size="icon">
+        <Button
+          onClick={() => {
+            if (!readOnly) {
+              if (newTaskContent.trim()) {
+                onAddTask(group.id, newTaskContent.trim());
+                setNewTaskContent('');
+              }
+            }
+          }}
+          size="icon"
+          disabled={readOnly}
+        >
           <PlusIcon className="h-4 w-4" />
         </Button>
       </CardFooter>

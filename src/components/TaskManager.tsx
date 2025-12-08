@@ -9,10 +9,13 @@ import { PlusIcon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useTaskData } from "@/context/task-data-context";
 import { Task, StatusOption } from "@/types/task";
+import { useAuth } from "@/context/auth-context";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
   const [newGroupName, setNewGroupName] = useState("");
+  const { role } = useAuth();
+  const readOnly = role === "Viewer";
 
   // ALL TAGS: collect unique tags across all tasks
   const allTags = Array.from(new Set(groups.flatMap((g) => g.tasks.flatMap((t) => t.tags)))).sort();
@@ -31,6 +34,7 @@ const TaskManager: React.FC = () => {
   };
 
   const onDragEnd = (result: DropResult) => {
+    if (readOnly) return;
     const { source, destination, draggableId } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
@@ -52,6 +56,7 @@ const TaskManager: React.FC = () => {
   };
 
   const handleAddTask = (groupId: string, content: string) => {
+    if (readOnly) return;
     setGroups((prevGroups) =>
       prevGroups.map((group) =>
         group.id === groupId
@@ -79,6 +84,7 @@ const TaskManager: React.FC = () => {
   };
 
   const handleAddGroup = () => {
+    if (readOnly) return;
     if (newGroupName.trim()) {
       setGroups((prevGroups) => [
         ...prevGroups,
@@ -94,22 +100,26 @@ const TaskManager: React.FC = () => {
   };
 
   const handleUpdateGroupName = (groupId: string, newName: string) => {
+    if (readOnly) return;
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, name: newName } : group))
     );
   };
 
   const handleUpdateGroupColor = (groupId: string, newColor: string) => {
+    if (readOnly) return;
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, color: newColor } : group))
     );
   };
 
   const handleDeleteGroup = (groupId: string) => {
+    if (readOnly) return;
     setGroups((prevGroups) => prevGroups.filter((group) => group.id !== groupId));
   };
 
   const handleDeleteTask = (groupId: string, taskId: string) => {
+    if (readOnly) return;
     setGroups((prevGroups) =>
       prevGroups.map((group) =>
         group.id === groupId
@@ -128,6 +138,7 @@ const TaskManager: React.FC = () => {
     field: K,
     value: Task[K]
   ) => {
+    if (readOnly) return;
     setGroups((prevGroups) =>
       prevGroups.map((group) =>
         group.id === groupId
@@ -154,8 +165,9 @@ const TaskManager: React.FC = () => {
               if (e.key === "Enter") handleAddGroup();
             }}
             className="w-40"
+            disabled={readOnly}
           />
-          <Button onClick={handleAddGroup}>
+          <Button onClick={handleAddGroup} disabled={readOnly}>
             <PlusIcon className="h-4 w-4 mr-2" /> Add Group
           </Button>
         </div>
@@ -176,6 +188,7 @@ const TaskManager: React.FC = () => {
               setAvailableStatuses={setAvailableStatuses}
               allTags={allTags}
               onDeleteGlobalTag={handleDeleteGlobalTag}
+              readOnly={readOnly}
             />
           ))}
         </div>

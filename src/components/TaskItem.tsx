@@ -28,6 +28,8 @@ interface TaskItemProps {
   allTags: string[];
   // NEW: delete a tag globally
   onDeleteGlobalTag: (tag: string) => void;
+  // NEW:
+  readOnly?: boolean;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -40,6 +42,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   setAvailableStatuses,
   allTags,
   onDeleteGlobalTag, // NEW
+  readOnly = false,
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [editedContent, setEditedContent] = useState(task.content);
@@ -59,6 +62,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   // NEW: tag helpers
   const handleAddTag = (tag: string) => {
+    if (readOnly) return;
     const t = tag.trim();
     if (!t) return;
     if (task.tags.includes(t)) return;
@@ -66,10 +70,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
   };
 
   const handleRemoveTag = (tag: string) => {
+    if (readOnly) return;
     onUpdateTaskField(task.id, 'tags', task.tags.filter((x) => x !== tag));
   };
 
   const handleSaveEdit = (field: keyof Task, value: any) => {
+    if (readOnly) return;
     if (field === 'tags') {
       const newTags = value.split(',').map((tag: string) => tag.trim()).filter(Boolean);
       if (newTags.join(', ') !== task.tags.join(', ')) {
@@ -98,7 +104,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
     return (
       <>
-        {isCurrentlyEditing ? (
+        {isCurrentlyEditing && !readOnly ? (
           <Input
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
@@ -114,8 +120,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
           />
         ) : (
           <span
-            className="text-sm truncate cursor-pointer block px-2 py-2"
+            className={`text-sm truncate block px-2 py-2 ${readOnly ? "" : "cursor-pointer"}`}
             onClick={() => {
+              if (readOnly) return;
               setEditValue(task[field]?.toString() || '');
               setEditingField(field);
             }}
@@ -130,7 +137,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
 
   return (
-    <Draggable draggableId={task.id} index={index}>
+    <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly}>
       {(provided, snapshot) => (
         <Card
           ref={provided.innerRef}
@@ -175,6 +182,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       availableStatuses={availableStatuses}
                       setAvailableStatuses={setAvailableStatuses}
                       onChange={(name) => onUpdateTaskField(task.id, 'status', name)}
+                      // NEW:
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -186,6 +195,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       onUpdateTaskField(task.id, 'timeline', newTimeline);
                       setEditedTimeline(newTimeline);
                     }}
+                    // NEW:
+                    disabled={readOnly}
                   />
 
                   {/* Time Tracking */}
@@ -194,6 +205,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
                     groupColor={groupColor}
                     onUpdateTimeTracking={(hours) => onUpdateTaskField(task.id, 'timeTracking', hours)}
                     onUpdateTimeLogs={(logs) => onUpdateTaskField(task.id, 'timeLogs', logs)}
+                    // NEW:
+                    disabled={readOnly}
                   />
 
                   {/* Tags */}
@@ -205,6 +218,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       onRemoveTag={handleRemoveTag}
                       // NEW: global delete handler
                       onDeleteGlobalTag={onDeleteGlobalTag}
+                      // NEW:
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -221,6 +236,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                         size="icon"
                         className="h-7 w-7 text-gray-500 hover:text-blue-500"
                         onClick={() => handleSaveEdit(editingField, task[editingField])}
+                        disabled={readOnly}
                       >
                         <PencilIcon className="h-4 w-4" />
                       </Button>
@@ -230,6 +246,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       size="icon"
                       className="h-7 w-7 text-gray-500 hover:text-red-500"
                       onClick={() => onDeleteTask(task.id)}
+                      disabled={readOnly}
                     >
                       <Trash2Icon className="h-4 w-4" />
                     </Button>
@@ -281,6 +298,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                   onChange={(e) => setEditedContent(e.target.value)}
                   className="min-h-[120px]"
                   placeholder="Enter item text..."
+                  disabled={readOnly}
                 />
                 <div className="flex justify-end">
                   <Button
@@ -289,6 +307,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                         onUpdateTaskField(task.id, 'content', editedContent);
                       }
                     }}
+                    disabled={readOnly}
                   >
                     Save
                   </Button>
@@ -327,12 +346,14 @@ const TaskItem: React.FC<TaskItemProps> = ({
                     onChange={(e) => setNewCommentText(e.target.value)}
                     placeholder="Write a comment..."
                     className="min-h-[80px]"
+                    disabled={readOnly}
                   />
                   <Input
                     value={newCommentAuthor}
                     onChange={(e) => setNewCommentAuthor(e.target.value)}
                     placeholder="Your name (optional)"
                     className="h-9"
+                    disabled={readOnly}
                   />
                   <div className="flex justify-end">
                     <Button
@@ -352,6 +373,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                         setNewCommentText('');
                         setNewCommentAuthor('');
                       }}
+                      disabled={readOnly}
                     >
                       Add Comment
                     </Button>

@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import { TaskDataProvider } from "@/context/task-data-context";
 import TagPage from "./pages/TagPage";
 import Profile from "./pages/Profile";
+import { AuthProvider } from "@/context/auth-context";
 
 const queryClient = new QueryClient();
 
@@ -16,17 +17,19 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <TaskDataProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/tags/:tagName" element={<TagPage />} />
-            <Route path="/profile" element={<Profile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TaskDataProvider>
+      <AuthProvider>
+        <TaskDataProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/tags/:tagName" element={<TagPage />} />
+              <Route path="/profile" element={<Profile />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TaskDataProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

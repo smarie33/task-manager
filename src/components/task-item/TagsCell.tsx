@@ -13,9 +13,10 @@ interface TagsCellProps {
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
   onDeleteGlobalTag: (tag: string) => void;
+  disabled?: boolean;
 }
 
-const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemoveTag, onDeleteGlobalTag }) => {
+const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemoveTag, onDeleteGlobalTag, disabled = false }) => {
   const [open, setOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
   const navigate = useNavigate();
@@ -28,6 +29,14 @@ const TagsCell: React.FC<TagsCellProps> = ({ taskTags, allTags, onAddTag, onRemo
   };
 
   const sortedAll = Array.from(new Set(allTags)).sort();
+
+  if (disabled) {
+    return (
+      <div className="text-sm truncate block px-2 py-2">
+        {taskTags.length ? taskTags.join(", ") : "N/A"}
+      </div>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

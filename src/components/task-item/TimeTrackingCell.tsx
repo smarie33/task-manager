@@ -14,6 +14,7 @@ type TimeTrackingCellProps = {
   groupColor: string;
   onUpdateTimeTracking: (hours: number) => void;
   onUpdateTimeLogs: (logs: NonNullable<Task["timeLogs"]>) => void;
+  disabled?: boolean;
 };
 
 const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
@@ -21,6 +22,7 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
   groupColor,
   onUpdateTimeTracking,
   onUpdateTimeLogs,
+  disabled = false,
 }) => {
   const [isTimerRunning, setIsTimerRunning] = React.useState(false);
   const [displayedSeconds, setDisplayedSeconds] = React.useState(() => Math.round(task.timeTracking * 3600));
@@ -108,7 +110,21 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
 
   return (
     <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-      {editingTime ? (
+      {disabled ? (
+        <div className="flex items-center justify-between px-2 py-2">
+          <span className="text-sm truncate">{formatDuration(displayedSeconds)}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-gray-400"
+            disabled
+            aria-label="Timer disabled"
+            title="Timer disabled"
+          >
+            <PlayIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : editingTime ? (
         <Input
           value={editedTimeTracking}
           onChange={(e) => setEditedTimeTracking(e.target.value)}
@@ -232,7 +248,6 @@ const TimeTrackingCell: React.FC<TimeTrackingCellProps> = ({
                               title="Delete log"
                               aria-label="Delete log"
                             >
-                              {/* Simple × icon using text to avoid extra imports */}
                               <span className="text-lg leading-none">&times;</span>
                             </Button>
                           </div>

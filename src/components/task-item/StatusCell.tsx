@@ -13,6 +13,7 @@ type StatusCellProps = {
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
   onChange: (statusName: string) => void;
+  disabled?: boolean;
 };
 
 const StatusCell: React.FC<StatusCellProps> = ({
@@ -20,6 +21,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
   availableStatuses,
   setAvailableStatuses,
   onChange,
+  disabled = false,
 }) => {
   const currentStatusOption = availableStatuses.find((s) => s.name === status);
   const statusColor = currentStatusOption ? currentStatusOption.color : "#6b7280";
@@ -42,12 +44,13 @@ const StatusCell: React.FC<StatusCellProps> = ({
   };
 
   return (
-    <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+    <Popover open={statusPopoverOpen && !disabled} onOpenChange={(open) => setStatusPopoverOpen(disabled ? false : open)}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0"
           style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
+          disabled={disabled}
         >
           <span className="flex items-center gap-2">{status}</span>
         </Button>
@@ -64,6 +67,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
                 onChange(s.name);
                 setStatusPopoverOpen(false);
               }}
+              disabled={disabled}
             >
               <span className="flex-1 text-center">{s.name}</span>
               {!["done", "in progress"].includes(s.name.toLowerCase()) && (
@@ -74,7 +78,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    handleDeleteStatus(s.name);
+                    if (!disabled) handleDeleteStatus(s.name);
                   }}
                 >
                   <Trash2Icon className="h-4 w-4" />
@@ -94,16 +98,18 @@ const StatusCell: React.FC<StatusCellProps> = ({
               if (e.key === "Enter") handleAddStatus();
             }}
             className="w-full"
+            disabled={disabled}
           />
           <div className="flex items-center gap-2">
             <Input
               type="color"
               value={newStatusColor}
               onChange={(e) => setNewStatusColor(e.target.value)}
-              className="w-10 h-10 p-0 border-none cursor-pointer"
+              className="w-10 h-10 p-0 border-none cursor-pointer disabled:cursor-not-allowed"
               title="Choose status color"
+              disabled={disabled}
             />
-            <Button onClick={handleAddStatus} className="flex-grow">
+            <Button onClick={handleAddStatus} className="flex-grow" disabled={disabled}>
               <PlusIcon className="h-4 w-4 mr-2" /> Add Status
             </Button>
           </div>
