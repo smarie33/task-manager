@@ -22,6 +22,7 @@ const profileSchema = z.object({
     .max(20, "Phone is too long")
     .regex(/^[0-9+()\-\s]*$/, "Only digits, spaces, and +()- are allowed"),
   address: z.string().min(1, "Address is required").max(300, "Address is too long"),
+  email: z.string().email("Please enter a valid email").optional().or(z.literal("")),
   avatarDataUrl: z.string().optional().or(z.literal("")),
 });
 
@@ -59,6 +60,7 @@ const Profile: React.FC = () => {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: stored?.name ?? "",
+      email: stored?.email ?? "",
       phone: stored?.phone ?? "",
       address: stored?.address ?? "",
       avatarDataUrl: stored?.avatarDataUrl ?? "",
@@ -145,6 +147,21 @@ const Profile: React.FC = () => {
                           <Input placeholder="Jane Doe" {...field} />
                         </FormControl>
                         <FormDescription>Your full name as you'd like it displayed.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="jane@example.com" autoComplete="email" {...field} />
+                        </FormControl>
+                        <FormDescription>Your contact email (optional).</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
