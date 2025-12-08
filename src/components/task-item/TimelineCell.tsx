@@ -85,6 +85,7 @@ const TimelineCell: React.FC<TimelineCellProps> = ({ timeline, status, onChange,
   const isPastDue = isTimelinePast(timeline);
   const isDoneAndFuture = status === "Done" && isTimelineFuture(timeline);
   const isDoneAndPast = status === "Done" && isTimelinePast(timeline);
+  const isFuture = isTimelineFuture(timeline);
 
   const handleDateSelect = (range: DateRange | undefined) => {
     let newTimelineString = "";
@@ -103,7 +104,7 @@ const TimelineCell: React.FC<TimelineCellProps> = ({ timeline, status, onChange,
       className={cn(
         "flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700 text-center",
         isTimelinePast && status !== "Done" && "bg-red-500 text-white",
-        (isDoneAndFuture || isDoneAndPast) && "bg-white text-black"
+        (isFuture || isDoneAndFuture || isDoneAndPast) && "bg-white text-black"
       )}
     >
       {disabled ? (
