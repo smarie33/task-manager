@@ -16,7 +16,11 @@ import TimelineCell from './task-item/TimelineCell';
 import TimeTrackingCell from './task-item/TimeTrackingCell';
 import AppDrawer from './AppDrawer';
 import TagsCell from './task-item/TagsCell';
-import FilesCell from './task-item/FilesCell';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parseISO, isValid } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 interface TaskItemProps {
   task: Task;
@@ -156,6 +160,35 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const taskImages = React.useMemo(() => {
     return (task.files ?? []).filter((f) => (f.mimeType ?? "").startsWith("image/"));
   }, [task.files]);
+
+  // NEW: timeline range for drawer calendar
+  const drawerSelectedDateRange: DateRange | undefined = React.useMemo(() => {
+    const t = editedTimeline || task.timeline || "";
+    if (t) {
+      const parts = t.split(" - ");
+      if (parts.length === 2) {
+        const from = parseISO(parts[0]);
+        const to = parseISO(parts[1]);
+        if (isValid(from) && isValid(to)) return { from, to };
+      } else {
+        const from = parseISO(t);
+        if (isValid(from)) return { from };
+      }
+    }
+    return undefined;
+  }, [editedTimeline, task.timeline]);
+
+  const handleDrawerTimelineSelect = (range: DateRange | undefined) => {
+    let newTimelineString = "";
+    if (range?.from) {
+      newTimelineString = format(range.from, "yyyy-MM-dd");
+      if (range.to && range.to !== range.from) {
+        newTimelineString += ` - ${format(range.to, "yyyy-MM-dd")}`;
+      }
+    }
+    onUpdateTaskField(task.id, 'timeline', newTimelineString as any);
+    setEditedTimeline(newTimelineString);
+  };
 
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly}>
@@ -316,6 +349,111 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Tags</p>
                   <p className="text-sm">{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
+                </div>
+              </div>
+
+              {/* NEW: Editable fields */}
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Edit Details</p>
+
+                {/* Owner editor */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Owner</p>
+                    <Input
+                      value={editedOwner}
+                      onChange={(e) => setEditedOwner(e.target.value)}
+                      onBlur={() => {
+                        if (!readOnly && editedOwner !== task.owner) {
+                          onUpdateTaskField(task.id, 'owner', editedOwner);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (!readOnly && editedOwner !== task.owner) {
+                            onUpdateTaskField(task.id, 'owner', editedOwner);
+                          }
+                        }
+                      }}
+                      disabled={readOnly}
+                      className="h-9"
+                      placeholder="Owner name"
+                    />
+                  </div>
+
+                  {/* Status editor */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Status</p>
+                    <Select
+                      value={task.status}
+                      onValueChange={(val) => {
+                        if (!readOnly) onUpdateTaskField(task.id, 'status', val as any);
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStatuses.map((s) => (
+                          <SelectItem key={s.name} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Timeline editor */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Timeline</p>
+                  {readOnly ? (
+                    <div className="text-sm">{task.timeline || "N/A"}</div>
+                  ) : (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="h-9 justify-start text-left w-full">
+                          {task.timeline ? task.timeline : "Select date or range"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="range"
+                          selected={drawerSelectedDateRange}
+                          onSelect={handleDrawerTimelineSelect}
+                          numberOfMonths={2}
+                          initialFocus
+                        />
+                        <div className="flex justify-end gap-2 p-2 border-t">
+                          <Button variant="ghost" size="sm" onClick={() => handleDrawerTimelineSelect(undefined as any)}>
+                            Clear
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+
+                {/* Tags editor */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Tags</p>
+                  <TagsCell
+                    taskTags={task.tags}
+                    allTags={allTags}
+                    onAddTag={(tag) => {
+                      if (readOnly) return;
+                      const t = tag.trim();
+                      if (!t) return;
+                      if (task.tags.includes(t)) return;
+                      onUpdateTaskField(task.id, 'tags', [...task.tags, t]);
+                    }}
+                    onRemoveTag={(tag) => {
+                      if (readOnly) return;
+                      onUpdateTaskField(task.id, 'tags', task.tags.filter((x) => x !== tag));
+                    }}
+                    onDeleteGlobalTag={onDeleteGlobalTag}
+                    disabled={readOnly}
+                  />
                 </div>
               </div>
 
