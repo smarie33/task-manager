@@ -246,6 +246,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       onAddFiles={handleAddFiles}
                       onRemoveFile={handleRemoveFile}
                       disabled={readOnly}
+                      // ADDED: parent task info for image library
+                      parentTaskId={task.id}
+                      parentTaskContent={task.content}
                     />
                   </div>
 

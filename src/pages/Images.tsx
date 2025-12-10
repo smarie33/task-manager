@@ -9,38 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, ExternalLinkIcon } from "lucide-react";
-import { FileMeta, Task } from "@/types/task";
+import { FileMeta } from "@/types/task";
 
 type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
 
 const Images: React.FC = () => {
-  const { groups } = useTaskData();
+  const { libraryImages } = useTaskData();
 
-  type ImageRecord = {
-    file: FileMeta;
-    task: Task;
-    groupName: string;
-  };
-
-  const images = React.useMemo<ImageRecord[]>(() => {
-    return groups.flatMap((g) =>
-      g.tasks.flatMap((t) =>
-        (t.files ?? [])
-          .filter((f) => (f.mimeType ?? "").startsWith("image/"))
-          .map((f) => ({ file: f, task: t, groupName: g.name }))
-      )
-    );
-  }, [groups]);
+  const images = React.useMemo<FileMeta[]>(() => {
+    return libraryImages.filter((f) => (f.mimeType ?? "").startsWith("image/"));
+  }, [libraryImages]);
 
   const [query, setQuery] = React.useState("");
   const [sortKey, setSortKey] = React.useState<SortKey>("date");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
-  const [selected, setSelected] = React.useState<ImageRecord | null>(null);
+  const [selected, setSelected] = React.useState<FileMeta | null>(null);
 
-  const filteredSorted = React.useMemo<ImageRecord[]>(() => {
+  const filteredSorted = React.useMemo<FileMeta[]>(() => {
     const q = query.trim().toLowerCase();
-    let list = images.filter((rec) => (q ? rec.file.name.toLowerCase().includes(q) : true));
+    let list = images.filter((file) => (q ? file.name.toLowerCase().includes(q) : true));
 
     const compareStr = (a?: string, b?: string) => (a ?? "").localeCompare(b ?? "");
     const compareDate = (a?: string, b?: string) => {
@@ -52,11 +40,11 @@ const Images: React.FC = () => {
     list.sort((a, b) => {
       let cmp = 0;
       if (sortKey === "name") {
-        cmp = compareStr(a.file.name, b.file.name);
+        cmp = compareStr(a.name, b.name);
       } else if (sortKey === "type") {
-        cmp = compareStr(a.file.mimeType, b.file.mimeType);
+        cmp = compareStr(a.mimeType, b.mimeType);
       } else {
-        cmp = compareDate(a.file.createdAt, b.file.createdAt);
+        cmp = compareDate(a.createdAt, b.createdAt);
       }
       return sortOrder === "asc" ? cmp : -cmp;
     });
@@ -110,7 +98,7 @@ const Images: React.FC = () => {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSorted.map(({ file, task, groupName }) => (
+            {filteredSorted.map((file) => (
               <Card key={file.id} className="shadow-sm overflow-hidden">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-base truncate">{file.name}</CardTitle>
@@ -120,9 +108,9 @@ const Images: React.FC = () => {
                     className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelected({ file, task, groupName })}
+                    onClick={() => setSelected(file)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") setSelected({ file, task, groupName });
+                      if (e.key === "Enter" || e.key === " ") setSelected(file);
                     }}
                     aria-label={`Open details for ${file.name}`}
                   >
@@ -144,7 +132,7 @@ const Images: React.FC = () => {
                     </div>
                     <div className="col-span-2">
                       <p className="text-muted-foreground">From Task</p>
-                      <p className="truncate">{task.content} <span className="text-xs text-muted-foreground">({groupName})</span></p>
+                      <p className="truncate">{file.sourceTaskContent || "Unknown"}</p>
                     </div>
                   </div>
                   <div className="flex justify-end mt-3">
@@ -172,8 +160,8 @@ const Images: React.FC = () => {
             <div className="space-y-4">
               <div className="rounded-md border overflow-hidden bg-white dark:bg-gray-800">
                 <img
-                  src={selected.file.url}
-                  alt={selected.file.name}
+                  src={selected.url}
+                  alt={selected.name}
                   className="w-full max-h-[60vh] object-contain bg-black/5"
                 />
               </div>
@@ -181,25 +169,25 @@ const Images: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Name</p>
-                  <p className="break-all">{selected.file.name}</p>
+                  <p className="break-all">{selected.name}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Type</p>
-                  <p className="break-all">{selected.file.mimeType || "Unknown"}</p>
+                  <p className="break-all">{selected.mimeType || "Unknown"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Date Uploaded</p>
-                  <p>{selected.file.createdAt ? new Date(selected.file.createdAt).toLocaleString() : "Unknown"}</p>
+                  <p>{selected.createdAt ? new Date(selected.createdAt).toLocaleString() : "Unknown"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Task</p>
-                  <p className="truncate">{selected.task.content} <span className="text-xs text-muted-foreground">({selected.groupName})</span></p>
+                  <p className="truncate">{selected.sourceTaskContent || "Unknown"}</p>
                 </div>
               </div>
 
               <div className="flex justify-end">
                 <Button asChild variant="outline">
-                  <a href={selected.file.url} target="_blank" rel="noreferrer">
+                  <a href={selected.url} target="_blank" rel="noreferrer">
                     <ExternalLinkIcon className="h-4 w-4 mr-2" />
                     Open Original
                   </a>

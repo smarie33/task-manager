@@ -6,17 +6,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileImageIcon, UploadIcon, XIcon } from "lucide-react";
 import { FileMeta } from "@/types/task";
+import { useTaskData } from "@/context/task-data-context";
 
 interface FilesCellProps {
   files?: FileMeta[];
   onAddFiles: (newFiles: FileMeta[]) => void;
   onRemoveFile: (id: string) => void;
   disabled?: boolean;
+  parentTaskId: string;
+  parentTaskContent: string;
 }
 
-const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveFile, disabled = false }) => {
+const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveFile, disabled = false, parentTaskId, parentTaskContent }) => {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const { setLibraryImages } = useTaskData();
 
   const handlePickFiles = () => {
     if (disabled) return;
@@ -40,10 +44,13 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
         mimeType: f.type,
         size: f.size,
         createdAt: new Date(f.lastModified || Date.now()).toISOString(),
+        sourceTaskId: parentTaskId,
+        sourceTaskContent: parentTaskContent,
       });
     }
     if (newFiles.length > 0) {
       onAddFiles(newFiles);
+      setLibraryImages((prev) => [...prev, ...newFiles]);
     }
     e.target.value = "";
   };

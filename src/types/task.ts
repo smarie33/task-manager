@@ -11,8 +11,10 @@ export interface FileMeta {
   url: string;
   mimeType?: string;
   size?: number;
-  // ADDED: creation timestamp for sorting by date
   createdAt?: string;
+  // ADDED: source task info for Images library
+  sourceTaskId?: string;
+  sourceTaskContent?: string;
 }
 
 export interface LinkMeta {

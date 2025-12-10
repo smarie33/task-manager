@@ -97,6 +97,9 @@ type TaskDataContextValue = {
   setLibraryFiles: React.Dispatch<React.SetStateAction<FileMeta[]>>;
   externalLinks: LinkMeta[];
   setExternalLinks: React.Dispatch<React.SetStateAction<LinkMeta[]>>;
+  // ADDED: global images folder
+  libraryImages: FileMeta[];
+  setLibraryImages: React.Dispatch<React.SetStateAction<FileMeta[]>>;
 };
 
 const TaskDataContext = createContext<TaskDataContextValue | undefined>(undefined);
@@ -107,6 +110,8 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // NEW: global library for non-image files and external links
   const [libraryFiles, setLibraryFiles] = useState<FileMeta[]>([]);
   const [externalLinks, setExternalLinks] = useState<LinkMeta[]>([]);
+  // ADDED: global images folder
+  const [libraryImages, setLibraryImages] = useState<FileMeta[]>([]);
 
   return (
     <TaskDataContext.Provider
@@ -119,6 +124,9 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLibraryFiles,
         externalLinks,
         setExternalLinks,
+        // ADDED:
+        libraryImages,
+        setLibraryImages,
       }}
     >
       {children}
