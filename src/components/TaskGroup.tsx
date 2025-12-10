@@ -73,29 +73,30 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   return (
     <Card className="w-[90vw] max-w-5xl flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between py-1 px-3 rounded-t-lg" style={{ backgroundColor: group.color }}>
-        {isEditingName ? (
-          <Input
-            value={group.name}
-            onChange={(e) => onUpdateGroupName(group.id, e.target.value)}
-            onBlur={() => setIsEditingName(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setIsEditingName(false);
-            }}
-            className="text-base font-semibold bg-transparent border-none focus:ring-0 focus:outline-none text-white"
-            autoFocus
-            disabled={readOnly}
-          />
-        ) : (
-          <CardTitle
-            className={`text-base font-semibold text-white ${readOnly ? "" : "cursor-pointer"}`}
-            onClick={() => {
-              if (!readOnly) setIsEditingName(true);
-            }}
-          >
-            {group.name}
-          </CardTitle>
-        )}
         <div className="flex items-center gap-2">
+          {isEditingName ? (
+            <Input
+              value={group.name}
+              onChange={(e) => onUpdateGroupName(group.id, e.target.value)}
+              onBlur={() => setIsEditingName(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setIsEditingName(false);
+              }}
+              className="text-base font-semibold bg-transparent border-none focus:ring-0 focus:outline-none text-white"
+              autoFocus
+              disabled={readOnly}
+            />
+          ) : (
+            <CardTitle
+              className={`text-base font-semibold text-white ${readOnly ? "" : "cursor-pointer"}`}
+              onClick={() => {
+                if (!readOnly) setIsEditingName(true);
+              }}
+            >
+              {group.name}
+            </CardTitle>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -105,6 +106,9 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
           <div className="relative">
             <Input
               type="color"
