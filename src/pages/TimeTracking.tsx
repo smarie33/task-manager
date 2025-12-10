@@ -5,6 +5,11 @@ import { useTaskData } from "@/context/task-data-context";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 type AggregatedLog = {
   taskContent: string;
@@ -33,6 +38,7 @@ const TimeTracking: React.FC = () => {
   }, [groups]);
 
   const [selectedOwner, setSelectedOwner] = React.useState<string | null>(null);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   React.useEffect(() => {
     if (!selectedOwner && owners.length > 0) {
@@ -59,9 +65,17 @@ const TimeTracking: React.FC = () => {
         }
       }
     }
+    // Filter by date range if selected
+    if (dateRange?.from || dateRange?.to) {
+      const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+      const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+      const inRange = (d: string) =>
+        (!fromStr || d >= fromStr) && (!toStr || d <= toStr);
+      result = result.filter((l) => inRange(l.date));
+    }
     // sort by date descending
     return result.sort((a, b) => b.date.localeCompare(a.date));
-  }, [groups, selectedOwner]);
+  }, [groups, selectedOwner, dateRange]);
 
   const totalSeconds = logsForOwner.reduce((sum, l) => sum + l.durationSeconds, 0);
 
@@ -70,26 +84,51 @@ const TimeTracking: React.FC = () => {
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Time Tracking</h1>
-          <div className="w-56">
-            <Select
-              value={selectedOwner ?? undefined}
-              onValueChange={(val) => setSelectedOwner(val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a person" />
-              </SelectTrigger>
-              <SelectContent>
-                {owners.length > 0 ? (
-                  owners.map((owner) => (
-                    <SelectItem key={owner} value={owner}>
-                      {owner}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-1 text-sm text-gray-500">No people found</div>
-                )}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3">
+            <div className="w-48 sm:w-56">
+              <Select
+                value={selectedOwner ?? undefined}
+                onValueChange={(val) => setSelectedOwner(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a person" />
+                </SelectTrigger>
+                <SelectContent>
+                  {owners.length > 0 ? (
+                    owners.map((owner) => (
+                      <SelectItem key={owner} value={owner}>
+                        {owner}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-sm text-gray-500">No people found</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[220px] justify-start text-left">
+                  {dateRange?.from && dateRange?.to
+                    ? `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
+                    : "Select date range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+                <div className="flex justify-end gap-2 p-2 border-t">
+                  <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
+                    Clear
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
