@@ -6,7 +6,7 @@ import TaskItem from './TaskItem';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, PaintbrushIcon, Trash2Icon } from 'lucide-react';
+import { PlusIcon, PaintbrushIcon, Trash2Icon, ChevronDown, ChevronRight } from 'lucide-react';
 import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
@@ -45,6 +45,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const { ref: scrollHeaderRef, onScroll: handleHeaderScroll } = useSynchronizedScroll();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
 
   const handleAddTask = () => {
@@ -88,6 +89,15 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           </CardTitle>
         )}
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20"
+            aria-label={isCollapsed ? "Expand group" : "Collapse group"}
+            onClick={() => setIsCollapsed((prev) => !prev)}
+          >
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
           <div className="relative">
             <Input
               type="color"
@@ -136,104 +146,109 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         </div>
       </CardHeader>
 
-      {/* Column Headers */}
-      <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-        {/* Sticky Item Header - First column of the grid */}
-        <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
-          <div className="px-2 truncate">Item</div>
-        </div>
+      {!isCollapsed && (
+        <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+          {/* Sticky Item Header - First column of the grid */}
+          <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
+            <div className="px-2 truncate">Item</div>
+          </div>
 
-        {/* Scrollable Headers - Second column of the grid */}
-        <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
-          <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px]">
-            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-              <div className="px-2 truncate">Owner</div>
+          {/* Scrollable Headers - Second column of the grid */}
+          <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
+            <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px]">
+              <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+                <div className="px-2 truncate">Owner</div>
+              </div>
+              <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+                <div className="px-2 truncate">Status</div>
+              </div>
+              <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+                <div className="px-2 truncate">Timeline</div>
+              </div>
+              <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+                <div className="px-2 truncate">Time Tracking</div>
+              </div>
+              <div className="border-r border-gray-200 dark:border-gray-700 py-2">
+                <div className="px-2 truncate">Tags</div>
+              </div>
+              <div className="py-2"> {/* No right border */}
+                <div className="px-2 truncate text-center">Files</div>
+              </div>
+              <div className="w-14 py-2"></div> {/* Placeholder for action buttons, no border */}
             </div>
-            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-              <div className="px-2 truncate">Status</div>
-            </div>
-            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-              <div className="px-2 truncate">Timeline</div>
-            </div>
-            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-              <div className="px-2 truncate">Time Tracking</div>
-            </div>
-            <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-              <div className="px-2 truncate">Tags</div>
-            </div>
-            <div className="py-2"> {/* No right border */}
-              <div className="px-2 truncate text-center">Files</div>
-            </div>
-            <div className="w-14 py-2"></div> {/* Placeholder for action buttons, no border */}
           </div>
         </div>
-      </div>
+      )}
 
-      <Droppable droppableId={group.id}>
-        {(provided, snapshot) => (
-          <CardContent
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={`p-0 flex-grow ${snapshot.isDraggingOver ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'} transition-colors duration-200`}
-          >
-            {group.tasks.length === 0 && !snapshot.isDraggingOver && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-4">Drag tasks here or add a new one below.</p>
-            )}
-            {group.tasks.map((task, index) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                index={index}
-                groupColor={group.color}
-                onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
-                onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
-                availableStatuses={availableStatuses}
-                setAvailableStatuses={setAvailableStatuses}
-                allTags={allTags}
-                // NEW: pass global tag deletion
-                onDeleteGlobalTag={onDeleteGlobalTag}
-                // NEW: readOnly
-                readOnly={readOnly}
-              />
-            ))}
-            {provided.placeholder}
-          </CardContent>
-        )}
-      </Droppable>
-      <CardFooter className="p-4 border-t bg-white dark:bg-gray-800">
-        <Input
-          type="text"
-          placeholder="Add a new task..."
-          value={newTaskContent}
-          onChange={(e) => setNewTaskContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+      {!isCollapsed && (
+        <Droppable droppableId={group.id}>
+          {(provided, snapshot) => (
+            <CardContent
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={`p-0 flex-grow ${snapshot.isDraggingOver ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'} transition-colors duration-200`}
+            >
+              {group.tasks.length === 0 && !snapshot.isDraggingOver && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-4">Drag tasks here or add a new one below.</p>
+              )}
+              {group.tasks.map((task, index) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  groupColor={group.color}
+                  onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
+                  onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
+                  availableStatuses={availableStatuses}
+                  setAvailableStatuses={setAvailableStatuses}
+                  allTags={allTags}
+                  // NEW: pass global tag deletion
+                  onDeleteGlobalTag={onDeleteGlobalTag}
+                  // NEW: readOnly
+                  readOnly={readOnly}
+                />
+              ))}
+              {provided.placeholder}
+            </CardContent>
+          )}
+        </Droppable>
+      )}
+      {!isCollapsed && (
+        <CardFooter className="p-4 border-t bg-white dark:bg-gray-800">
+          <Input
+            type="text"
+            placeholder="Add a new task..."
+            value={newTaskContent}
+            onChange={(e) => setNewTaskContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (!readOnly) {
+                  if (newTaskContent.trim()) {
+                    onAddTask(group.id, newTaskContent.trim());
+                    setNewTaskContent('');
+                  }
+                }
+              }
+            }}
+            className="flex-grow mr-2"
+            disabled={readOnly}
+          />
+          <Button
+            onClick={() => {
               if (!readOnly) {
                 if (newTaskContent.trim()) {
                   onAddTask(group.id, newTaskContent.trim());
                   setNewTaskContent('');
                 }
               }
-            }
-          }}
-          className="flex-grow mr-2"
-          disabled={readOnly}
-        />
-        <Button
-          onClick={() => {
-            if (!readOnly) {
-              if (newTaskContent.trim()) {
-                onAddTask(group.id, newTaskContent.trim());
-                setNewTaskContent('');
-              }
-            }
-          }}
-          size="icon"
-          disabled={readOnly}
-        >
-          <PlusIcon className="h-4 w-4" />
-        </Button>
-      </CardFooter>
+            }}
+            size="icon"
+            disabled={readOnly}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
