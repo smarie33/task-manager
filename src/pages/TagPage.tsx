@@ -61,10 +61,9 @@ const TagPage: React.FC = () => {
   return (
     <div className="p-6 min-h-screen bg-black">
       <AppHeader />
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white"># {decodedTag}</h1>
-          <div className="w-24" />
+      <div className="max-w-5xl mx-auto pt-4">
+        <div className="flex items-center justify-center mb-6">
+          <h1 className="text-2xl font-bold text-white text-center"># {decodedTag}</h1>
         </div>
 
         {tasksWithTag.length === 0 ? (
