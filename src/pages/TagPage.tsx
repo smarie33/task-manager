@@ -127,16 +127,6 @@ const TagPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">{selected.task.content}</h2>
-                <span
-                  className="text-xs font-medium rounded-md px-2 py-1 border"
-                  style={{
-                    color: selected.groupColor,
-                    backgroundColor: lightenHexColor(selected.groupColor, 0.9),
-                    borderColor: selected.groupColor,
-                  }}
-                >
-                  {selected.groupName}
-                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
