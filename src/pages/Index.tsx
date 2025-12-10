@@ -22,19 +22,26 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <SynchronizedScrollProvider>
-        <div className="w-full flex justify-end items-center gap-3 p-4">
-          <Avatar className="h-9 w-9">
-            {stored?.avatarDataUrl ? (
-              <AvatarImage src={stored.avatarDataUrl} alt={stored?.name || "Profile photo"} />
-            ) : (
-              <AvatarFallback className="text-xs">
-                {initialsFromName(stored?.name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
-          <Button asChild variant="secondary">
-            <Link to="/profile">Profile</Link>
-          </Button>
+        <div className="w-full flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/time-tracking">Time Tracking</Link>
+            </Button>
+          </div>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9">
+              {stored?.avatarDataUrl ? (
+                <AvatarImage src={stored.avatarDataUrl} alt={stored?.name || "Profile photo"} />
+              ) : (
+                <AvatarFallback className="text-xs">
+                  {initialsFromName(stored?.name)}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <Button asChild variant="secondary">
+              <Link to="/profile">Profile</Link>
+            </Button>
+          </div>
         </div>
         <TaskManager />
       </SynchronizedScrollProvider>

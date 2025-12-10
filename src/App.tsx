@@ -9,6 +9,7 @@ import { TaskDataProvider } from "@/context/task-data-context";
 import TagPage from "./pages/TagPage";
 import Profile from "./pages/Profile";
 import { AuthProvider } from "@/context/auth-context";
+import TimeTracking from "./pages/TimeTracking";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/tags/:tagName" element={<TagPage />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/time-tracking" element={<TimeTracking />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
