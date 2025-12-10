@@ -16,6 +16,7 @@ import TimelineCell from './task-item/TimelineCell';
 import TimeTrackingCell from './task-item/TimeTrackingCell';
 import AppDrawer from './AppDrawer';
 import TagsCell from './task-item/TagsCell';
+import FilesCell from './task-item/FilesCell';
 
 interface TaskItemProps {
   task: Task;
@@ -136,6 +137,21 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
 
+  // NEW: helpers to manage files
+  const handleAddFiles = (newFiles: { id: string; name: string; url: string }[]) => {
+    if (readOnly) return;
+    const merged = [...(task.files ?? []), ...newFiles];
+    onUpdateTaskField(task.id, 'files', merged as any);
+    onUpdateTaskField(task.id, 'hasFiles', merged.length > 0 as any);
+  };
+
+  const handleRemoveFile = (id: string) => {
+    if (readOnly) return;
+    const updated = (task.files ?? []).filter((f) => f.id !== id);
+    onUpdateTaskField(task.id, 'files', updated as any);
+    onUpdateTaskField(task.id, 'hasFiles', updated.length > 0 as any);
+  };
+
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly}>
       {(provided, snapshot) => (
@@ -223,9 +239,14 @@ const TaskItem: React.FC<TaskItemProps> = ({
                     />
                   </div>
 
-                  {/* Has Files */}
+                  {/* Files */}
                   <div className="flex justify-center items-center py-2">
-                    {task.hasFiles && <FileIcon className="h-4 w-4 text-gray-500" />}
+                    <FilesCell
+                      files={task.files ?? []}
+                      onAddFiles={handleAddFiles}
+                      onRemoveFile={handleRemoveFile}
+                      disabled={readOnly}
+                    />
                   </div>
 
                   {/* Action Buttons */}

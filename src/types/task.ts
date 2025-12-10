@@ -16,6 +16,8 @@ export interface Task {
   hasFiles: boolean;
   timeLogs?: { durationSeconds: number; date: string }[];
   comments?: { id: string; text: string; createdAt: string; author?: string }[];
+  // NEW: files metadata for uploaded images
+  files?: { id: string; name: string; url: string }[];
 }
 
 export interface TaskGroupData {
