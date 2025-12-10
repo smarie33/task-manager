@@ -5,6 +5,20 @@ export interface StatusOption {
   color: string;
 }
 
+export interface FileMeta {
+  id: string;
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+}
+
+export interface LinkMeta {
+  id: string;
+  url: string;
+  label?: string;
+}
+
 export interface Task {
   id: string;
   content: string; // Item
@@ -16,8 +30,7 @@ export interface Task {
   hasFiles: boolean;
   timeLogs?: { durationSeconds: number; date: string }[];
   comments?: { id: string; text: string; createdAt: string; author?: string }[];
-  // NEW: files metadata for uploaded images
-  files?: { id: string; name: string; url: string }[];
+  files?: FileMeta[]; // UPDATED: include mimeType for image detection
 }
 
 export interface TaskGroupData {

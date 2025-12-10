@@ -5,12 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileImageIcon, UploadIcon, XIcon } from "lucide-react";
-
-type FileMeta = {
-  id: string;
-  name: string;
-  url: string; // object URL
-};
+import { FileMeta } from "@/types/task";
 
 interface FilesCellProps {
   files?: FileMeta[];
@@ -42,12 +37,13 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
         id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2)}`,
         name: f.name,
         url,
+        mimeType: f.type,
+        size: f.size,
       });
     }
     if (newFiles.length > 0) {
       onAddFiles(newFiles);
     }
-    // reset input to allow re-selecting the same file names
     e.target.value = "";
   };
 
@@ -97,7 +93,6 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {files.map((f) => (
                 <div key={f.id} className="relative rounded-md border overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={f.url} alt={f.name} className="w-full h-28 object-cover" />
                   <div className="absolute top-1 right-1">
                     <Button

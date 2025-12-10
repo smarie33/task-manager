@@ -4,10 +4,84 @@ import React from "react";
 import { useTaskData } from "@/context/task-data-context";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { FileIcon, LinkIcon, UploadIcon } from "lucide-react";
+import { FileMeta } from "@/types/task";
+import { v4 as uuidv4 } from "uuid";
+import { showSuccess, showError } from "@/utils/toast";
 
 const Files: React.FC = () => {
-  const { groups } = useTaskData();
+  const { groups, libraryFiles, setLibraryFiles, externalLinks, setExternalLinks } = useTaskData();
 
+  // Gather any non-image files from tasks (future-proof; currently FilesCell adds images only)
+  const taskNonImageFiles = React.useMemo<FileMeta[]>(() => {
+    return groups.flatMap((g) =>
+      g.tasks.flatMap((t) => (t.files ?? []).filter((f) => !(f.mimeType ?? "").startsWith("image/")))
+    );
+  }, [groups]);
+
+  // Combine global library files with any task non-images
+  const nonImageFiles = React.useMemo<FileMeta[]>(() => {
+    return [...libraryFiles, ...taskNonImageFiles];
+  }, [libraryFiles, taskNonImageFiles]);
+
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [newLinkUrl, setNewLinkUrl] = React.useState("");
+  const [newLinkLabel, setNewLinkLabel] = React.useState("");
+
+  const pickFiles = () => fileInputRef.current?.click();
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list || list.length === 0) return;
+
+    const added: FileMeta[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list.item(i);
+      if (!f) continue;
+      // Skip images; only add non-image files to the Files page library
+      if ((f.type ?? "").startsWith("image/")) continue;
+      const url = URL.createObjectURL(f);
+      added.push({
+        id: uuidv4(),
+        name: f.name,
+        url,
+        mimeType: f.type,
+        size: f.size,
+      });
+    }
+
+    if (added.length > 0) {
+      setLibraryFiles((prev) => [...prev, ...added]);
+      showSuccess(`${added.length} file${added.length > 1 ? "s" : ""} uploaded`);
+    } else {
+      showError("Please select non-image files");
+    }
+
+    e.target.value = "";
+  };
+
+  const handleAddLink = () => {
+    const url = newLinkUrl.trim();
+    const label = newLinkLabel.trim();
+    if (!url) {
+      showError("URL is required");
+      return;
+    }
+    const isValid = /^https?:\/\/.+/i.test(url);
+    if (!isValid) {
+      showError("Please enter a valid http(s) URL");
+      return;
+    }
+    setExternalLinks((prev) => [...prev, { id: uuidv4(), url, label }]);
+    setNewLinkUrl("");
+    setNewLinkLabel("");
+    showSuccess("Link added");
+  };
+
+  // Existing tasks with hasFiles for legacy display
   const tasksWithFiles = React.useMemo(() => {
     return groups.flatMap((g) =>
       g.tasks
@@ -20,7 +94,123 @@ const Files: React.FC = () => {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <AppHeader />
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6">Files</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">Files</h1>
+
+        {/* Uploader for non-image files */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFilesSelected}
+          />
+          <Button onClick={pickFiles} className="w-full sm:w-auto">
+            <UploadIcon className="h-4 w-4 mr-2" />
+            Upload non-image files
+          </Button>
+
+          <div className="flex-1" />
+
+          {/* Add external link */}
+          <div className="flex w-full sm:w-auto gap-2">
+            <Input
+              placeholder="https://example.com/resource"
+              value={newLinkUrl}
+              onChange={(e) => setNewLinkUrl(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              placeholder="Label (optional)"
+              value={newLinkLabel}
+              onChange={(e) => setNewLinkLabel(e.target.value)}
+              className="w-40"
+            />
+            <Button onClick={handleAddLink}>
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Add Link
+            </Button>
+          </div>
+        </div>
+
+        {/* Non-image files list */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            Files (non-images)
+          </h2>
+          {nonImageFiles.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">No non-image files uploaded yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {nonImageFiles.map((f) => (
+                <Card key={f.id} className="shadow-sm">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileIcon className="h-4 w-4 text-gray-500" />
+                      <span className="truncate">{f.name}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-muted-foreground">Type</p>
+                        <p>{f.mimeType || "Unknown"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Size</p>
+                        <p>{typeof f.size === "number" ? `${Math.round(f.size / 1024)} KB` : "N/A"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <a
+                          href={f.url}
+                          download={f.name}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Download / Open
+                        </a>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* External Sources */}
+        <Separator className="my-6" />
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">External Sources</h2>
+          {externalLinks.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">No links added yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {externalLinks.map((l) => (
+                <div key={l.id} className="flex items-center justify-between rounded-md border p-3 bg-white dark:bg-gray-800">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {l.label || l.url}
+                    </p>
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all"
+                    >
+                      {l.url}
+                    </a>
+                  </div>
+                  <LinkIcon className="h-4 w-4 text-gray-500 ml-3 flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Existing task cards (unchanged) */}
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tasks with Files</h2>
         {tasksWithFiles.length === 0 ? (
           <p className="text-sm text-gray-600 dark:text-gray-400">No tasks with files yet.</p>
         ) : (

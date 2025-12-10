@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { v4 as uuidv4 } from 'uuid';
 import { Trash2Icon, PencilIcon, FileIcon } from 'lucide-react';
 import { cn, lightenHexColor, darkenHexColor } from '@/lib/utils';
-import { Task, StatusOption } from '@/types/task';
+import { Task, StatusOption, FileMeta } from '@/types/task';
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
 import StatusCell from './task-item/StatusCell';
 import TimelineCell from './task-item/TimelineCell';
@@ -138,7 +138,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const editingBackgroundColor = editingField ? lightenHexColor(groupColor, 0.75) : undefined;
 
   // NEW: helpers to manage files
-  const handleAddFiles = (newFiles: { id: string; name: string; url: string }[]) => {
+  const handleAddFiles = (newFiles: FileMeta[]) => {
     if (readOnly) return;
     const merged = [...(task.files ?? []), ...newFiles];
     onUpdateTaskField(task.id, 'files', merged as any);

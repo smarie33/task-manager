@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
-import { StatusOption, TaskGroupData } from "@/types/task";
+import { StatusOption, TaskGroupData, FileMeta, LinkMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
 
 const initialStatuses: StatusOption[] = [
@@ -92,6 +92,11 @@ type TaskDataContextValue = {
   setGroups: React.Dispatch<React.SetStateAction<TaskGroupData[]>>;
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
+  // NEW: global files and links for Files page
+  libraryFiles: FileMeta[];
+  setLibraryFiles: React.Dispatch<React.SetStateAction<FileMeta[]>>;
+  externalLinks: LinkMeta[];
+  setExternalLinks: React.Dispatch<React.SetStateAction<LinkMeta[]>>;
 };
 
 const TaskDataContext = createContext<TaskDataContextValue | undefined>(undefined);
@@ -99,9 +104,23 @@ const TaskDataContext = createContext<TaskDataContextValue | undefined>(undefine
 export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [groups, setGroups] = useState<TaskGroupData[]>(initialGroups);
   const [availableStatuses, setAvailableStatuses] = useState<StatusOption[]>(initialStatuses);
+  // NEW: global library for non-image files and external links
+  const [libraryFiles, setLibraryFiles] = useState<FileMeta[]>([]);
+  const [externalLinks, setExternalLinks] = useState<LinkMeta[]>([]);
 
   return (
-    <TaskDataContext.Provider value={{ groups, setGroups, availableStatuses, setAvailableStatuses }}>
+    <TaskDataContext.Provider
+      value={{
+        groups,
+        setGroups,
+        availableStatuses,
+        setAvailableStatuses,
+        libraryFiles,
+        setLibraryFiles,
+        externalLinks,
+        setExternalLinks,
+      }}
+    >
       {children}
     </TaskDataContext.Provider>
   );
