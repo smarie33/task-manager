@@ -13,6 +13,7 @@ import type { DateRange } from "react-day-picker";
 import { usePayroll, PaymentSettings } from "@/context/payroll-context";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import AppHeader from "@/components/AppHeader";
 
 type AggregatedLog = {
   taskContent: string;
@@ -171,6 +172,7 @@ const TimeTracking: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <AppHeader />
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Time Tracking</h1>

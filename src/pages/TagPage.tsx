@@ -11,6 +11,7 @@ import { Task } from "@/types/task";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { v4 as uuidv4 } from "uuid";
+import AppHeader from "@/components/AppHeader";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
@@ -60,6 +61,7 @@ const TagPage: React.FC = () => {
 
   return (
     <div className="p-6 min-h-screen bg-black">
+      <AppHeader />
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Button variant="outline" onClick={() => navigate("/")}>
