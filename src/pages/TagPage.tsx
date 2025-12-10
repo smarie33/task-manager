@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTaskData } from "@/context/task-data-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import AppHeader from "@/components/AppHeader";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
-  const navigate = useNavigate();
   const { groups, setGroups, availableStatuses } = useTaskData();
 
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
@@ -64,9 +63,6 @@ const TagPage: React.FC = () => {
       <AppHeader />
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={() => navigate("/")}>
-            ← Back to Task Manager
-          </Button>
           <h1 className="text-2xl font-bold text-white"># {decodedTag}</h1>
           <div className="w-24" />
         </div>
