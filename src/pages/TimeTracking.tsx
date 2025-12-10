@@ -51,7 +51,7 @@ const TimeTracking: React.FC = () => {
 
   const logsForOwner = React.useMemo<AggregatedLog[]>(() => {
     if (!selectedOwner) return [];
-    const result: AggregatedLog[] = [];
+    let result: AggregatedLog[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
         if ((t.owner || "").trim() === selectedOwner) {
