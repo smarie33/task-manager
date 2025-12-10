@@ -11,6 +11,8 @@ export interface FileMeta {
   url: string;
   mimeType?: string;
   size?: number;
+  // ADDED: creation timestamp for sorting by date
+  createdAt?: string;
 }
 
 export interface LinkMeta {

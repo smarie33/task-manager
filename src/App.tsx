@@ -13,6 +13,7 @@ import TimeTracking from "./pages/TimeTracking";
 import { PayrollProvider } from "@/context/payroll-context";
 import Files from "./pages/Files";
 import Tags from "./pages/Tags";
+import Images from "./pages/Images";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/time-tracking" element={<TimeTracking />} />
                 <Route path="/files" element={<Files />} />
+                <Route path="/images" element={<Images />} />
                 <Route path="/tags" element={<Tags />} />
                 <Route path="/tags/:tagName" element={<TagPage />} />
                 <Route path="/profile" element={<Profile />} />

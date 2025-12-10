@@ -36,6 +36,9 @@ const AppHeader: React.FC = () => {
               <Link to="/files">Files</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link to="/images">Images</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link to="/tags">Tags</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -39,6 +39,7 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
         url,
         mimeType: f.type,
         size: f.size,
+        createdAt: new Date(f.lastModified || Date.now()).toISOString(),
       });
     }
     if (newFiles.length > 0) {
