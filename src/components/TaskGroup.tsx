@@ -22,10 +22,11 @@ interface TaskGroupProps {
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
   allTags: string[];
-  // NEW: global delete for tags
   onDeleteGlobalTag: (tag: string) => void;
-  // NEW: readOnly flag
   readOnly?: boolean;
+  // NEW: controlled collapse support
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -39,14 +40,20 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   availableStatuses,
   setAvailableStatuses,
   allTags,
-  onDeleteGlobalTag, // NEW
+  onDeleteGlobalTag,
   readOnly = false,
+  // NEW: controlled collapse props
+  isCollapsed: isCollapsedProp,
+  onToggleCollapse,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const { ref: scrollHeaderRef, onScroll: handleHeaderScroll } = useSynchronizedScroll();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Use controlled collapsed value if provided, otherwise local state
+  const collapsed = typeof isCollapsedProp === 'boolean' ? isCollapsedProp : isCollapsed;
+  const toggleCollapsed = onToggleCollapse ?? (() => setIsCollapsed((prev) => !prev));
 
   const handleAddTask = () => {
     if (newTaskContent.trim()) {
@@ -93,10 +100,10 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/20"
-            aria-label={isCollapsed ? "Expand group" : "Collapse group"}
-            onClick={() => setIsCollapsed((prev) => !prev)}
+            aria-label={collapsed ? "Expand group" : "Collapse group"}
+            onClick={toggleCollapsed}
           >
-            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
           <div className="relative">
             <Input
@@ -146,7 +153,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         </div>
       </CardHeader>
 
-      {!isCollapsed && (
+      {!collapsed && (
         <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
           {/* Sticky Item Header - First column of the grid */}
           <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
@@ -171,16 +178,16 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
                 <div className="px-2 truncate">Tags</div>
               </div>
-              <div className="py-2"> {/* No right border */}
+              <div className="py-2">
                 <div className="px-2 truncate text-center">Files</div>
               </div>
-              <div className="w-14 py-2"></div> {/* Placeholder for action buttons, no border */}
+              <div className="w-14 py-2"></div>
             </div>
           </div>
         </div>
       )}
 
-      {!isCollapsed && (
+      {!collapsed && (
         <Droppable droppableId={group.id}>
           {(provided, snapshot) => (
             <CardContent
@@ -202,9 +209,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                   availableStatuses={availableStatuses}
                   setAvailableStatuses={setAvailableStatuses}
                   allTags={allTags}
-                  // NEW: pass global tag deletion
                   onDeleteGlobalTag={onDeleteGlobalTag}
-                  // NEW: readOnly
                   readOnly={readOnly}
                 />
               ))}
@@ -213,7 +218,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           )}
         </Droppable>
       )}
-      {!isCollapsed && (
+      {!collapsed && (
         <CardFooter className="p-4 border-t bg-white dark:bg-gray-800">
           <Input
             type="text"

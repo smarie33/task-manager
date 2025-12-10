@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useTaskData } from "@/context/task-data-context";
 import { Task, StatusOption } from "@/types/task";
@@ -16,6 +16,47 @@ const TaskManager: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState("");
   const { role } = useAuth();
   const readOnly = role === "Viewer";
+
+  // NEW: collapsed state per group with localStorage persistence
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem("collapsedGroups") : null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Record<string, boolean>;
+        return parsed;
+      } catch {
+        // fall through to default
+      }
+    }
+    return Object.fromEntries(groups.map((g) => [g.id, false]));
+  });
+
+  useEffect(() => {
+    // ensure keys exist for all groups and remove stale ones
+    setCollapsedGroups((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const g of groups) {
+        next[g.id] = prev[g.id] ?? false;
+      }
+      return next;
+    });
+  }, [groups]);
+
+  useEffect(() => {
+    window.localStorage.setItem("collapsedGroups", JSON.stringify(collapsedGroups));
+  }, [collapsedGroups]);
+
+  const collapseAll = () => {
+    setCollapsedGroups(Object.fromEntries(groups.map((g) => [g.id, true])));
+  };
+
+  const expandAll = () => {
+    setCollapsedGroups(Object.fromEntries(groups.map((g) => [g.id, false])));
+  };
+
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
 
   // ALL TAGS: collect unique tags across all tasks
   const allTags = Array.from(new Set(groups.flatMap((g) => g.tasks.flatMap((t) => t.tags)))).sort();
@@ -172,6 +213,16 @@ const TaskManager: React.FC = () => {
             <PlusIcon className="h-4 w-4 mr-2" /> Add Group
           </Button>
         </div>
+
+        {/* NEW: global collapse/expand controls (allowed in readOnly) */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={collapseAll}>
+            <ChevronDown className="h-4 w-4 mr-2" /> Collapse All
+          </Button>
+          <Button variant="outline" onClick={expandAll}>
+            <ChevronUp className="h-4 w-4 mr-2" /> Expand All
+          </Button>
+        </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col items-center gap-6 pb-4">
@@ -190,6 +241,9 @@ const TaskManager: React.FC = () => {
               allTags={allTags}
               onDeleteGlobalTag={handleDeleteGlobalTag}
               readOnly={readOnly}
+              // NEW: controlled collapse per group
+              isCollapsed={collapsedGroups[group.id] ?? false}
+              onToggleCollapse={() => toggleGroupCollapse(group.id)}
             />
           ))}
         </div>
