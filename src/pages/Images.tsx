@@ -2,6 +2,7 @@
 
 import React from "react";
 import AppHeader from "@/components/AppHeader";
+import AppDrawer from "@/components/AppDrawer";
 import { useTaskData } from "@/context/task-data-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ const Images: React.FC = () => {
   const [query, setQuery] = React.useState("");
   const [sortKey, setSortKey] = React.useState<SortKey>("date");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
+  const [selected, setSelected] = React.useState<ImageRecord | null>(null);
 
   const filteredSorted = React.useMemo<ImageRecord[]>(() => {
     const q = query.trim().toLowerCase();
@@ -114,7 +116,16 @@ const Images: React.FC = () => {
                   <CardTitle className="text-base truncate">{file.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
-                  <div className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800">
+                  <div
+                    className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelected({ file, task, groupName })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") setSelected({ file, task, groupName });
+                    }}
+                    aria-label={`Open details for ${file.name}`}
+                  >
                     <img
                       src={file.url}
                       alt={file.name}
@@ -149,6 +160,54 @@ const Images: React.FC = () => {
             ))}
           </div>
         )}
+
+        <AppDrawer
+          open={!!selected}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          title="Image Details"
+        >
+          {selected && (
+            <div className="space-y-4">
+              <div className="rounded-md border overflow-hidden bg-white dark:bg-gray-800">
+                <img
+                  src={selected.file.url}
+                  alt={selected.file.name}
+                  className="w-full max-h-[60vh] object-contain bg-black/5"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Name</p>
+                  <p className="break-all">{selected.file.name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <p className="break-all">{selected.file.mimeType || "Unknown"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Date Uploaded</p>
+                  <p>{selected.file.createdAt ? new Date(selected.file.createdAt).toLocaleString() : "Unknown"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Task</p>
+                  <p className="truncate">{selected.task.content} <span className="text-xs text-muted-foreground">({selected.groupName})</span></p>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button asChild variant="outline">
+                  <a href={selected.file.url} target="_blank" rel="noreferrer">
+                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                    Open Original
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+        </AppDrawer>
       </div>
     </div>
   );
