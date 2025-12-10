@@ -183,7 +183,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 <div className="px-2 truncate">Tags</div>
               </div>
               <div className="py-2">
-                <div className="px-2 truncate text-center">Files</div>
+                <div className="px-2 truncate text-center">Images</div>
               </div>
               <div className="w-14 py-2"></div>
             </div>
