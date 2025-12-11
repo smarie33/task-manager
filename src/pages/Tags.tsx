@@ -23,11 +23,11 @@ const Tags: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {allTags.map((tag) => (
-              <Card key={tag} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <Link to={`/tags/${encodeURIComponent(tag)}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                  #{tag}
-                </Link>
-              </Card>
+              <Link key={tag} to={`/tags/${encodeURIComponent(tag)}`} className="block">
+                <Card className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" role="link" aria-label={`View tag ${tag}`}>
+                  <span className="text-blue-600 dark:text-blue-400 hover:underline">#{tag}</span>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
