@@ -17,6 +17,7 @@ import EditableCell from "./task-item/EditableCell";
 import DrawerEditSection from "./task-item/drawer/DrawerEditSection";
 import DrawerImagesSection from "./task-item/drawer/DrawerImagesSection";
 import CommentsSection from "./task-item/drawer/CommentsSection";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface TaskItemProps {
   task: Task;
@@ -257,15 +258,22 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 </div>
               </div>
 
-              {/* Editable section */}
-              <DrawerEditSection
-                task={task}
-                availableStatuses={availableStatuses}
-                allTags={allTags}
-                onDeleteGlobalTag={onDeleteGlobalTag}
-                onUpdateTaskField={onUpdateTaskField}
-                readOnly={readOnly}
-              />
+              {/* Editable section collapsed behind accordion */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="edit">
+                  <AccordionTrigger>Edit Details</AccordionTrigger>
+                  <AccordionContent>
+                    <DrawerEditSection
+                      task={task}
+                      availableStatuses={availableStatuses}
+                      allTags={allTags}
+                      onDeleteGlobalTag={onDeleteGlobalTag}
+                      onUpdateTaskField={onUpdateTaskField}
+                      readOnly={readOnly}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Images thumbnails */}
               <DrawerImagesSection images={taskImages} />

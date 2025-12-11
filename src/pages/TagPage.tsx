@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { v4 as uuidv4 } from "uuid";
 import AppHeader from "@/components/AppHeader";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
@@ -157,26 +158,33 @@ const TagPage: React.FC = () => {
               </div>
 
               {/* Item editable area (same functionality as Task Manager drawer) */}
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Item</p>
-                <Textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  className="min-h-[120px]"
-                  placeholder="Enter item text..."
-                />
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => {
-                      if (editedContent !== selected.task.content) {
-                        updateSelectedTaskField("content", editedContent);
-                      }
-                    }}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="edit">
+                  <AccordionTrigger>Edit Details</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Item</p>
+                      <Textarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        className="min-h-[120px]"
+                        placeholder="Enter item text..."
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => {
+                            if (editedContent !== selected.task.content) {
+                              updateSelectedTaskField("content", editedContent);
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Comments section (same functionality as Task Manager drawer) */}
               <div className="space-y-3">
