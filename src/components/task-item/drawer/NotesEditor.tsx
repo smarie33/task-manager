@@ -106,11 +106,60 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
 
   const insertChecklistItem = () => {
     if (disabled) return;
-    const html =
-      '<div class="flex items-center gap-2 leading-6"><input type="checkbox" class="align-middle"/><span>Checklist item</span></div>';
-    document.execCommand("insertHTML", false, html);
-    saveSelection();
-    onChange(editorRef.current?.innerHTML || "");
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let range = sel.getRangeAt(0);
+    if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) return;
+
+    // If there's highlighted text, convert it into one or more checklist lines.
+    const selectedText = sel.toString();
+    if (selectedText && selectedText.trim().length > 0 && !sel.isCollapsed) {
+      const lines = selectedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const nodes: HTMLElement[] = [];
+      for (const line of lines) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex items-center gap-2 leading-6";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "align-middle";
+        const text = document.createElement("span");
+        text.textContent = line || "Checklist item";
+        wrapper.appendChild(cb);
+        wrapper.appendChild(text);
+        nodes.push(wrapper);
+      }
+
+      // Replace selection with the checklist items (preserving order)
+      range.deleteContents();
+      let lastNode: Node | null = null;
+      for (const n of nodes) {
+        range.insertNode(n);
+        lastNode = n;
+        // Move range after the inserted node to keep appending in order
+        range.setStartAfter(n);
+        range.setEndAfter(n);
+      }
+
+      // Place caret after the last inserted node
+      const newRange = document.createRange();
+      if (lastNode) {
+        newRange.setStartAfter(lastNode);
+        newRange.setEndAfter(lastNode);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        savedRangeRef.current = newRange;
+      }
+      onChange(editorRef.current?.innerHTML || "");
+      editorRef.current?.focus();
+    } else {
+      // No selection: insert a default checklist line at caret
+      const html =
+        '<div class="flex items-center gap-2 leading-6"><input type="checkbox" class="align-middle"/><span>Checklist item</span></div>';
+      document.execCommand("insertHTML", false, html);
+      saveSelection();
+      onChange(editorRef.current?.innerHTML || "");
+    }
   };
 
   const normalizeUrl = (u: string) => {
