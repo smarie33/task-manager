@@ -14,6 +14,7 @@ import DrawerEditSection from "@/components/task-item/drawer/DrawerEditSection";
 import DrawerImagesSection from "@/components/task-item/drawer/DrawerImagesSection";
 import CommentsSection from "@/components/task-item/drawer/CommentsSection";
 import { useAuth } from "@/context/auth-context";
+import NotesEditor from "@/components/task-item/drawer/NotesEditor";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
@@ -211,6 +212,19 @@ const TagPage: React.FC = () => {
                     {selected.task.tags.length ? selected.task.tags.join(", ") : "N/A"}
                   </p>
                 </div>
+              </div>
+
+              {/* Notes above Edit Details */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                <NotesEditor
+                  value={selected.task.notes || ""}
+                  onChange={(html) => {
+                    if (readOnly) return;
+                    updateSelectedTaskField("notes", html);
+                  }}
+                  disabled={readOnly}
+                />
               </div>
 
               {/* Edit Details accordion (same component as Task Manager) */}

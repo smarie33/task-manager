@@ -17,6 +17,7 @@ import EditableCell from "./task-item/EditableCell";
 import DrawerEditSection from "./task-item/drawer/DrawerEditSection";
 import DrawerImagesSection from "./task-item/drawer/DrawerImagesSection";
 import CommentsSection from "./task-item/drawer/CommentsSection";
+import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface TaskItemProps {
@@ -300,6 +301,19 @@ const TaskItem: React.FC<TaskItemProps> = ({
                   <p className="text-sm text-muted-foreground">Tags</p>
                   <p className="text-sm">{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
                 </div>
+              </div>
+
+              {/* Notes above Edit Details */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                <NotesEditor
+                  value={task.notes || ""}
+                  onChange={(html) => {
+                    if (readOnly) return;
+                    onUpdateTaskField(task.id, "notes", html as Task["notes"]);
+                  }}
+                  disabled={readOnly}
+                />
               </div>
 
               {/* Edit Details accordion without item editing */}

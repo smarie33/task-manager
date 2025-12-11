@@ -10,7 +10,6 @@ import { format, parseISO, isValid } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import TagsCell from "@/components/task-item/TagsCell";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
-import NotesEditor from "./NotesEditor";
 
 type DrawerEditSectionProps = {
   task: Task;
@@ -194,17 +193,7 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
         />
       </div>
 
-      <div>
-        <p className="text-xs text-muted-foreground mb-1">Notes</p>
-        <NotesEditor
-          value={task.notes || ""}
-          onChange={(html) => {
-            if (readOnly) return;
-            onUpdateTaskField(task.id, "notes", html as Task["notes"]);
-          }}
-          disabled={readOnly}
-        />
-      </div>
+      // REMOVED: Notes editor here. Notes now appears above Edit Details in the drawer.
     </div>
   );
 };
