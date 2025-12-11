@@ -15,6 +15,7 @@ import {
   Palette,
   Type as TypeIcon,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 type NotesEditorProps = {
   value: string;
@@ -27,6 +28,8 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const [color, setColor] = React.useState<string>("#000000");
   const [fontSize, setFontSize] = React.useState<number>(14);
   const savedRangeRef = React.useRef<Range | null>(null);
+  const [linkOpen, setLinkOpen] = React.useState(false);
+  const [linkUrl, setLinkUrl] = React.useState("");
 
   const saveSelection = () => {
     const sel = window.getSelection();
@@ -72,10 +75,12 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       span.appendChild(contents);
       range.insertNode(span);
       const newRange = document.createRange();
-      newRange.selectNodeContents(span);
-      newRange.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(newRange);
+      newRange.selectNodeContents(span); // keep selection highlighted across the styled span
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
       savedRangeRef.current = newRange;
     }
     onChange(editorRef.current?.innerHTML || "");
@@ -102,23 +107,43 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const insertChecklistItem = () => {
     if (disabled) return;
     const html =
-      '<div class="flex items-start gap-2"><input type="checkbox"/><span>Checklist item</span></div>';
+      '<div class="flex items-center gap-2 leading-6"><input type="checkbox" class="align-middle"/><span>Checklist item</span></div>';
     document.execCommand("insertHTML", false, html);
     saveSelection();
     onChange(editorRef.current?.innerHTML || "");
   };
 
-  const handleCreateLink = () => {
+  const normalizeUrl = (u: string) => {
+    const t = u.trim();
+    if (!t) return "";
+    if (/^https?:\/\//i.test(t)) return t;
+    return `https://${t}`;
+  };
+
+  const openLinkDialog = () => {
     if (disabled) return;
-    const urlRaw = window.prompt("Enter URL");
-    if (!urlRaw) return;
-    const url = urlRaw.trim();
-    if (!url) return;
+    saveSelection();
+    setLinkUrl("");
+    setLinkOpen(true);
+  };
+
+  const applyLink = () => {
+    const url = normalizeUrl(linkUrl);
+    if (!url) {
+      setLinkOpen(false);
+      return;
+    }
     restoreSelection();
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+    if (!sel || sel.rangeCount === 0) {
+      setLinkOpen(false);
+      return;
+    }
     let range = sel.getRangeAt(0);
-    if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) return;
+    if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) {
+      setLinkOpen(false);
+      return;
+    }
     const a = document.createElement("a");
     a.href = url;
     a.target = "_blank";
@@ -138,14 +163,14 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       a.appendChild(contents);
       range.insertNode(a);
       const newRange = document.createRange();
-      newRange.setStartAfter(a);
-      newRange.collapse(true);
+      newRange.selectNode(a);
       sel.removeAllRanges();
       sel.addRange(newRange);
       savedRangeRef.current = newRange;
     }
     onChange(editorRef.current?.innerHTML || "");
     editorRef.current?.focus();
+    setLinkOpen(false);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,6 +212,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
             disabled={disabled}
             className="h-8 w-8 p-0 border-0 bg-transparent cursor-pointer"
             aria-label="Font color"
+            onMouseDown={saveSelection}
           />
         </div>
 
@@ -202,6 +228,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
             disabled={disabled}
             className="h-8 w-20"
             aria-label="Font size"
+            onMouseDown={saveSelection}
           />
         </div>
 
@@ -212,17 +239,39 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
           <Button variant="ghost" size="icon" onClick={() => exec("insertUnorderedList")} disabled={disabled} aria-label="Bullet list">
             <List className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={insertChecklistItem} disabled={disabled} aria-label="Checklist">
+          <Button variant="ghost" size="icon" onClick={insertChecklistItem} disabled={disabled} aria-label="Checklist" onMouseDown={saveSelection}>
             <CheckSquare className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={handleCreateLink} disabled={disabled} aria-label="Add link">
+          <Button variant="ghost" size="icon" onMouseDown={saveSelection} onClick={openLinkDialog} disabled={disabled} aria-label="Add link">
             <LinkIcon className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Link dialog */}
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a link</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setLinkOpen(false)}>Cancel</Button>
+            <Button onClick={applyLink}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div
         ref={editorRef}

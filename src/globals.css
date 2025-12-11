@@ -147,4 +147,11 @@
   .notes-prose ul ul ul {
     list-style-type: square;
   }
+
+  /* Align checkboxes nicely with text in Notes editor */
+  .notes-prose input[type="checkbox"] {
+    vertical-align: middle;
+    transform: translateY(0.12em);
+    margin: 0;
+  }
 }
