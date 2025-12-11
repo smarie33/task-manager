@@ -51,7 +51,8 @@ const TagPage: React.FC = () => {
   const decodedTag = decodeURIComponent(tagName);
   const tasksWithTag = groups
     .flatMap((g) => g.tasks.map((t) => ({ task: t, groupId: g.id, groupName: g.name, groupColor: g.color })))
-    .filter(({ task }) => task.tags.includes(decodedTag));
+    .filter(({ task }) => task.tags.includes(decodedTag))
+    .sort((a, b) => a.task.content.localeCompare(b.task.content, undefined, { sensitivity: "base" }));
 
   React.useEffect(() => {
     if (selected) {
