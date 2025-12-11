@@ -2,10 +2,10 @@
 
 import React from "react";
 import { Task } from "@/types/task";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
+import { loadProfile } from "@/utils/profile-storage";
 
 type CommentsSectionProps = {
   taskId: string;
@@ -21,7 +21,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   readOnly = false,
 }) => {
   const [newCommentText, setNewCommentText] = React.useState("");
-  const [newCommentAuthor, setNewCommentAuthor] = React.useState("");
+  const profile = loadProfile();
 
   return (
     <div className="space-y-3">
@@ -55,20 +55,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
           className="min-h-[80px]"
           disabled={readOnly}
         />
-        <Input
-          value={newCommentAuthor}
-          onChange={(e) => setNewCommentAuthor(e.target.value)}
-          placeholder="Your name (optional)"
-          className="h-9"
-          disabled={readOnly}
-        />
         <div className="flex justify-end">
           <Button
             variant="default"
             onClick={() => {
               const text = newCommentText.trim();
               if (!text) return;
-              const author = newCommentAuthor.trim() || "Anonymous";
+              const author = (profile?.name || "").trim() || "Anonymous";
               const newComment = {
                 id: uuidv4(),
                 text,
@@ -78,7 +71,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
               const updated = [...(comments ?? []), newComment];
               onUpdateTaskField(taskId, "comments", updated as Task["comments"]);
               setNewCommentText("");
-              setNewCommentAuthor("");
             }}
             disabled={readOnly}
           >

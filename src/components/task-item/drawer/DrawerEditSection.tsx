@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Task, StatusOption } from "@/types/task";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, isValid } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import TagsCell from "@/components/task-item/TagsCell";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 type DrawerEditSectionProps = {
   task: Task;
@@ -29,10 +29,19 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
   readOnly = false,
 }) => {
   const [editedOwner, setEditedOwner] = React.useState(task.owner || "");
-  const [editedContent, setEditedContent] = React.useState(task.content || "");
-
   React.useEffect(() => setEditedOwner(task.owner || ""), [task.owner]);
-  React.useEffect(() => setEditedContent(task.content || ""), [task.content]);
+  const { users } = useAdminUsers();
+  const activeNames = React.useMemo(
+    () => users.filter((u) => u.status === "active").map((u) => u.name).sort((a, b) => a.localeCompare(b)),
+    [users]
+  );
+  // Ensure current owner appears in the list if it's not an active user (to display value properly)
+  const ownerOptions = React.useMemo(() => {
+    if (editedOwner && !activeNames.includes(editedOwner)) {
+      return [editedOwner, ...activeNames];
+    }
+    return activeNames;
+  }, [activeNames, editedOwner]);
 
   const selectedDateRange: DateRange | undefined = React.useMemo(() => {
     const t = task.timeline || "";
@@ -49,6 +58,23 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
     }
     return undefined;
   }, [task.timeline]);
+
+  const formatTimelineDisplay = (val: string): string => {
+    if (!val) return "Select date or range";
+    const parts = val.split(" - ");
+    const fmt = (d: Date) => format(d, "MMM d");
+    if (parts.length === 2) {
+      const from = parseISO(parts[0]);
+      const to = parseISO(parts[1]);
+      if (isValid(from) && isValid(to)) {
+        const sameMonth = from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth();
+        return sameMonth ? `${fmt(from)} - ${format(to, "d")}` : `${fmt(from)} - ${fmt(to)}`;
+      }
+      return val;
+    }
+    const single = parseISO(parts[0]);
+    return isValid(single) ? fmt(single) : val;
+  };
 
   const handleTimelineSelect = (range: DateRange | undefined) => {
     let newTimelineString = "";
@@ -68,25 +94,31 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <p className="text-xs text-muted-foreground mb-1">Owner</p>
-          <Input
-            value={editedOwner}
-            onChange={(e) => setEditedOwner(e.target.value)}
-            onBlur={() => {
-              if (!readOnly && editedOwner !== task.owner) {
-                onUpdateTaskField(task.id, "owner", editedOwner as Task["owner"]);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (!readOnly && editedOwner !== task.owner) {
-                  onUpdateTaskField(task.id, "owner", editedOwner as Task["owner"]);
-                }
-              }
+          <Select
+            value={editedOwner || ""}
+            onValueChange={(val) => {
+              if (readOnly) return;
+              const next = val === "__none__" ? "" : val;
+              setEditedOwner(next);
+              onUpdateTaskField(task.id, "owner", next as Task["owner"]);
             }}
             disabled={readOnly}
-            className="h-9"
-            placeholder="Owner name"
-          />
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Select owner" />
+            </SelectTrigger>
+            <SelectContent>
+              {ownerOptions.length === 0 ? (
+                <SelectItem value="__none__">No active users</SelectItem>
+              ) : (
+                ownerOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -114,12 +146,12 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
       <div>
         <p className="text-xs text-muted-foreground mb-1">Timeline</p>
         {readOnly ? (
-          <div className="text-sm">{task.timeline || "N/A"}</div>
+          <div className="text-sm">{task.timeline ? formatTimelineDisplay(task.timeline) : "N/A"}</div>
         ) : (
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="h-9 justify-start text-left w-full">
-                {task.timeline ? task.timeline : "Select date or range"}
+                {formatTimelineDisplay(task.timeline || "")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

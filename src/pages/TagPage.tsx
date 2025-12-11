@@ -4,25 +4,43 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTaskData } from "@/context/task-data-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { lightenHexColor } from "@/lib/utils";
 import AppDrawer from "@/components/AppDrawer";
 import { Task } from "@/types/task";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { v4 as uuidv4 } from "uuid";
 import AppHeader from "@/components/AppHeader";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import DrawerEditSection from "@/components/task-item/drawer/DrawerEditSection";
+import DrawerImagesSection from "@/components/task-item/drawer/DrawerImagesSection";
+import CommentsSection from "@/components/task-item/drawer/CommentsSection";
+import { useAuth } from "@/context/auth-context";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
   const { groups, setGroups, availableStatuses } = useTaskData();
+  const { role } = useAuth();
+  const readOnly = role === "Viewer";
 
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
   const [isEditingInline, setIsEditingInline] = useState(false);
-  const [newCommentText, setNewCommentText] = useState("");
-  const [newCommentAuthor, setNewCommentAuthor] = useState("");
+
+  // Compute all tags for DrawerEditSection tags picker parity
+  const allTags = React.useMemo(() => {
+    return Array.from(new Set(groups.flatMap((g) => g.tasks.flatMap((t) => t.tags)))).sort();
+  }, [groups]);
+
+  const handleDeleteGlobalTag = (tagToDelete: string) => {
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) => ({
+          ...task,
+          tags: task.tags.filter((t) => t !== tagToDelete),
+        })),
+      }))
+    );
+  };
 
   const statusColor = React.useMemo(() => {
     if (!selected) return "#6b7280";
@@ -38,8 +56,6 @@ const TagPage: React.FC = () => {
   React.useEffect(() => {
     if (selected) {
       setEditedContent(selected.task.content);
-      setNewCommentText("");
-      setNewCommentAuthor("");
     }
   }, [selected]);
 
@@ -124,40 +140,50 @@ const TagPage: React.FC = () => {
         >
           {selected && (
             <div className="space-y-4">
-              {/* Inline editable task content directly under the header */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{selected.task.content}</h2>
+              </div>
+
+              {/* Inline editable task content directly under the header (same as Task Manager) */}
               <div className="w-full">
-                {isEditingInline ? (
+                {/* Editable inline title */}
+                <p
+                  className={`text-base ${readOnly ? "cursor-default" : "cursor-text"} px-1 py-1 rounded hover:bg-muted/50`}
+                  onClick={() => {
+                    if (readOnly) return;
+                    setEditedContent(selected.task.content);
+                    // Replace paragraph with input on click
+                    const el = document.getElementById("tagpage-inline-input");
+                    if (el) (el as HTMLInputElement).focus();
+                  }}
+                  title="Click to edit"
+                >
+                  {selected.task.content || "Untitled task"}
+                </p>
+                {!readOnly && (
                   <input
+                    id="tagpage-inline-input"
                     value={editedContent}
                     onChange={(e) => setEditedContent(e.target.value)}
                     onBlur={() => {
                       if (editedContent !== selected.task.content) {
                         updateSelectedTaskField("content", editedContent);
                       }
-                      setIsEditingInline(false);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         if (editedContent !== selected.task.content) {
                           updateSelectedTaskField("content", editedContent);
                         }
-                        setIsEditingInline(false);
+                        (e.target as HTMLInputElement).blur();
                       } else if (e.key === "Escape") {
                         setEditedContent(selected.task.content);
-                        setIsEditingInline(false);
+                        (e.target as HTMLInputElement).blur();
                       }
                     }}
-                    autoFocus
                     className="w-full bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none text-base px-1 py-1"
+                    style={{ display: "none" }}
                   />
-                ) : (
-                  <p
-                    className="text-base cursor-text px-1 py-1 rounded hover:bg-muted/50"
-                    onClick={() => setIsEditingInline(true)}
-                    title="Click to edit"
-                  >
-                    {selected.task.content || "Untitled task"}
-                  </p>
                 )}
               </div>
 
@@ -191,67 +217,40 @@ const TagPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Comments section (same functionality as Task Manager drawer) */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Comments</p>
-
-                <div className="space-y-2">
-                  {(selected.task.comments && selected.task.comments.length > 0) ? (
-                    selected.task.comments.map((c) => (
-                      <div key={c.id} className="rounded-md border p-2">
-                        <p className="text-sm">{c.text}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(c.createdAt).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {c.author || "Anonymous"}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No comments yet.</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Textarea
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="min-h-[80px]"
-                  />
-                  <Input
-                    value={newCommentAuthor}
-                    onChange={(e) => setNewCommentAuthor(e.target.value)}
-                    placeholder="Your name (optional)"
-                    className="h-9"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      variant="default"
-                      onClick={() => {
-                        const text = newCommentText.trim();
-                        if (!text) return;
-                        const author = newCommentAuthor.trim() || "Anonymous";
-                        const newComment = {
-                          id: uuidv4(),
-                          text,
-                          createdAt: new Date().toISOString(),
-                          author,
-                        };
-                        const updated = [...(selected.task.comments ?? []), newComment];
-                        updateSelectedTaskField("comments", updated);
-                        setNewCommentText("");
-                        setNewCommentAuthor("");
+              {/* Edit Details accordion (same component as Task Manager) */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="edit">
+                  <AccordionTrigger>Edit Details</AccordionTrigger>
+                  <AccordionContent>
+                    <DrawerEditSection
+                      task={selected.task}
+                      availableStatuses={availableStatuses}
+                      allTags={allTags}
+                      onDeleteGlobalTag={handleDeleteGlobalTag}
+                      onUpdateTaskField={(taskId, field, value) => {
+                        // Use wrapper to route to selected task updater
+                        updateSelectedTaskField(field as keyof Task, value);
                       }}
-                    >
-                      Add Comment
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                      readOnly={readOnly}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              {/* Images thumbnails (same as Task Manager) */}
+              <DrawerImagesSection
+                images={(selected.task.files ?? []).filter((f) => (f.mimeType ?? "").startsWith("image/"))}
+              />
+
+              {/* Comments section (same component as Task Manager) */}
+              <CommentsSection
+                taskId={selected.task.id}
+                comments={selected.task.comments}
+                onUpdateTaskField={(taskId, field, value) => {
+                  updateSelectedTaskField(field as keyof Task, value);
+                }}
+                readOnly={readOnly}
+              />
             </div>
           )}
         </AppDrawer>
