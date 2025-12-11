@@ -26,7 +26,7 @@ const AppDrawer: React.FC<AppDrawerProps> = ({
         <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80" />
         <DrawerPrimitive.Content
           className={cn(
-            "fixed right-0 top-0 bottom-0 z-50 h-full w-[30vw] min-w-[320px] max-w-[640px] border-l bg-background shadow-xl",
+            "fixed right-0 top-0 bottom-0 z-50 h-full w-[50vw] min-w-[320px] max-w-none border-l bg-background shadow-xl",
             className
           )}
         >
