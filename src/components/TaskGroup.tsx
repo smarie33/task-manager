@@ -27,6 +27,12 @@ interface TaskGroupProps {
   // NEW: controlled collapse support
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // NEW: optional visible tasks (filtered)
+  visibleTasks?: Task[];
+  // NEW: disable dragging (when filtering)
+  dragDisabled?: boolean;
+  // NEW: indicate filters are active to adjust empty state message
+  filterActive?: boolean;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -45,6 +51,10 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   // NEW: controlled collapse props
   isCollapsed: isCollapsedProp,
   onToggleCollapse,
+  // NEW: filtering-related props
+  visibleTasks,
+  dragDisabled = false,
+  filterActive = false,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -54,6 +64,9 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   // Use controlled collapsed value if provided, otherwise local state
   const collapsed = typeof isCollapsedProp === 'boolean' ? isCollapsedProp : isCollapsed;
   const toggleCollapsed = onToggleCollapse ?? (() => setIsCollapsed((prev) => !prev));
+
+  // Determine which tasks to render
+  const tasksToShow = visibleTasks ?? group.tasks;
 
   const handleAddTask = () => {
     if (newTaskContent.trim()) {
@@ -199,10 +212,12 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               {...provided.droppableProps}
               className={`p-0 flex-grow ${snapshot.isDraggingOver ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'} transition-colors duration-200`}
             >
-              {group.tasks.length === 0 && !snapshot.isDraggingOver && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-4">Drag tasks here or add a new one below.</p>
+              {tasksToShow.length === 0 && !snapshot.isDraggingOver && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-4">
+                  {filterActive ? "No tasks match the current filters." : "Drag tasks here or add a new one below."}
+                </p>
               )}
-              {group.tasks.map((task, index) => (
+              {tasksToShow.map((task, index) => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -215,6 +230,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                   allTags={allTags}
                   onDeleteGlobalTag={onDeleteGlobalTag}
                   readOnly={readOnly}
+                  dragDisabled={dragDisabled}
                 />
               ))}
               {provided.placeholder}

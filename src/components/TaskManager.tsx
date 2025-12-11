@@ -10,12 +10,18 @@ import { v4 as uuidv4 } from "uuid";
 import { useTaskData } from "@/context/task-data-context";
 import { Task, StatusOption } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
+// NEW: shadcn Select for filters
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
   const [newGroupName, setNewGroupName] = useState("");
   const { role } = useAuth();
   const readOnly = role === "Viewer";
+
+  // NEW: global filters
+  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
 
   // NEW: collapsed state per group with localStorage persistence
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -60,6 +66,16 @@ const TaskManager: React.FC = () => {
 
   // ALL TAGS: collect unique tags across all tasks
   const allTags = Array.from(new Set(groups.flatMap((g) => g.tasks.flatMap((t) => t.tags)))).sort();
+
+  // NEW: collect unique owners across all tasks (non-empty)
+  const allOwners = Array.from(
+    new Set(
+      groups.flatMap((g) => g.tasks.map((t) => t.owner).filter((o) => !!o && o.trim().length > 0))
+    )
+  ).sort();
+
+  // NEW: filter active flag
+  const filterActive = (selectedOwner && selectedOwner.length > 0) || (selectedStatus && selectedStatus.length > 0);
 
   // NEW: delete a tag globally (remove from all tasks in all groups)
   const handleDeleteGlobalTag = (tagToDelete: string) => {
@@ -223,30 +239,72 @@ const TaskManager: React.FC = () => {
           <Button variant="outline" onClick={expandAll}>
             <ChevronUp className="h-4 w-4 mr-2" /> Expand All
           </Button>
+
+          {/* NEW: Filters next to Expand All */}
+          <div className="flex items-center gap-2 ml-2">
+            <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+              <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
+                <SelectValue placeholder="Filter by user" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All users</SelectItem>
+                {allOwners.map((owner) => (
+                  <SelectItem key={owner} value={owner}>
+                    {owner}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All statuses</SelectItem>
+                {availableStatuses.map((s) => (
+                  <SelectItem key={s.name} value={s.name}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col items-center gap-6 pb-4">
-          {groups.map((group) => (
-            <TaskGroup
-              key={group.id}
-              group={group}
-              onAddTask={handleAddTask}
-              onUpdateGroupName={handleUpdateGroupName}
-              onUpdateGroupColor={handleUpdateGroupColor}
-              onDeleteGroup={handleDeleteGroup}
-              onDeleteTask={handleDeleteTask}
-              onUpdateTaskField={handleUpdateTaskField}
-              availableStatuses={availableStatuses}
-              setAvailableStatuses={setAvailableStatuses}
-              allTags={allTags}
-              onDeleteGlobalTag={handleDeleteGlobalTag}
-              readOnly={readOnly}
-              // NEW: controlled collapse per group
-              isCollapsed={collapsedGroups[group.id] ?? false}
-              onToggleCollapse={() => toggleGroupCollapse(group.id)}
-            />
-          ))}
+          {groups.map((group) => {
+            const visibleTasks = group.tasks.filter((t) => {
+              const ownerOk = !selectedOwner || t.owner === selectedOwner;
+              const statusOk = !selectedStatus || t.status === selectedStatus;
+              return ownerOk && statusOk;
+            });
+            return (
+              <TaskGroup
+                key={group.id}
+                group={group}
+                onAddTask={handleAddTask}
+                onUpdateGroupName={handleUpdateGroupName}
+                onUpdateGroupColor={handleUpdateGroupColor}
+                onDeleteGroup={handleDeleteGroup}
+                onDeleteTask={handleDeleteTask}
+                onUpdateTaskField={handleUpdateTaskField}
+                availableStatuses={availableStatuses}
+                setAvailableStatuses={setAvailableStatuses}
+                allTags={allTags}
+                onDeleteGlobalTag={handleDeleteGlobalTag}
+                readOnly={readOnly}
+                // NEW: controlled collapse per group
+                isCollapsed={collapsedGroups[group.id] ?? false}
+                onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                // NEW: pass filtered tasks and drag disable flag
+                visibleTasks={visibleTasks}
+                dragDisabled={!!filterActive}
+                filterActive={!!filterActive}
+              />
+            );
+          })}
         </div>
       </DragDropContext>
     </div>

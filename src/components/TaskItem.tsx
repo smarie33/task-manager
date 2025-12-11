@@ -35,6 +35,7 @@ interface TaskItemProps {
   allTags: string[];
   onDeleteGlobalTag: (tag: string) => void;
   readOnly?: boolean;
+  dragDisabled?: boolean;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -48,6 +49,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   allTags,
   onDeleteGlobalTag,
   readOnly = false,
+  dragDisabled = false,
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -85,7 +87,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   }, [task.files]);
 
   return (
-    <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly}>
+    <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly || dragDisabled}>
       {(provided, snapshot) => (
         <Card
           ref={provided.innerRef}
