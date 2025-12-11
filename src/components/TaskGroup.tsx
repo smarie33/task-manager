@@ -71,7 +71,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   };
 
   return (
-    <Card className="w-[90vw] max-w-5xl flex flex-col shadow-lg">
+    <Card className="w-[90vw] max-w-[1500px] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between py-1 px-3 rounded-t-lg" style={{ backgroundColor: group.color }}>
         <div className="flex items-center gap-2">
           {isEditingName ? (
@@ -166,7 +166,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 
           {/* Scrollable Headers - Second column of the grid */}
           <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
-            <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px]">
+            <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px]">
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
                 <div className="px-2 truncate">Owner</div>
               </div>

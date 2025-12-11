@@ -15,9 +15,10 @@ interface FilesCellProps {
   disabled?: boolean;
   parentTaskId: string;
   parentTaskContent: string;
+  inverted?: boolean;
 }
 
-const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveFile, disabled = false, parentTaskId, parentTaskContent }) => {
+const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveFile, disabled = false, parentTaskId, parentTaskContent, inverted = false }) => {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { setLibraryImages } = useTaskData();
@@ -65,7 +66,7 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
           }}
           aria-label="Open files"
         >
-          <div className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-300">
+          <div className={`inline-flex items-center gap-2 ${inverted ? "text-white" : "text-gray-600 dark:text-gray-300"}`}>
             <FileImageIcon className="h-4 w-4" />
             <span className="text-sm">{files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""}` : "Upload"}</span>
           </div>

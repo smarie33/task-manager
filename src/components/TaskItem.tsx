@@ -121,7 +121,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 ref={scrollItemRef}
                 onScroll={handleItemScroll}
               >
-                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(50px,_0.5fr)_auto] min-w-[800px] items-center">
+                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px] items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                     <EditableCell
@@ -195,7 +195,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                   </div>
 
                   {/* Files */}
-                  <div className="flex justify-center items-center py-2">
+                  <div className={`flex justify-center items-center py-2 ${taskImages.length > 0 ? "bg-blue-600 text-white" : ""}`}>
                     <FilesCell
                       files={task.files ?? []}
                       onAddFiles={handleAddFiles}
@@ -203,6 +203,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       disabled={readOnly}
                       parentTaskId={task.id}
                       parentTaskContent={task.content}
+                      inverted={taskImages.length > 0}
                     />
                   </div>
 
