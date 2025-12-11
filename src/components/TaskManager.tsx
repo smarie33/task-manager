@@ -23,6 +23,10 @@ const TaskManager: React.FC = () => {
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
 
+  // NEW: sentinel values (Radix Select items cannot use empty strings)
+  const ALL_USERS = "__all_users__";
+  const ALL_STATUSES = "__all_statuses__";
+
   // NEW: collapsed state per group with localStorage persistence
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
     const raw = typeof window !== "undefined" ? window.localStorage.getItem("collapsedGroups") : null;
@@ -240,14 +244,17 @@ const TaskManager: React.FC = () => {
             <ChevronUp className="h-4 w-4 mr-2" /> Expand All
           </Button>
 
-          {/* NEW: Filters next to Expand All */}
+          {/* Filters next to Expand All */}
           <div className="flex items-center gap-2 ml-2">
-            <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+            <Select
+              value={selectedOwner === "" ? ALL_USERS : selectedOwner}
+              onValueChange={(val) => setSelectedOwner(val === ALL_USERS ? "" : val)}
+            >
               <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
                 <SelectValue placeholder="Filter by user" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All users</SelectItem>
+                <SelectItem value={ALL_USERS}>All users</SelectItem>
                 {allOwners.map((owner) => (
                   <SelectItem key={owner} value={owner}>
                     {owner}
@@ -256,12 +263,15 @@ const TaskManager: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <Select
+              value={selectedStatus === "" ? ALL_STATUSES : selectedStatus}
+              onValueChange={(val) => setSelectedStatus(val === ALL_STATUSES ? "" : val)}
+            >
               <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
                 {availableStatuses.map((s) => (
                   <SelectItem key={s.name} value={s.name}>
                     {s.name}
