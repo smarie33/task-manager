@@ -23,7 +23,7 @@ const TagPage: React.FC = () => {
 
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
-  const [isEditingInline, setIsEditingInline] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   // Compute all tags for DrawerEditSection tags picker parity
   const allTags = React.useMemo(() => {
@@ -140,50 +140,45 @@ const TagPage: React.FC = () => {
         >
           {selected && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{selected.task.content}</h2>
-              </div>
-
-              {/* Inline editable task content directly under the header (same as Task Manager) */}
               <div className="w-full">
-                {/* Editable inline title */}
-                <p
-                  className={`text-base ${readOnly ? "cursor-default" : "cursor-text"} px-1 py-1 rounded hover:bg-muted/50`}
-                  onClick={() => {
-                    if (readOnly) return;
-                    setEditedContent(selected.task.content);
-                    // Replace paragraph with input on click
-                    const el = document.getElementById("tagpage-inline-input");
-                    if (el) (el as HTMLInputElement).focus();
-                  }}
-                  title="Click to edit"
-                >
-                  {selected.task.content || "Untitled task"}
-                </p>
-                {!readOnly && (
+                {isEditingTitle && !readOnly ? (
                   <input
-                    id="tagpage-inline-input"
                     value={editedContent}
                     onChange={(e) => setEditedContent(e.target.value)}
+                    autoFocus
                     onBlur={() => {
-                      if (editedContent !== selected.task.content) {
-                        updateSelectedTaskField("content", editedContent);
+                      const next = editedContent.trim();
+                      if (next !== selected.task.content) {
+                        updateSelectedTaskField("content", next);
                       }
+                      setIsEditingTitle(false);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        if (editedContent !== selected.task.content) {
-                          updateSelectedTaskField("content", editedContent);
+                        const next = editedContent.trim();
+                        if (next !== selected.task.content) {
+                          updateSelectedTaskField("content", next);
                         }
-                        (e.target as HTMLInputElement).blur();
+                        setIsEditingTitle(false);
                       } else if (e.key === "Escape") {
                         setEditedContent(selected.task.content);
-                        (e.target as HTMLInputElement).blur();
+                        setIsEditingTitle(false);
                       }
                     }}
-                    className="w-full bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none text-base px-1 py-1"
-                    style={{ display: "none" }}
+                    className="w-full bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none text-lg px-1 py-1 font-semibold"
                   />
+                ) : (
+                  <h2
+                    className={`text-lg font-semibold ${readOnly ? "cursor-default" : "cursor-text"} px-1 py-1 rounded hover:bg-muted/50`}
+                    onClick={() => {
+                      if (readOnly) return;
+                      setEditedContent(selected.task.content);
+                      setIsEditingTitle(true);
+                    }}
+                    title={readOnly ? undefined : "Click to rename"}
+                  >
+                    {selected.task.content || "Untitled task"}
+                  </h2>
                 )}
               </div>
 
