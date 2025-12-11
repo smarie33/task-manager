@@ -160,28 +160,6 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
           disabled={readOnly}
         />
       </div>
-
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">Item</p>
-        <Input
-          value={editedContent}
-          onChange={(e) => setEditedContent(e.target.value)}
-          placeholder="Enter item text..."
-          disabled={readOnly}
-        />
-        <div className="flex justify-end">
-          <Button
-            onClick={() => {
-              if (editedContent !== task.content) {
-                onUpdateTaskField(task.id, "content", editedContent as Task["content"]);
-              }
-            }}
-            disabled={readOnly}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };

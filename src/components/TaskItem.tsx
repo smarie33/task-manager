@@ -50,6 +50,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditingDrawerTitle, setIsEditingDrawerTitle] = useState(false);
+  const [drawerTitleDraft, setDrawerTitleDraft] = useState(task.content);
 
   const statusColor =
     availableStatuses.find((s) => s.name === task.status)?.color ?? "#6b7280";
@@ -229,6 +231,48 @@ const TaskItem: React.FC<TaskItemProps> = ({
           {/* Drawer for Task details */}
           <AppDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} title="Task Details">
             <div className="space-y-4">
+              {/* Inline editable task content directly under the header */}
+              <div className="w-full">
+                {isEditingDrawerTitle ? (
+                  <input
+                    value={drawerTitleDraft}
+                    onChange={(e) => setDrawerTitleDraft(e.target.value)}
+                    onBlur={() => {
+                      if (drawerTitleDraft !== task.content) {
+                        onUpdateTaskField(task.id, "content", drawerTitleDraft as Task["content"]);
+                      }
+                      setIsEditingDrawerTitle(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (drawerTitleDraft !== task.content) {
+                          onUpdateTaskField(task.id, "content", drawerTitleDraft as Task["content"]);
+                        }
+                        setIsEditingDrawerTitle(false);
+                      } else if (e.key === "Escape") {
+                        setDrawerTitleDraft(task.content);
+                        setIsEditingDrawerTitle(false);
+                      }
+                    }}
+                    autoFocus
+                    disabled={readOnly}
+                    className="w-full bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none text-base px-1 py-1"
+                  />
+                ) : (
+                  <p
+                    className={`text-base ${readOnly ? "cursor-default" : "cursor-text"} px-1 py-1 rounded hover:bg-muted/50`}
+                    onClick={() => {
+                      if (readOnly) return;
+                      setDrawerTitleDraft(task.content);
+                      setIsEditingDrawerTitle(true);
+                    }}
+                    title="Click to edit"
+                  >
+                    {task.content || "Untitled task"}
+                  </p>
+                )}
+              </div>
+
               {/* Quick details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -258,7 +302,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 </div>
               </div>
 
-              {/* Editable section collapsed behind accordion */}
+              {/* Edit Details accordion without item editing */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="edit">
                   <AccordionTrigger>Edit Details</AccordionTrigger>

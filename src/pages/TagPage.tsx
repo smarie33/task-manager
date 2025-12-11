@@ -20,6 +20,7 @@ const TagPage: React.FC = () => {
 
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
+  const [isEditingInline, setIsEditingInline] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [newCommentAuthor, setNewCommentAuthor] = useState("");
 
@@ -123,8 +124,41 @@ const TagPage: React.FC = () => {
         >
           {selected && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{selected.task.content}</h2>
+              {/* Inline editable task content directly under the header */}
+              <div className="w-full">
+                {isEditingInline ? (
+                  <input
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    onBlur={() => {
+                      if (editedContent !== selected.task.content) {
+                        updateSelectedTaskField("content", editedContent);
+                      }
+                      setIsEditingInline(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (editedContent !== selected.task.content) {
+                          updateSelectedTaskField("content", editedContent);
+                        }
+                        setIsEditingInline(false);
+                      } else if (e.key === "Escape") {
+                        setEditedContent(selected.task.content);
+                        setIsEditingInline(false);
+                      }
+                    }}
+                    autoFocus
+                    className="w-full bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none text-base px-1 py-1"
+                  />
+                ) : (
+                  <p
+                    className="text-base cursor-text px-1 py-1 rounded hover:bg-muted/50"
+                    onClick={() => setIsEditingInline(true)}
+                    title="Click to edit"
+                  >
+                    {selected.task.content || "Untitled task"}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -156,35 +190,6 @@ const TagPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-
-              {/* Item editable area (same functionality as Task Manager drawer) */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="edit">
-                  <AccordionTrigger>Edit Details</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">Item</p>
-                      <Textarea
-                        value={editedContent}
-                        onChange={(e) => setEditedContent(e.target.value)}
-                        className="min-h-[120px]"
-                        placeholder="Enter item text..."
-                      />
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => {
-                            if (editedContent !== selected.task.content) {
-                              updateSelectedTaskField("content", editedContent);
-                            }
-                          }}
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
 
               {/* Comments section (same functionality as Task Manager drawer) */}
               <div className="space-y-3">
