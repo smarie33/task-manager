@@ -26,6 +26,61 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const editorRef = React.useRef<HTMLDivElement | null>(null);
   const [color, setColor] = React.useState<string>("#000000");
   const [fontSize, setFontSize] = React.useState<number>(14);
+  const savedRangeRef = React.useRef<Range | null>(null);
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+      savedRangeRef.current = range;
+    }
+  };
+
+  const restoreSelection = () => {
+    if (!savedRangeRef.current) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(savedRangeRef.current);
+  };
+
+  const applyStyleToSelection = (style: Partial<CSSStyleDeclaration>) => {
+    if (disabled) return;
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let range = sel.getRangeAt(0);
+    if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) return;
+    if (sel.isCollapsed) {
+      const span = document.createElement("span");
+      Object.assign(span.style, style);
+      span.appendChild(document.createTextNode("\u200B"));
+      range.insertNode(span);
+      const newRange = document.createRange();
+      if (span.firstChild) {
+        newRange.setStart(span.firstChild, 1);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        savedRangeRef.current = newRange;
+      }
+    } else {
+      const contents = range.extractContents();
+      const span = document.createElement("span");
+      Object.assign(span.style, style);
+      span.appendChild(contents);
+      range.insertNode(span);
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      newRange.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      savedRangeRef.current = newRange;
+    }
+    onChange(editorRef.current?.innerHTML || "");
+    editorRef.current?.focus();
+  };
 
   React.useEffect(() => {
     // Keep editor content in sync when value changes from above
@@ -36,10 +91,11 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
 
   const exec = (command: string, valueArg?: string) => {
     if (disabled) return;
+    restoreSelection();
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand(command, false, valueArg);
+    saveSelection();
     editorRef.current?.focus();
-    // Notify caller of change
     onChange(editorRef.current?.innerHTML || "");
   };
 
@@ -48,42 +104,60 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
     const html =
       '<div class="flex items-start gap-2"><input type="checkbox"/><span>Checklist item</span></div>';
     document.execCommand("insertHTML", false, html);
+    saveSelection();
     onChange(editorRef.current?.innerHTML || "");
   };
 
   const handleCreateLink = () => {
     if (disabled) return;
-    const url = window.prompt("Enter URL");
+    const urlRaw = window.prompt("Enter URL");
+    if (!urlRaw) return;
+    const url = urlRaw.trim();
     if (!url) return;
-    exec("createLink", url);
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let range = sel.getRangeAt(0);
+    if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.className = "underline text-blue-600";
+    if (sel.isCollapsed) {
+      a.textContent = url;
+      range.insertNode(a);
+      const newRange = document.createRange();
+      newRange.setStartAfter(a);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      savedRangeRef.current = newRange;
+    } else {
+      const contents = range.extractContents();
+      a.appendChild(contents);
+      range.insertNode(a);
+      const newRange = document.createRange();
+      newRange.setStartAfter(a);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      savedRangeRef.current = newRange;
+    }
+    onChange(editorRef.current?.innerHTML || "");
+    editorRef.current?.focus();
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const c = e.target.value;
     setColor(c);
-    exec("foreColor", c);
+    applyStyleToSelection({ color: c });
   };
 
   const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const size = parseInt(e.target.value || "14", 10);
     setFontSize(size);
-    // Wrap selection in span with font-size style
-    if (!disabled) {
-      document.execCommand("styleWithCSS", false, "true");
-      document.execCommand("fontSize", false, "7"); // sets a span we can then restyle
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const ancestor = range.commonAncestorContainer as HTMLElement;
-        const spans = (ancestor.nodeType === 1 ? (ancestor as HTMLElement) : ancestor.parentElement)?.querySelectorAll("span[style*='font-size']");
-        // Best effort: set the last span's font-size
-        if (spans && spans.length > 0) {
-          const last = spans[spans.length - 1] as HTMLElement;
-          last.style.fontSize = `${size}px`;
-        }
-      }
-      onChange(editorRef.current?.innerHTML || "");
-    }
+    applyStyleToSelection({ fontSize: `${size}px` });
   };
 
   return (
@@ -157,6 +231,9 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
         className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose ${disabled ? "pointer-events-none opacity-70" : ""}`}
         onInput={() => onChange(editorRef.current?.innerHTML || "")}
         onBlur={() => onChange(editorRef.current?.innerHTML || "")}
+        onMouseUp={saveSelection}
+        onKeyUp={saveSelection}
+        onFocus={saveSelection}
       />
     </div>
   );
