@@ -10,6 +10,7 @@ import { format, parseISO, isValid } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import TagsCell from "@/components/task-item/TagsCell";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
+import NotesEditor from "./NotesEditor";
 
 type DrawerEditSectionProps = {
   task: Task;
@@ -189,6 +190,18 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
             onUpdateTaskField(task.id, "tags", task.tags.filter((x) => x !== tag) as Task["tags"]);
           }}
           onDeleteGlobalTag={onDeleteGlobalTag}
+          disabled={readOnly}
+        />
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground mb-1">Notes</p>
+        <NotesEditor
+          value={task.notes || ""}
+          onChange={(html) => {
+            if (readOnly) return;
+            onUpdateTaskField(task.id, "notes", html as Task["notes"]);
+          }}
           disabled={readOnly}
         />
       </div>

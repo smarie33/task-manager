@@ -35,6 +35,7 @@ export interface Task {
   timeLogs?: { durationSeconds: number; date: string }[];
   comments?: { id: string; text: string; createdAt: string; author?: string }[];
   files?: FileMeta[]; // UPDATED: include mimeType for image detection
+  notes?: string; // Rich text notes
 }
 
 export interface TaskGroupData {

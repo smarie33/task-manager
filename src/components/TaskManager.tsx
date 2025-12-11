@@ -117,6 +117,7 @@ const TaskManager: React.FC = () => {
                   timeLogs: [],
                   comments: [],
                   files: [], // NEW
+                  notes: "",
                 },
               ],
             }
