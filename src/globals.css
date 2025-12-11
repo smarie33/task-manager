@@ -120,4 +120,31 @@
     scrollbar-width: thin; /* "auto" or "thin" */
     scrollbar-color: white transparent; /* thumb and track color */
   }
+
+  /* Restore list markers inside Notes editor */
+  .notes-prose ul,
+  .notes-prose ol {
+    list-style-position: outside;
+    padding-left: 1.25rem; /* 20px */
+  }
+
+  .notes-prose ul {
+    list-style-type: disc;
+  }
+
+  .notes-prose ol {
+    list-style-type: decimal;
+  }
+
+  .notes-prose li {
+    margin: 0.25rem 0; /* 4px vertical spacing */
+  }
+
+  /* Nested unordered list styles */
+  .notes-prose ul ul {
+    list-style-type: circle;
+  }
+  .notes-prose ul ul ul {
+    list-style-type: square;
+  }
 }

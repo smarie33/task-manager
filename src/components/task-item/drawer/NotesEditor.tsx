@@ -154,7 +154,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
         ref={editorRef}
         contentEditable={!disabled}
         suppressContentEditableWarning
-        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none ${disabled ? "pointer-events-none opacity-70" : ""}`}
+        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose ${disabled ? "pointer-events-none opacity-70" : ""}`}
         onInput={() => onChange(editorRef.current?.innerHTML || "")}
         onBlur={() => onChange(editorRef.current?.innerHTML || "")}
       />
