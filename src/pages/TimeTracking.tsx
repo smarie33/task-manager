@@ -240,6 +240,18 @@ const TimeTracking: React.FC = () => {
           </div>
         </div>
 
+        {/* Admins: Show Payment Settings above Add Hours */}
+        {selectedOwner && role === "Admin" && (
+          <PaymentSettingsCard
+            owner={selectedOwner}
+            ownerSettings={ownerSettings}
+            currency={currency}
+            selectedTimeframePayment={selectedTimeframePayment}
+            overallPayment={overallPayment}
+            onUpdate={updateSettingsForPerson}
+          />
+        )}
+
         <Card className="p-4 mb-4">
           {selectedOwner ? (
             <AddHoursForm
@@ -253,17 +265,9 @@ const TimeTracking: React.FC = () => {
           )}
         </Card>
 
+        {/* Non-admins or no owner: show totals here (admins already saw payment settings above) */}
         {selectedOwner ? (
-          role === "Admin" ? (
-            <PaymentSettingsCard
-              owner={selectedOwner}
-              ownerSettings={ownerSettings}
-              currency={currency}
-              selectedTimeframePayment={selectedTimeframePayment}
-              overallPayment={overallPayment}
-              onUpdate={updateSettingsForPerson}
-            />
-          ) : (
+          role === "Admin" ? null : (
             <TotalsCard
               selectedTimeframePayment={selectedTimeframePayment}
               overallPayment={overallPayment}
