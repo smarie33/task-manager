@@ -26,7 +26,7 @@ export function useAdminUsers() {
     if (error) {
       setUsers([]);
       setLoading(false);
-      throw new Error(error.message ?? "Failed to load users");
+      throw new Error(error.message ?? "Edge function request failed (list). Are you signed in and approved?");
     }
     setUsers((data as any)?.users ?? []);
     setLoading(false);
@@ -41,7 +41,9 @@ export function useAdminUsers() {
       action: "create",
       payload: { name, email, password, role },
     });
-    if (error) throw new Error(error.message ?? "Failed to create user");
+    if (error) {
+      throw new Error(error.message ?? "Edge function request failed (create). If you see Forbidden, your account might not be Admin/active.");
+    }
     await load();
     return data;
   };
@@ -51,7 +53,7 @@ export function useAdminUsers() {
       action: "approve",
       payload: { id },
     });
-    if (error) throw new Error(error.message ?? "Failed to approve user");
+    if (error) throw new Error(error.message ?? "Edge function request failed (approve).");
     await load();
   };
 
@@ -60,7 +62,7 @@ export function useAdminUsers() {
       action: "changeRole",
       payload: { id, role },
     });
-    if (error) throw new Error(error.message ?? "Failed to change role");
+    if (error) throw new Error(error.message ?? "Edge function request failed (changeRole).");
     await load();
   };
 
@@ -69,7 +71,7 @@ export function useAdminUsers() {
       action: "delete",
       payload: { id },
     });
-    if (error) throw new Error(error.message ?? "Failed to delete user");
+    if (error) throw new Error(error.message ?? "Edge function request failed (delete).");
     await load();
   };
 
