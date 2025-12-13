@@ -26,6 +26,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { insertTimeLog, updateTaskRow } from "@/services/db";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/utils/invokeEdge";
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -80,7 +81,7 @@ const TimeTracking: React.FC = () => {
   const [adminUsers, setAdminUsers] = React.useState<AdminListUser[] | null>(null);
   React.useEffect(() => {
     if (role !== "Admin") return;
-    supabase.functions.invoke("admin-users", { body: { action: "list" } })
+    invokeEdge<{ users: AdminListUser[] }>("admin-users", { action: "list" })
       .then(({ data }) => {
         const list = (data as any)?.users as AdminListUser[] | undefined;
         setAdminUsers(list ?? []);
@@ -263,8 +264,9 @@ const TimeTracking: React.FC = () => {
     // Persist: insert log (either as self or on behalf) + update task timeTracking
     if (session?.user) {
       if (usingAdminEdge) {
-        await supabase.functions.invoke("time-logs", {
-          body: { action: "insert", payload: { userId: targetUserId, taskId, date, durationSeconds: seconds } },
+        await invokeEdge("time-logs", {
+          action: "insert",
+          payload: { userId: targetUserId, taskId, date, durationSeconds: seconds },
         });
       } else {
         await insertTimeLog(session.user.id, taskId, date, seconds);

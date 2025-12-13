@@ -2,6 +2,7 @@
 
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/utils/invokeEdge";
 
 export type Role = "Admin" | "Editor" | "Viewer";
 export type UserStatus = "pending" | "active";
@@ -21,13 +22,11 @@ export function useAdminUsers() {
 
   const load = React.useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "list" },
-    });
+    const { data, error } = await invokeEdge<{ users: AdminUser[] }>("admin-users", { action: "list" });
     if (error) {
       setUsers([]);
       setLoading(false);
-      throw new Error(error.message);
+      throw new Error(error.message ?? "Failed to load users");
     }
     setUsers((data as any)?.users ?? []);
     setLoading(false);
@@ -38,35 +37,39 @@ export function useAdminUsers() {
   }, [load]);
 
   const addUser = async (name: string, email: string, password: string, role: Role) => {
-    const { data, error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "create", payload: { name, email, password, role } },
+    const { data, error } = await invokeEdge("admin-users", {
+      action: "create",
+      payload: { name, email, password, role },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message ?? "Failed to create user");
     await load();
     return data;
   };
 
   const approveUser = async (id: string) => {
-    const { error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "approve", payload: { id } },
+    const { error } = await invokeEdge("admin-users", {
+      action: "approve",
+      payload: { id },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message ?? "Failed to approve user");
     await load();
   };
 
   const changeRole = async (id: string, role: Role) => {
-    const { error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "changeRole", payload: { id, role } },
+    const { error } = await invokeEdge("admin-users", {
+      action: "changeRole",
+      payload: { id, role },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message ?? "Failed to change role");
     await load();
   };
 
   const deleteUser = async (id: string) => {
-    const { error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "delete", payload: { id } },
+    const { error } = await invokeEdge("admin-users", {
+      action: "delete",
+      payload: { id },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message ?? "Failed to delete user");
     await load();
   };
 
