@@ -34,38 +34,46 @@ serve(async (req) => {
   }
   const callerId = userData.user.id
 
-  // Admin check from profiles
-  const { data: callerProfile, error: profileErr } = await supabase
+  // Ensure the caller has a profile row (create if missing)
+  await supabase
     .from("profiles")
-    .select("role,status")
-    .eq("id", callerId)
-    .single()
+    .upsert({
+      id: callerId,
+      name: (userData.user.user_metadata as any)?.name ?? null,
+      email: userData.user.email ?? null,
+      // don't force role/status here unless bootstrapping below
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" })
 
-  // BOOTSTRAP: if there are no active admins yet, promote the caller to Admin/active
+  // Count active admins
   const { count: adminActiveCount } = await supabase
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .eq("role", "Admin")
     .eq("status", "active")
 
+  // Bootstrap: if there are no active admins yet, promote the caller to Admin/active
   if ((adminActiveCount ?? 0) === 0) {
-    await supabase.from("profiles").update({ role: "Admin", status: "active" }).eq("id", callerId)
+    await supabase
+      .from("profiles")
+      .upsert({
+        id: callerId,
+        name: (userData.user.user_metadata as any)?.name ?? null,
+        email: userData.user.email ?? null,
+        role: "Admin",
+        status: "active",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" })
   }
 
-  // Re-evaluate caller after potential bootstrap
-  const effective = callerProfile
-    ? callerProfile
-    : { role: "Viewer", status: "pending" }
-  const { data: refreshed, error: refErr } = await supabase
+  // Fetch caller profile after potential bootstrap
+  const { data: callerProfile, error: profileErr } = await supabase
     .from("profiles")
     .select("role,status")
     .eq("id", callerId)
     .single()
 
-  const finalRole = refreshed?.role ?? effective.role
-  const finalStatus = refreshed?.status ?? effective.status
-
-  if (profileErr || refErr || finalRole !== "Admin" || finalStatus !== "active") {
+  if (profileErr || !callerProfile || callerProfile.role !== "Admin" || callerProfile.status !== "active") {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   }
 
