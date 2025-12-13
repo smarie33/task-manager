@@ -89,16 +89,19 @@ const TimeTracking: React.FC = () => {
       .catch(() => setAdminUsers([]));
   }, [role]);
 
-  const resolveOwnerToUserId = React.useCallback((owner: string | null): string | null => {
-    if (!owner || !adminUsers || adminUsers.length === 0) return null;
-    const lower = owner.toLowerCase();
-    // Prefer email match
-    const byEmail = adminUsers.find(u => (u.email || "").toLowerCase() === lower);
-    if (byEmail) return byEmail.id;
-    // Fallback to name match
-    const byName = adminUsers.find(u => (u.name || "").toLowerCase() === lower);
-    return byName ? byName.id : null;
-  }, [adminUsers]);
+  // NEW: Build owner options for dropdown:
+  // - Admin: all active users (name if present, otherwise email)
+  // - Others: owners derived from tasks (unchanged)
+  const ownersOptions = React.useMemo(() => {
+    if (role === "Admin" && Array.isArray(adminUsers)) {
+      const labels = adminUsers
+        .filter(u => u.status === "active")
+        .map(u => (u.name && u.name.trim().length > 0 ? u.name : (u.email || "")))
+        .filter(Boolean) as string[];
+      return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b));
+    }
+    return owners;
+  }, [role, adminUsers, owners]);
 
   // Profile/session-based guess for non-admins
   const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
@@ -107,23 +110,23 @@ const TimeTracking: React.FC = () => {
     const email = session?.user?.email?.trim();
     const candidates = [name, email].filter(Boolean) as string[];
     for (const c of candidates) {
-      if (c && owners.includes(c)) return c;
+      if (c && ownersOptions.includes(c)) return c;
     }
     // For non-admins, do not fall back to someone else
     return null;
-  }, [owners, profile, session]);
+  }, [ownersOptions, profile, session]);
 
   React.useEffect(() => {
     if (role !== "Admin") {
       setSelectedOwner(currentOwnerGuess);
       return;
     }
-    if (!selectedOwner && owners.length > 0) {
-      setSelectedOwner(owners[0]);
-    } else if (selectedOwner && !owners.includes(selectedOwner)) {
-      setSelectedOwner(owners[0] ?? null);
+    if (!selectedOwner && ownersOptions.length > 0) {
+      setSelectedOwner(ownersOptions[0]);
+    } else if (selectedOwner && !ownersOptions.includes(selectedOwner)) {
+      setSelectedOwner(ownersOptions[0] ?? null);
     }
-  }, [owners, selectedOwner, role, currentOwnerGuess]);
+  }, [ownersOptions, selectedOwner, role, currentOwnerGuess]);
 
   // Owner tasks for AddHoursForm
   const ownerTasks = React.useMemo(() => {
@@ -286,7 +289,7 @@ const TimeTracking: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Time Tracking</h1>
           <div className="flex items-center gap-3">
             {role === "Admin" && (
-              <OwnerSelect owners={owners} value={selectedOwner} onChange={setSelectedOwner} />
+              <OwnerSelect owners={ownersOptions} value={selectedOwner} onChange={setSelectedOwner} />
             )}
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
