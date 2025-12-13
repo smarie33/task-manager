@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { insertTimeLog, updateTaskRow } from "@/services/db";
+import { supabase } from "@/integrations/supabase/client";
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -43,6 +44,14 @@ const getPeriodDays = (freq?: PaymentSettings["salaryFrequency"]): number => {
     default:
       return 30;
   }
+};
+
+type AdminListUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "Admin" | "Editor" | "Viewer";
+  status: "pending" | "active";
 };
 
 const TimeTracking: React.FC = () => {
@@ -66,6 +75,29 @@ const TimeTracking: React.FC = () => {
   // Selected owner and date range
   const [selectedOwner, setSelectedOwner] = React.useState<string | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  // Admin users list for owner->user mapping (email preferred)
+  const [adminUsers, setAdminUsers] = React.useState<AdminListUser[] | null>(null);
+  React.useEffect(() => {
+    if (role !== "Admin") return;
+    supabase.functions.invoke("admin-users", { body: { action: "list" } })
+      .then(({ data }) => {
+        const list = (data as any)?.users as AdminListUser[] | undefined;
+        setAdminUsers(list ?? []);
+      })
+      .catch(() => setAdminUsers([]));
+  }, [role]);
+
+  const resolveOwnerToUserId = React.useCallback((owner: string | null): string | null => {
+    if (!owner || !adminUsers || adminUsers.length === 0) return null;
+    const lower = owner.toLowerCase();
+    // Prefer email match
+    const byEmail = adminUsers.find(u => (u.email || "").toLowerCase() === lower);
+    if (byEmail) return byEmail.id;
+    // Fallback to name match
+    const byName = adminUsers.find(u => (u.name || "").toLowerCase() === lower);
+    return byName ? byName.id : null;
+  }, [adminUsers]);
 
   // Profile/session-based guess for non-admins
   const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
@@ -117,6 +149,7 @@ const TimeTracking: React.FC = () => {
               taskContent: t.content,
               date: log.date,
               durationSeconds: log.durationSeconds,
+              adminEdit: !!log.adminEdit,
             });
           }
         }
@@ -140,7 +173,7 @@ const TimeTracking: React.FC = () => {
       for (const t of g.tasks) {
         if ((t.owner || "").trim() === selectedOwner) {
           for (const log of t.timeLogs || []) {
-            res.push({ taskContent: t.content, date: log.date, durationSeconds: log.durationSeconds });
+            res.push({ taskContent: t.content, date: log.date, durationSeconds: log.durationSeconds, adminEdit: !!log.adminEdit });
           }
         }
       }
@@ -206,7 +239,11 @@ const TimeTracking: React.FC = () => {
     new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
 
   // Save manual log handler
-  const handleSaveManualLog = (taskId: string, date: string, seconds: number) => {
+  const handleSaveManualLog = async (taskId: string, date: string, seconds: number) => {
+    const isAdmin = role === "Admin";
+    const targetUserId = isAdmin ? resolveOwnerToUserId(selectedOwner ?? null) : null;
+    const usingAdminEdge = isAdmin && targetUserId && session?.user?.id && targetUserId !== session.user.id;
+
     // Immutably update the task's logs and timeTracking with setGroups
     setGroups((prev) =>
       prev.map((g) => {
@@ -214,21 +251,27 @@ const TimeTracking: React.FC = () => {
         if (taskIndex === -1) return g;
         const newTasks = g.tasks.map((t, idx) => {
           if (idx !== taskIndex) return t;
-          const newLogs = [...(t.timeLogs || []), { durationSeconds: seconds, date }];
+          const newLogs = [...(t.timeLogs || []), { durationSeconds: seconds, date, adminEdit: !!usingAdminEdge }];
           const newHoursTotal = (t.timeTracking || 0) + seconds / 3600;
           return { ...t, timeLogs: newLogs, timeTracking: newHoursTotal };
         });
         return { ...g, tasks: newTasks };
       })
     );
-    // Persist: new log + updated timeTracking hours
+
+    // Persist: insert log (either as self or on behalf) + update task timeTracking
     if (session?.user) {
-      insertTimeLog(session.user.id, taskId, date, seconds).catch(() => {});
-      // compute hours increment and persist total; here we recompute from state-next in microtask: keep simple and set after update
-      // Update task row with new timeTracking value (approximate; UI state is source of truth)
+      if (usingAdminEdge) {
+        await supabase.functions.invoke("time-logs", {
+          body: { action: "insert", payload: { userId: targetUserId, taskId, date, durationSeconds: seconds } },
+        });
+      } else {
+        await insertTimeLog(session.user.id, taskId, date, seconds);
+      }
+      // Update task row with new timeTracking value (UI state is the source of truth here)
       const task = groups.flatMap(g => g.tasks).find(t => t.id === taskId);
       const currentHours = (task?.timeTracking || 0) + seconds / 3600;
-      updateTaskRow(taskId, { timeTracking: currentHours }).catch(() => {});
+      await updateTaskRow(taskId, { timeTracking: currentHours });
     }
   };
 

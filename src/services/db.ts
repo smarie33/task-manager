@@ -100,12 +100,12 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     }
   }
 
-  // Attach logs
+  // Attach logs (include admin flag)
   for (const lr of logRows || []) {
     const task = tasksMap.get(lr.task_id);
     if (!task) continue;
     const arr = task.timeLogs ?? [];
-    arr.push({ durationSeconds: lr.duration_seconds, date: lr.date });
+    arr.push({ durationSeconds: lr.duration_seconds, date: lr.date, adminEdit: !!lr.admin_edit });
     task.timeLogs = arr;
   }
 

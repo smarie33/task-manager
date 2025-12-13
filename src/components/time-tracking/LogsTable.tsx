@@ -2,11 +2,13 @@
 
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export type AggregatedLog = {
   taskContent: string;
   date: string;
   durationSeconds: number;
+  adminEdit?: boolean;
 };
 
 const formatDuration = (seconds: number): string => {
@@ -51,7 +53,10 @@ const LogsTable: React.FC<LogsTableProps> = ({ logs, selectedOwner, totalSeconds
                       <TableCell className="whitespace-nowrap">{log.date}</TableCell>
                       <TableCell className="min-w-[16rem]">{log.taskContent}</TableCell>
                       <TableCell className="text-right whitespace-nowrap">
-                        {formatDuration(log.durationSeconds)}
+                        <span>{formatDuration(log.durationSeconds)}</span>
+                        {log.adminEdit ? (
+                          <Badge variant="destructive" className="ml-2 align-middle">Admin Edit</Badge>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
