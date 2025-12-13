@@ -50,6 +50,36 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       throw new Error(error.message);
     }
     const row = (data && Array.isArray(data) ? data[0] : null) as UserProfile | null;
+
+    // If no profile row exists yet, create one now so edits can persist
+    if (!row) {
+      const initial = {
+        id: session.user.id,
+        name: (session.user.user_metadata as any)?.name ?? null,
+        email: session.user.email ?? null,
+        phone: null,
+        address: null,
+        avatar_url: null,
+        role: "Viewer" as Role,
+        status: "pending" as UserStatus,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: inserted, error: insErr } = await supabase
+        .from("profiles")
+        .upsert(initial, { onConflict: "id" })
+        .select()
+        .single();
+      if (!insErr && inserted) {
+        setProfile(inserted as UserProfile);
+        setLoading(false);
+        return;
+      }
+      // Fallthrough to set empty if insertion failed
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     setProfile(row);
     setLoading(false);
   }, [session?.user]);
@@ -60,8 +90,15 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const updateProfile = async (fields: Partial<UserProfile>) => {
     if (!session?.user) return;
-    const payload: Record<string, any> = { ...fields, updated_at: new Date().toISOString() };
-    const { error } = await supabase.from("profiles").update(payload).eq("id", session.user.id);
+    const payload: Record<string, any> = {
+      id: session.user.id,
+      ...fields,
+      updated_at: new Date().toISOString(),
+    };
+    // Upsert ensures the row is created if missing
+    const { error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" });
     if (error) throw new Error(error.message);
     await fetchProfile();
   };
