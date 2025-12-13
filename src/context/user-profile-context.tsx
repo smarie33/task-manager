@@ -43,6 +43,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       .from("profiles")
       .select("*")
       .eq("id", session.user.id)
+      .limit(1)
       .single();
     if (error) {
       setProfile(null);
