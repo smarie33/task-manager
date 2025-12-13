@@ -33,7 +33,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (gErr) throw gErr;
+  if (gErr) throw new Error(gErr.message);
 
   // Load tasks
   const { data: taskRows, error: tErr } = await supabase
@@ -41,7 +41,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (tErr) throw tErr;
+  if (tErr) throw new Error(tErr.message);
 
   // Load time logs
   const { data: logRows, error: lErr } = await supabase
@@ -49,7 +49,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (lErr) throw lErr;
+  if (lErr) throw new Error(lErr.message);
 
   // Load comments
   const { data: commentRows, error: cErr } = await supabase
@@ -57,7 +57,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (cErr) throw cErr;
+  if (cErr) throw new Error(cErr.message);
 
   // Load files (images + non-images)
   const { data: fileRows, error: fErr } = await supabase
@@ -65,7 +65,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (fErr) throw fErr;
+  if (fErr) throw new Error(fErr.message);
 
   // Load external links
   const { data: linkRows, error: eErr } = await supabase
@@ -73,7 +73,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (eErr) throw eErr;
+  if (eErr) throw new Error(eErr.message);
 
   // Load statuses
   const { data: statusRows, error: sErr } = await supabase
@@ -81,7 +81,7 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (sErr) throw sErr;
+  if (sErr) throw new Error(sErr.message);
 
   // Map groups
   const groupsMap = new Map<string, TaskGroupData>();
@@ -160,18 +160,18 @@ export async function createGroup(userId: string, name: string, color: string) {
     .insert([{ user_id: userId, name, color }])
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function updateGroup(groupId: string, fields: Partial<{ name: string; color: string }>) {
   const { error } = await supabase.from("task_groups").update(fields).eq("id", groupId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteGroup(groupId: string) {
   const { error } = await supabase.from("task_groups").delete().eq("id", groupId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function createTask(userId: string, groupId: string, task: Omit<Task, "id">) {
@@ -191,7 +191,7 @@ export async function createTask(userId: string, groupId: string, task: Omit<Tas
     }])
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -207,31 +207,31 @@ export async function updateTaskRow(taskId: string, fields: Partial<Task>) {
   if (fields.notes !== undefined) payload.notes = fields.notes;
   if (Object.keys(payload).length === 0) return;
   const { error } = await supabase.from("tasks").update(payload).eq("id", taskId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteTask(taskId: string) {
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function insertTimeLog(userId: string, taskId: string, date: string, durationSeconds: number) {
   const { error } = await supabase
     .from("task_time_logs")
     .insert([{ user_id: userId, task_id: taskId, date, duration_seconds: durationSeconds }]);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function replaceAllTimeLogs(userId: string, taskId: string, logs: { date: string; durationSeconds: number }[]) {
   // Simple implementation: delete then insert
   const { error: delErr } = await supabase.from("task_time_logs").delete().eq("task_id", taskId);
-  if (delErr) throw delErr;
+  if (delErr) throw new Error(delErr.message);
   if (logs.length === 0) return;
   const rows = logs.map((l) => ({
     user_id: userId, task_id: taskId, date: l.date, duration_seconds: l.durationSeconds
   }));
   const { error: insErr } = await supabase.from("task_time_logs").insert(rows);
-  if (insErr) throw insErr;
+  if (insErr) throw new Error(insErr.message);
 }
 
 export async function insertComment(userId: string, taskId: string, text: string, author?: string) {
@@ -240,7 +240,7 @@ export async function insertComment(userId: string, taskId: string, text: string
     .insert([{ user_id: userId, task_id: taskId, text, author }])
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -248,7 +248,7 @@ export async function addStatus(userId: string, status: StatusOption) {
   const { error } = await supabase
     .from("statuses")
     .insert([{ user_id: userId, name: status.name, color: status.color }]);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function updateStatus(userId: string, name: string, color: string) {
@@ -257,7 +257,7 @@ export async function updateStatus(userId: string, name: string, color: string) 
     .update({ color })
     .eq("user_id", userId)
     .eq("name", name);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function addFileMeta(userId: string, meta: FileMeta) {
@@ -270,7 +270,7 @@ export async function addFileMeta(userId: string, meta: FileMeta) {
     source_task_id: meta.sourceTaskId ?? null,
     source_task_content: meta.sourceTaskContent ?? null,
   }]);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function addManyFiles(userId: string, metas: FileMeta[]) {
@@ -285,7 +285,7 @@ export async function addManyFiles(userId: string, metas: FileMeta[]) {
     source_task_content: m.sourceTaskContent ?? null,
   }));
   const { error } = await supabase.from("files").insert(rows);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 export async function addExternalLink(userId: string, link: LinkMeta) {
@@ -294,5 +294,5 @@ export async function addExternalLink(userId: string, link: LinkMeta) {
     url: link.url,
     label: link.label ?? null,
   }]);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }

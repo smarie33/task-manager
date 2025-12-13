@@ -27,7 +27,7 @@ export function useAdminUsers() {
     if (error) {
       setUsers([]);
       setLoading(false);
-      throw error;
+      throw new Error(error.message);
     }
     setUsers((data as any)?.users ?? []);
     setLoading(false);
@@ -41,7 +41,7 @@ export function useAdminUsers() {
     const { data, error } = await supabase.functions.invoke("admin-users", {
       body: { action: "create", payload: { name, email, password, role } },
     });
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     await load();
     return data;
   };
@@ -50,7 +50,7 @@ export function useAdminUsers() {
     const { error } = await supabase.functions.invoke("admin-users", {
       body: { action: "approve", payload: { id } },
     });
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     await load();
   };
 
@@ -58,7 +58,7 @@ export function useAdminUsers() {
     const { error } = await supabase.functions.invoke("admin-users", {
       body: { action: "changeRole", payload: { id, role } },
     });
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     await load();
   };
 
@@ -66,7 +66,7 @@ export function useAdminUsers() {
     const { error } = await supabase.functions.invoke("admin-users", {
       body: { action: "delete", payload: { id } },
     });
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     await load();
   };
 

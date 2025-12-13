@@ -47,7 +47,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (error) {
       setProfile(null);
       setLoading(false);
-      throw error;
+      throw new Error(error.message);
     }
     setProfile(data as UserProfile);
     setLoading(false);
@@ -61,7 +61,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (!session?.user) return;
     const payload: Record<string, any> = { ...fields, updated_at: new Date().toISOString() };
     const { error } = await supabase.from("profiles").update(payload).eq("id", session.user.id);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     await fetchProfile();
   };
 
