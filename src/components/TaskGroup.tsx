@@ -39,6 +39,8 @@ interface TaskGroupProps {
   onArchiveGroup: (groupId: string) => void;
   // NEW: list of other groups for reassignment
   otherGroups: { id: string; name: string }[];
+  // NEW: available owners list for dropdown
+  owners: string[];
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -61,6 +63,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   filterActive = false,
   onArchiveGroup,
   otherGroups,
+  owners,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -236,6 +239,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                   onDeleteGlobalTag={onDeleteGlobalTag}
                   readOnly={readOnly}
                   dragDisabled={dragDisabled}
+                  owners={owners}
                 />
               ))}
               {provided.placeholder}

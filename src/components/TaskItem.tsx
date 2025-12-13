@@ -19,6 +19,7 @@ import DrawerImagesSection from "./task-item/drawer/DrawerImagesSection";
 import CommentsSection from "./task-item/drawer/CommentsSection";
 import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import OwnerCell from "./task-item/OwnerCell";
 
 interface TaskItemProps {
   task: Task;
@@ -36,6 +37,7 @@ interface TaskItemProps {
   onDeleteGlobalTag: (tag: string) => void;
   readOnly?: boolean;
   dragDisabled?: boolean;
+  owners: string[]; // NEW: list of owners to show in dropdown
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -50,6 +52,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onDeleteGlobalTag,
   readOnly = false,
   dragDisabled = false,
+  owners,
 }) => {
   const [editingField, setEditingField] = useState<keyof Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -130,16 +133,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px] items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
-                    <EditableCell
-                      fieldKey="owner"
+                    <OwnerCell
                       value={task.owner}
-                      onSave={(val) =>
-                        onUpdateTaskField(task.id, "owner", val as Task["owner"])
+                      owners={owners}
+                      onChange={(newOwner) =>
+                        onUpdateTaskField(task.id, "owner", newOwner as Task["owner"])
                       }
-                      groupColor={groupColor}
-                      editingField={editingField}
-                      setEditingField={setEditingField}
-                      readOnly={readOnly}
+                      disabled={readOnly}
                     />
                   </div>
 

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
 import { updateTaskPositions, deleteTasksByGroup } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -22,6 +23,15 @@ const TaskManager: React.FC = () => {
   const { role } = useAuth();
   const { session } = useSession();
   const readOnly = role === "Viewer";
+
+  // Load users for owner dropdown
+  const { users } = useAdminUsers();
+  const ownerOptions = React.useMemo(() => {
+    const labels = users
+      .filter((u) => u.status === "active")
+      .map((u) => (u.name && u.name.trim().length > 0 ? u.name : u.email));
+    return Array.from(new Set(labels)).sort();
+  }, [users]);
 
   // NEW: global filters
   const [selectedOwner, setSelectedOwner] = useState<string>("");
@@ -416,6 +426,7 @@ const TaskManager: React.FC = () => {
                 filterActive={!!filterActive}
                 onArchiveGroup={handleArchiveGroup}
                 otherGroups={otherGroups}
+                owners={ownerOptions}
               />
             );
           })}
