@@ -10,13 +10,15 @@ import { PlusIcon, PaintbrushIcon, Trash2Icon, ChevronDown, ChevronRight } from 
 import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { Archive } from 'lucide-react';
+import GroupDeleteDialog from '@/components/group/GroupDeleteDialog';
 
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[] };
   onAddTask: (groupId: string, content: string) => void;
   onUpdateGroupName: (groupId: string, newName: string) => void;
   onUpdateGroupColor: (groupId: string, newColor: string) => void;
-  onDeleteGroup: (groupId: string) => void;
+  onDeleteGroup: (groupId: string, mode: "delete" | "reassign", targetGroupId?: string) => void;
   onDeleteTask: (groupId: string, taskId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
@@ -33,6 +35,10 @@ interface TaskGroupProps {
   dragDisabled?: boolean;
   // NEW: indicate filters are active to adjust empty state message
   filterActive?: boolean;
+  // NEW: archive action
+  onArchiveGroup: (groupId: string) => void;
+  // NEW: list of other groups for reassignment
+  otherGroups: { id: string; name: string }[];
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -48,13 +54,13 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   allTags,
   onDeleteGlobalTag,
   readOnly = false,
-  // NEW: controlled collapse props
   isCollapsed: isCollapsedProp,
   onToggleCollapse,
-  // NEW: filtering-related props
   visibleTasks,
   dragDisabled = false,
   filterActive = false,
+  onArchiveGroup,
+  otherGroups,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -135,37 +141,36 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               <PaintbrushIcon className="h-4 w-4" />
             </Button>
           </div>
-          
+
           {!readOnly && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  aria-label="Delete group"
-                >
-                  <Trash2Icon className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this group?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete the group and all its tasks. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => onDeleteGroup(group.id)}
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                aria-label="Archive group"
+                onClick={() => onArchiveGroup(group.id)}
+              >
+                <Archive className="h-4 w-4" />
+              </Button>
+
+              <GroupDeleteDialog
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20"
+                    aria-label="Delete group"
                   >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                }
+                groupName={group.name}
+                hasTasks={group.tasks.length > 0}
+                otherGroups={otherGroups}
+                onConfirm={(mode, targetGroupId) => onDeleteGroup(group.id, mode, targetGroupId)}
+              />
+            </>
           )}
         </div>
       </CardHeader>

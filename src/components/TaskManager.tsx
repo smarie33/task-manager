@@ -13,6 +13,8 @@ import { useSession } from "@/context/session-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
+import { updateTaskPositions, deleteTasksByGroup } from "@/services/db";
+import { showError, showSuccess } from "@/utils/toast";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -112,13 +114,26 @@ const TaskManager: React.FC = () => {
     const task = sourceGroup.tasks.find((t) => t.id === draggableId);
     if (!task) return;
 
+    // Update in-memory order
     sourceGroup.tasks.splice(source.index, 1);
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
-    // Persist group change to Supabase when group actually changes
-    if (source.droppableId !== destination.droppableId) {
-      updateTaskGroup(task.id, destination.droppableId).catch(() => {});
+
+    // Persist ordering
+    if (source.droppableId === destination.droppableId) {
+      // Reindex positions for the affected group
+      const updates = destinationGroup.tasks.map((t, idx) => ({ id: t.id, position: idx }));
+      updateTaskPositions(updates).catch(() => showError("Failed to save task order"));
+    } else {
+      // Reindex both groups; moved task also changes group_id
+      const sourceUpdates = sourceGroup.tasks.map((t, idx) => ({ id: t.id, position: idx }));
+      const destUpdates = destinationGroup.tasks.map((t, idx) => ({
+        id: t.id,
+        position: idx,
+        group_id: t.id === task.id ? destination.droppableId : undefined,
+      }));
+      updateTaskPositions([...sourceUpdates, ...destUpdates]).catch(() => showError("Failed to move task"));
     }
   };
 
@@ -127,6 +142,9 @@ const TaskManager: React.FC = () => {
     const trimmed = content.trim();
     if (!trimmed) return;
     if (!session?.user?.id) return;
+    // Determine position at end of group
+    const current = groups.find((g) => g.id === groupId);
+    const newPos = current ? current.tasks.length : 0;
     const baseTask = {
       content: trimmed,
       owner: "",
@@ -136,25 +154,31 @@ const TaskManager: React.FC = () => {
       tags: [],
       hasFiles: false,
       notes: "",
-    };
-    const row = await createTask(session.user.id, groupId, baseTask);
-    const createdTask = {
-      id: row.id as string,
-      content: row.content ?? trimmed,
-      owner: row.owner ?? "",
-      status: row.status ?? baseTask.status,
-      timeline: row.timeline ?? "",
-      timeTracking: Number(row.time_tracking ?? 0),
-      tags: Array.isArray(row.tags) ? row.tags : [],
-      hasFiles: !!row.has_files,
-      timeLogs: [],
-      comments: [],
-      files: [],
-      notes: row.notes ?? "",
-    } as Task;
-    setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
-    );
+      position: newPos,
+    } as Omit<Task, "id">;
+    try {
+      const row = await createTask(session.user.id, groupId, baseTask);
+      const createdTask = {
+        id: row.id as string,
+        content: row.content ?? trimmed,
+        owner: row.owner ?? "",
+        status: row.status ?? baseTask.status,
+        timeline: row.timeline ?? "",
+        timeTracking: Number(row.time_tracking ?? 0),
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        hasFiles: !!row.has_files,
+        timeLogs: [],
+        comments: [],
+        files: [],
+        notes: row.notes ?? "",
+        position: typeof row.position === "number" ? row.position : newPos,
+      } as Task;
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
+      );
+    } catch {
+      showError("Failed to create task");
+    }
   };
 
   const handleAddGroup = async () => {
@@ -162,9 +186,13 @@ const TaskManager: React.FC = () => {
     const name = newGroupName.trim();
     if (!name) return;
     if (!session?.user?.id) return;
-    const row = await createGroup(session.user.id, name, "#60a5fa");
-    setGroups((prev) => [...prev, { id: row.id as string, name: row.name, color: row.color, tasks: [] }]);
-    setNewGroupName("");
+    try {
+      const row = await createGroup(session.user.id, name, "#60a5fa");
+      setGroups((prev) => [...prev, { id: row.id as string, name: row.name, color: row.color, tasks: [] }]);
+      setNewGroupName("");
+    } catch {
+      showError("Failed to create group");
+    }
   };
 
   const handleUpdateGroupName = (groupId: string, newName: string) => {
@@ -172,7 +200,7 @@ const TaskManager: React.FC = () => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, name: newName } : group))
     );
-    updateGroup(groupId, { name: newName }).catch(() => {});
+    updateGroup(groupId, { name: newName }).catch(() => showError("Failed to update group name"));
   };
 
   const handleUpdateGroupColor = (groupId: string, newColor: string) => {
@@ -180,13 +208,56 @@ const TaskManager: React.FC = () => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, color: newColor } : group))
     );
-    updateGroup(groupId, { color: newColor }).catch(() => {});
+    updateGroup(groupId, { color: newColor }).catch(() => showError("Failed to update group color"));
   };
 
-  const handleDeleteGroup = (groupId: string) => {
+  // REPLACED: delete with guarded options (reassign or delete)
+  const handleDeleteGroup = (groupId: string, mode: "delete" | "reassign", targetGroupId?: string) => {
     if (readOnly) return;
-    setGroups((prevGroups) => prevGroups.filter((group) => group.id !== groupId));
-    deleteGroup(groupId).catch(() => {});
+    if (mode === "delete") {
+      // Remove locally
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      // Delete tasks then group remotely
+      Promise.resolve()
+        .then(() => deleteTasksByGroup(groupId))
+        .then(() => deleteGroup(groupId))
+        .then(() => showSuccess("Group deleted"))
+        .catch(() => showError("Failed to delete group"));
+      return;
+    }
+    if (mode === "reassign" && targetGroupId) {
+      // Move tasks locally to target group end, then remove group
+      setGroups((prev) => {
+        const source = prev.find((g) => g.id === groupId);
+        const target = prev.find((g) => g.id === targetGroupId);
+        if (!source || !target) return prev;
+        const moved = source.tasks;
+        const combined = [...target.tasks, ...moved];
+        // Reindex combined
+        const reindexed = combined.map((t, idx) => ({ ...t, position: idx }));
+        return prev
+          .map((g) => {
+            if (g.id === targetGroupId) return { ...g, tasks: reindexed };
+            if (g.id === groupId) return null as any;
+            return g;
+          })
+          .filter(Boolean) as typeof prev;
+      });
+      // Persist: reindex target group's tasks with new positions and group_id for moved tasks, then delete group
+      const targetGroup = groups.find((g) => g.id === targetGroupId);
+      const sourceGroup = groups.find((g) => g.id === groupId);
+      const combined = [...(targetGroup?.tasks ?? []), ...(sourceGroup?.tasks ?? [])];
+      const updates = combined.map((t, idx) => ({
+        id: t.id,
+        position: idx,
+        group_id: targetGroupId,
+      }));
+      updateTaskPositions(updates)
+        .then(() => deleteGroup(groupId))
+        .then(() => showSuccess("Group deleted and tasks reassigned"))
+        .catch(() => showError("Failed to reassign tasks or delete group"));
+      return;
+    }
   };
 
   const handleDeleteTask = (groupId: string, taskId: string) => {
@@ -196,13 +267,23 @@ const TaskManager: React.FC = () => {
         group.id === groupId
           ? {
               ...group,
-              tasks: group.tasks.filter((task) => task.id !== taskId),
+              tasks: group.tasks.filter((task) => task.id !== taskId).map((t, idx) => ({ ...t, position: idx })),
             }
           : group
       )
     );
-    // Persist delete
-    import("@/services/db").then(m => m.deleteTask(taskId).catch(() => {}));
+    // Persist delete, then reindex remaining positions
+    import("@/services/db").then(m => {
+      m.deleteTask(taskId)
+        .then(() => {
+          const grp = groups.find((g) => g.id === groupId);
+          if (!grp) return;
+          const remaining = grp.tasks.filter((t) => t.id !== taskId);
+          const updates = remaining.map((t, idx) => ({ id: t.id, position: idx }));
+          return m.updateTaskPositions(updates);
+        })
+        .catch(() => showError("Failed to delete task"));
+    });
   };
 
   const handleUpdateTaskField = <K extends keyof Task>(
@@ -222,9 +303,18 @@ const TaskManager: React.FC = () => {
           : group
       )
     );
-    // Persist core fields
     const persistable: Partial<Task> = { [field]: value } as any;
-    updateTaskRow(taskId, persistable).catch(() => {});
+    updateTaskRow(taskId, persistable).catch(() => showError("Failed to update task"));
+  };
+
+  // ADDED: archive group
+  const handleArchiveGroup = (groupId: string) => {
+    if (readOnly) return;
+    // Optimistically hide group
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    updateGroup(groupId, { archived: true })
+      .then(() => showSuccess("Group archived"))
+      .catch(() => showError("Failed to archive group"));
   };
 
   return (
@@ -303,6 +393,7 @@ const TaskManager: React.FC = () => {
               const statusOk = !selectedStatus || t.status === selectedStatus;
               return ownerOk && statusOk;
             });
+            const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
             return (
               <TaskGroup
                 key={group.id}
@@ -318,13 +409,13 @@ const TaskManager: React.FC = () => {
                 allTags={allTags}
                 onDeleteGlobalTag={handleDeleteGlobalTag}
                 readOnly={readOnly}
-                // NEW: controlled collapse per group
                 isCollapsed={collapsedGroups[group.id] ?? false}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                // NEW: pass filtered tasks and drag disable flag
                 visibleTasks={visibleTasks}
                 dragDisabled={!!filterActive}
                 filterActive={!!filterActive}
+                onArchiveGroup={handleArchiveGroup}
+                otherGroups={otherGroups}
               />
             );
           })}

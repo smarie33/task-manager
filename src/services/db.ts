@@ -24,22 +24,26 @@ const toTask = (row: any): Task => ({
   comments: [], // will be filled later
   files: [], // used for task-specific images (metadata stored in files table)
   notes: row.notes ?? "",
+  position: typeof row.position === "number" ? row.position : undefined,
 });
 
 export async function loadAll(userId: string): Promise<LoadedData> {
-  // Load groups
+  // Load groups (only non-archived)
   const { data: groupRows, error: gErr } = await supabase
     .from("task_groups")
     .select("*")
     .eq("user_id", userId)
+    .eq("archived", false)
     .order("created_at", { ascending: true });
   if (gErr) throw new Error(gErr.message);
 
-  // Load tasks
+  // Load tasks ordered by position then created_at
   const { data: taskRows, error: tErr } = await supabase
     .from("tasks")
     .select("*")
     .eq("user_id", userId)
+    .order("group_id", { ascending: true })
+    .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true });
   if (tErr) throw new Error(tErr.message);
 
@@ -98,6 +102,16 @@ export async function loadAll(userId: string): Promise<LoadedData> {
     if (group) {
       group.tasks.push(t);
     }
+  }
+
+  // Ensure tasks within each group are sorted by position if present
+  for (const g of groupsMap.values()) {
+    g.tasks.sort((a, b) => {
+      const ap = typeof a.position === "number" ? a.position : Number.MAX_SAFE_INTEGER;
+      const bp = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER;
+      if (ap !== bp) return ap - bp;
+      return 0;
+    });
   }
 
   // Attach logs (include admin flag)
@@ -164,8 +178,14 @@ export async function createGroup(userId: string, name: string, color: string) {
   return data;
 }
 
-export async function updateGroup(groupId: string, fields: Partial<{ name: string; color: string }>) {
-  const { error } = await supabase.from("task_groups").update(fields).eq("id", groupId);
+// UPDATED: allow updating archived flag too
+export async function updateGroup(groupId: string, fields: Partial<{ name: string; color: string; archived: boolean }>) {
+  const payload: any = {};
+  if (fields.name !== undefined) payload.name = fields.name;
+  if (fields.color !== undefined) payload.color = fields.color;
+  if (fields.archived !== undefined) payload.archived = fields.archived;
+  if (Object.keys(payload).length === 0) return;
+  const { error } = await supabase.from("task_groups").update(payload).eq("id", groupId);
   if (error) throw new Error(error.message);
 }
 
@@ -188,6 +208,7 @@ export async function createTask(userId: string, groupId: string, task: Omit<Tas
       tags: task.tags,
       has_files: task.hasFiles,
       notes: task.notes ?? "",
+      position: (task as any).position ?? null,
     }])
     .select()
     .single();
@@ -205,6 +226,7 @@ export async function updateTaskRow(taskId: string, fields: Partial<Task>) {
   if (fields.tags !== undefined) payload.tags = fields.tags;
   if (fields.hasFiles !== undefined) payload.has_files = fields.hasFiles;
   if (fields.notes !== undefined) payload.notes = fields.notes;
+  if ((fields as any).position !== undefined) payload.position = (fields as any).position;
   if (Object.keys(payload).length === 0) return;
   const { error } = await supabase.from("tasks").update(payload).eq("id", taskId);
   if (error) throw new Error(error.message);
@@ -299,5 +321,27 @@ export async function addExternalLink(userId: string, link: LinkMeta) {
 
 export async function updateTaskGroup(taskId: string, groupId: string) {
   const { error } = await supabase.from("tasks").update({ group_id: groupId }).eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+// ADDED: bulk update task positions (and optional group moves)
+export async function updateTaskPositions(updates: { id: string; position: number; group_id?: string }[]) {
+  if (updates.length === 0) return;
+  await Promise.all(
+    updates.map((u) =>
+      supabase
+        .from("tasks")
+        .update({ position: u.position, ...(u.group_id ? { group_id: u.group_id } : {}) })
+        .eq("id", u.id)
+    )
+  ).then((results) => {
+    const err = results.find((r: any) => r.error);
+    if (err && (err as any).error) throw new Error((err as any).error.message);
+  });
+}
+
+// ADDED: delete all tasks in a group (for destructive group deletion)
+export async function deleteTasksByGroup(groupId: string) {
+  const { error } = await supabase.from("tasks").delete().eq("group_id", groupId);
   if (error) throw new Error(error.message);
 }

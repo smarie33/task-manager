@@ -36,6 +36,7 @@ export interface Task {
   comments?: { id: string; text: string; createdAt: string; author?: string }[];
   files?: FileMeta[]; // UPDATED: include mimeType for image detection
   notes?: string; // Rich text notes
+  position?: number; // ADDED: ordering within a group (0-based)
 }
 
 export interface TaskGroupData {
