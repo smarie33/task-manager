@@ -11,7 +11,9 @@ export async function invokeEdge<T = any>(
 
   const { data, error } = await supabase.functions.invoke<T>(name, {
     body,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: token
+      ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+      : { "Content-Type": "application/json" },
   });
 
   return { data: (data as T) ?? null, error: error ?? null };
