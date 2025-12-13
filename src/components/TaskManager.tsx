@@ -6,10 +6,10 @@ import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, ChevronDown, ChevronUp } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
 import { useTaskData } from "@/context/task-data-context";
 import { Task, StatusOption } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
+import { useSession } from "@/context/session-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
@@ -18,6 +18,7 @@ const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
   const [newGroupName, setNewGroupName] = useState("");
   const { role } = useAuth();
+  const { session } = useSession();
   const readOnly = role === "Viewer";
 
   // NEW: global filters
@@ -115,58 +116,55 @@ const TaskManager: React.FC = () => {
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
-    // Persist group change only when the group actually changed
+    // Persist group change to Supabase when group actually changes
     if (source.droppableId !== destination.droppableId) {
-      const movedTaskId = task.id;
-      const newGroupId = destination.droppableId;
-      updateTaskGroup(movedTaskId, newGroupId).catch(() => {});
+      updateTaskGroup(task.id, destination.droppableId).catch(() => {});
     }
   };
 
-  const handleAddTask = (groupId: string, content: string) => {
+  const handleAddTask = async (groupId: string, content: string) => {
     if (readOnly) return;
-    setGroups((prevGroups) =>
-      prevGroups.map((group) =>
-        group.id === groupId
-          ? {
-              ...group,
-              tasks: [
-                ...group.tasks,
-                {
-                  id: uuidv4(),
-                  content,
-                  owner: "",
-                  status: availableStatuses[0]?.name || "To Do",
-                  timeline: "",
-                  timeTracking: 0,
-                  tags: [],
-                  hasFiles: false,
-                  timeLogs: [],
-                  comments: [],
-                  files: [], // NEW
-                  notes: "",
-                },
-              ],
-            }
-          : group
-      )
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    if (!session?.user?.id) return;
+    const baseTask = {
+      content: trimmed,
+      owner: "",
+      status: availableStatuses[0]?.name || "To Do",
+      timeline: "",
+      timeTracking: 0,
+      tags: [],
+      hasFiles: false,
+      notes: "",
+    };
+    const row = await createTask(session.user.id, groupId, baseTask);
+    const createdTask = {
+      id: row.id as string,
+      content: row.content ?? trimmed,
+      owner: row.owner ?? "",
+      status: row.status ?? baseTask.status,
+      timeline: row.timeline ?? "",
+      timeTracking: Number(row.time_tracking ?? 0),
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      hasFiles: !!row.has_files,
+      timeLogs: [],
+      comments: [],
+      files: [],
+      notes: row.notes ?? "",
+    } as Task;
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
     );
   };
 
-  const handleAddGroup = () => {
+  const handleAddGroup = async () => {
     if (readOnly) return;
-    if (newGroupName.trim()) {
-      setGroups((prevGroups) => [
-        ...prevGroups,
-        {
-          id: uuidv4(),
-          name: newGroupName.trim(),
-          color: "#60a5fa",
-          tasks: [],
-        },
-      ]);
-      setNewGroupName("");
-    }
+    const name = newGroupName.trim();
+    if (!name) return;
+    if (!session?.user?.id) return;
+    const row = await createGroup(session.user.id, name, "#60a5fa");
+    setGroups((prev) => [...prev, { id: row.id as string, name: row.name, color: row.color, tasks: [] }]);
+    setNewGroupName("");
   };
 
   const handleUpdateGroupName = (groupId: string, newName: string) => {
