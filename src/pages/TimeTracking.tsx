@@ -16,6 +16,7 @@ import { useSession } from "@/context/session-context";
 import { loadProfile } from "@/utils/profile-storage";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 import AppHeader from "@/components/AppHeader";
 
 type AggregatedLog = {
@@ -31,7 +32,7 @@ const formatDuration = (seconds: number): string => {
 };
 
 const TimeTracking: React.FC = () => {
-  const { groups } = useTaskData();
+  const { groups, updateTask } = useTaskData();
   const { settings, updateSettingsForPerson } = usePayroll();
   const { role } = useAuth();
   const { session } = useSession();
@@ -50,6 +51,32 @@ const TimeTracking: React.FC = () => {
 
   const [selectedOwner, setSelectedOwner] = React.useState<string | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  // New: derive tasks for the selected owner (for logging)
+  const ownerTasks = React.useMemo(() => {
+    if (!selectedOwner) return [];
+    const list: { id: string; content: string }[] = [];
+    for (const g of groups) {
+      for (const t of g.tasks) {
+        if ((t.owner || "").trim() === selectedOwner) {
+          list.push({ id: t.id, content: t.content });
+        }
+      }
+    }
+    return list.sort((a, b) => a.content.localeCompare(b.content));
+  }, [groups, selectedOwner]);
+
+  // New: logging form state
+  const [logTaskId, setLogTaskId] = React.useState<string>("");
+  const [logDate, setLogDate] = React.useState<string>(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const [logHours, setLogHours] = React.useState<string>("0");
+  const [logMinutes, setLogMinutes] = React.useState<string>("0");
 
   const currentOwnerGuess = React.useMemo(() => {
     const name = profile?.name?.trim();
@@ -73,6 +100,17 @@ const TimeTracking: React.FC = () => {
       setSelectedOwner(owners[0] ?? null);
     }
   }, [owners, selectedOwner, role, currentOwnerGuess]);
+
+  // Ensure default selected task aligns with selected owner
+  React.useEffect(() => {
+    if (!selectedOwner) {
+      setLogTaskId("");
+      return;
+    }
+    if (!logTaskId || !ownerTasks.find((t) => t.id === logTaskId)) {
+      setLogTaskId(ownerTasks[0]?.id ?? "");
+    }
+  }, [selectedOwner, ownerTasks, logTaskId]);
 
   const logsForOwner = React.useMemo<AggregatedLog[]>(() => {
     if (!selectedOwner) return [];
@@ -245,6 +283,124 @@ const TimeTracking: React.FC = () => {
             </Popover>
           </div>
         </div>
+
+        {/* New: Inline Add Hours card */}
+        <Card className="p-4 mb-4">
+          {selectedOwner ? (
+            <div className="space-y-3">
+              <div className="text-sm font-semibold">Add Hours</div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-2">
+                  <Label>Task</Label>
+                  <Select
+                    value={logTaskId || undefined}
+                    onValueChange={(val) => setLogTaskId(val)}
+                    disabled={ownerTasks.length === 0}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder={ownerTasks.length === 0 ? "No tasks available" : "Select task"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ownerTasks.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.content}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="log-date">Date</Label>
+                  <Input
+                    id="log-date"
+                    type="date"
+                    className="mt-1"
+                    value={logDate}
+                    onChange={(e) => setLogDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="log-hours">Hours</Label>
+                    <Input
+                      id="log-hours"
+                      type="number"
+                      min={0}
+                      step={1}
+                      className="mt-1"
+                      value={logHours}
+                      onChange={(e) => setLogHours(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="log-minutes">Minutes</Label>
+                    <Input
+                      id="log-minutes"
+                      type="number"
+                      min={0}
+                      max={59}
+                      step={1}
+                      className="mt-1"
+                      value={logMinutes}
+                      onChange={(e) => setLogMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    if (!logTaskId) return;
+                    const hoursNum = Math.max(0, parseInt(logHours || "0", 10));
+                    const minutesNum = Math.min(59, Math.max(0, parseInt(logMinutes || "0", 10)));
+                    const seconds = hoursNum * 3600 + minutesNum * 60;
+                    if (seconds <= 0) return;
+
+                    // Find task and update its timeLogs and timeTracking
+                    let foundTask: { groupId: string; taskId: string } | null = null;
+                    for (const g of groups) {
+                      for (const t of g.tasks) {
+                        if (t.id === logTaskId) {
+                          foundTask = { groupId: g.id, taskId: t.id };
+                          break;
+                        }
+                      }
+                      if (foundTask) break;
+                    }
+                    if (!foundTask) return;
+
+                    const group = groups.find((gg) => gg.id === foundTask!.groupId)!;
+                    const task = group.tasks.find((tt) => tt.id === foundTask!.taskId)!;
+
+                    const newLogs = [...(task.timeLogs || []), { durationSeconds: seconds, date: logDate }];
+                    const newHoursTotal = (task.timeTracking || 0) + seconds / 3600;
+
+                    updateTask(foundTask.groupId, {
+                      ...task,
+                      timeLogs: newLogs,
+                      timeTracking: newHoursTotal,
+                    });
+
+                    // Reset inputs
+                    setLogHours("0");
+                    setLogMinutes("0");
+                    // Keep date and task selection as-is for faster repeated entries
+                  }}
+                  disabled={!logTaskId || ownerTasks.length === 0}
+                >
+                  Save Log
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {role === "Admin" ? "Select a person to add hours." : "No logs available for your account yet."}
+            </div>
+          )}
+        </Card>
 
         <Card className="p-4 mb-4">
           {selectedOwner ? (
