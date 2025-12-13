@@ -1,29 +1,29 @@
 "use client";
 
 import React from "react";
-import { useTaskData } from "@/context/task-data-context";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import AppHeader from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, differenceInCalendarDays, parseISO } from "date-fns";
-import type { DateRange } from "react-day-picker";
-import { usePayroll, PaymentSettings } from "@/context/payroll-context";
+import { useTaskData } from "@/context/task-data-context";
+import { usePayroll, type PaymentSettings } from "@/context/payroll-context";
 import { useAuth } from "@/context/auth-context";
 import { useSession } from "@/context/session-context";
+import { format, differenceInCalendarDays, parseISO } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import OwnerSelect from "@/components/time-tracking/OwnerSelect";
+import DateRangePicker from "@/components/time-tracking/DateRangePicker";
+import AddHoursForm from "@/components/time-tracking/AddHoursForm";
+import PaymentSettingsCard from "@/components/time-tracking/PaymentSettingsCard";
+import TotalsCard from "@/components/time-tracking/TotalsCard";
+import LogsTable, { type AggregatedLog } from "@/components/time-tracking/LogsTable";
 import { loadProfile } from "@/utils/profile-storage";
+import { Button } from "@/components/ui/button";
+import { Table } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import AppHeader from "@/components/AppHeader";
-
-type AggregatedLog = {
-  taskContent: string;
-  date: string;
-  durationSeconds: number;
-};
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -31,13 +31,26 @@ const formatDuration = (seconds: number): string => {
   return `${h}h ${m}m`;
 };
 
+const getPeriodDays = (freq?: PaymentSettings["salaryFrequency"]): number => {
+  switch (freq) {
+    case "weekly":
+      return 7;
+    case "monthly":
+      return 30;
+    case "yearly":
+      return 365;
+    default:
+      return 30;
+  }
+};
+
 const TimeTracking: React.FC = () => {
   const { groups, updateTask } = useTaskData();
   const { settings, updateSettingsForPerson } = usePayroll();
   const { role } = useAuth();
   const { session } = useSession();
-  const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
-  
+
+  // Owners derived from tasks
   const owners = React.useMemo(() => {
     const set = new Set<string>();
     for (const g of groups) {
@@ -49,35 +62,12 @@ const TimeTracking: React.FC = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [groups]);
 
+  // Selected owner and date range
   const [selectedOwner, setSelectedOwner] = React.useState<string | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
-  // New: derive tasks for the selected owner (for logging)
-  const ownerTasks = React.useMemo(() => {
-    if (!selectedOwner) return [];
-    const list: { id: string; content: string }[] = [];
-    for (const g of groups) {
-      for (const t of g.tasks) {
-        if ((t.owner || "").trim() === selectedOwner) {
-          list.push({ id: t.id, content: t.content });
-        }
-      }
-    }
-    return list.sort((a, b) => a.content.localeCompare(b.content));
-  }, [groups, selectedOwner]);
-
-  // New: logging form state
-  const [logTaskId, setLogTaskId] = React.useState<string>("");
-  const [logDate, setLogDate] = React.useState<string>(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  });
-  const [logHours, setLogHours] = React.useState<string>("0");
-  const [logMinutes, setLogMinutes] = React.useState<string>("0");
-
+  // Profile/session-based guess for non-admins
+  const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
   const currentOwnerGuess = React.useMemo(() => {
     const name = profile?.name?.trim();
     const email = session?.user?.email?.trim();
@@ -96,22 +86,25 @@ const TimeTracking: React.FC = () => {
     if (!selectedOwner && owners.length > 0) {
       setSelectedOwner(owners[0]);
     } else if (selectedOwner && !owners.includes(selectedOwner)) {
-      // If current selection disappears, reset to first owner if available
       setSelectedOwner(owners[0] ?? null);
     }
   }, [owners, selectedOwner, role, currentOwnerGuess]);
 
-  // Ensure default selected task aligns with selected owner
-  React.useEffect(() => {
-    if (!selectedOwner) {
-      setLogTaskId("");
-      return;
+  // Owner tasks for AddHoursForm
+  const ownerTasks = React.useMemo(() => {
+    if (!selectedOwner) return [];
+    const list: { id: string; content: string }[] = [];
+    for (const g of groups) {
+      for (const t of g.tasks) {
+        if ((t.owner || "").trim() === selectedOwner) {
+          list.push({ id: t.id, content: t.content });
+        }
+      }
     }
-    if (!logTaskId || !ownerTasks.find((t) => t.id === logTaskId)) {
-      setLogTaskId(ownerTasks[0]?.id ?? "");
-    }
-  }, [selectedOwner, ownerTasks, logTaskId]);
+    return list.sort((a, b) => a.content.localeCompare(b.content));
+  }, [groups, selectedOwner]);
 
+  // Aggregated logs for selected owner with date filtering
   const logsForOwner = React.useMemo<AggregatedLog[]>(() => {
     if (!selectedOwner) return [];
     let result: AggregatedLog[] = [];
@@ -128,7 +121,6 @@ const TimeTracking: React.FC = () => {
         }
       }
     }
-    // Filter by date range if selected
     if (dateRange?.from || dateRange?.to) {
       const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null;
       const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null;
@@ -136,11 +128,10 @@ const TimeTracking: React.FC = () => {
         (!fromStr || d >= fromStr) && (!toStr || d <= toStr);
       result = result.filter((l) => inRange(l.date));
     }
-    // sort by date descending
     return result.sort((a, b) => b.date.localeCompare(a.date));
   }, [groups, selectedOwner, dateRange]);
 
-  // Compute all logs for owner (overall)
+  // Overall logs for owner for totals
   const allLogsForOwner = React.useMemo<AggregatedLog[]>(() => {
     if (!selectedOwner) return [];
     const res: AggregatedLog[] = [];
@@ -158,35 +149,18 @@ const TimeTracking: React.FC = () => {
 
   const totalSeconds = logsForOwner.reduce((sum, l) => sum + l.durationSeconds, 0);
 
-  // Helpers for payment calculation
-  const getPeriodDays = (freq?: PaymentSettings["salaryFrequency"]): number => {
-    switch (freq) {
-      case "weekly":
-        return 7;
-      case "monthly":
-        return 30;
-      case "yearly":
-        return 365;
-      default:
-        return 30;
-    }
-  };
-
-  const ownerSettings: PaymentSettings | undefined = selectedOwner ? settings[selectedOwner] : undefined;
-
+  // Selected range days and overall days for salary calculations
   const selectedRangeDays = React.useMemo(() => {
     if (logsForOwner.length === 0) {
-      // If no logs are shown, derive range from dateRange if set
       if (dateRange?.from && dateRange?.to) {
         return Math.max(0, differenceInCalendarDays(dateRange.to, dateRange.from) + 1);
       }
       return 0;
     }
-    // If dateRange is set, compute days between its endpoints; otherwise, use min/max of filtered logs
     if (dateRange?.from && dateRange?.to) {
       return Math.max(0, differenceInCalendarDays(dateRange.to, dateRange.from) + 1);
     }
-    const minDate = parseISO(logsForOwner[logsForOwner.length - 1].date); // since logsForOwner sorted desc
+    const minDate = parseISO(logsForOwner[logsForOwner.length - 1].date);
     const maxDate = parseISO(logsForOwner[0].date);
     return Math.max(0, differenceInCalendarDays(maxDate, minDate) + 1);
   }, [logsForOwner, dateRange]);
@@ -198,6 +172,9 @@ const TimeTracking: React.FC = () => {
     return Math.max(0, differenceInCalendarDays(maxDate, minDate) + 1);
   }, [allLogsForOwner]);
 
+  // Payments
+  const ownerSettings: PaymentSettings | undefined = selectedOwner ? settings[selectedOwner] : undefined;
+
   const selectedTimeframePayment = React.useMemo(() => {
     if (!ownerSettings) return 0;
     if (ownerSettings.type === "hourly") {
@@ -205,7 +182,6 @@ const TimeTracking: React.FC = () => {
       const rate = ownerSettings.hourlyRate ?? 0;
       return Math.max(0, hours * rate);
     }
-    // salary
     const amount = ownerSettings.salaryAmount ?? 0;
     const periodDays = getPeriodDays(ownerSettings.salaryFrequency);
     const dailyRate = periodDays > 0 ? amount / periodDays : 0;
@@ -228,6 +204,28 @@ const TimeTracking: React.FC = () => {
   const currency = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
 
+  // Save manual log handler
+  const handleSaveManualLog = (taskId: string, date: string, seconds: number) => {
+    // Find the task and update
+    let found: { groupId: string; taskIndex: number } | null = null;
+    for (const g of groups) {
+      const idx = g.tasks.findIndex((t) => t.id === taskId);
+      if (idx !== -1) {
+        found = { groupId: g.id, taskIndex: idx };
+        break;
+      }
+    }
+    if (!found) return;
+    const group = groups.find((gg) => gg.id === found!.groupId)!;
+    const task = group.tasks[found.taskIndex];
+
+    const newLogs = [...(task.timeLogs || []), { durationSeconds: seconds, date }];
+    const newHoursTotal = (task.timeTracking || 0) + seconds / 3600;
+
+    // updateTask expects: (groupId, updatedTask)
+    updateTask(found.groupId, { ...task, timeLogs: newLogs, timeTracking: newHoursTotal });
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <AppHeader />
@@ -236,165 +234,18 @@ const TimeTracking: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Time Tracking</h1>
           <div className="flex items-center gap-3">
             {role === "Admin" && (
-              <div className="w-48 sm:w-56">
-                <Select
-                  value={selectedOwner ?? undefined}
-                  onValueChange={(val) => setSelectedOwner(val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a person" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {owners.length > 0 ? (
-                      owners.map((owner) => (
-                        <SelectItem key={owner} value={owner}>
-                          {owner}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-sm text-gray-500">No people found</div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <OwnerSelect owners={owners} value={selectedOwner} onChange={setSelectedOwner} />
             )}
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[220px] justify-start text-left">
-                  {dateRange?.from && dateRange?.to
-                    ? `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
-                    : "Select date range"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                />
-                <div className="flex justify-end gap-2 p-2 border-t">
-                  <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
-                    Clear
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
         </div>
 
-        {/* New: Inline Add Hours card */}
         <Card className="p-4 mb-4">
           {selectedOwner ? (
-            <div className="space-y-3">
-              <div className="text-sm font-semibold">Add Hours</div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="sm:col-span-2">
-                  <Label>Task</Label>
-                  <Select
-                    value={logTaskId || undefined}
-                    onValueChange={(val) => setLogTaskId(val)}
-                    disabled={ownerTasks.length === 0}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder={ownerTasks.length === 0 ? "No tasks available" : "Select task"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ownerTasks.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.content}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="log-date">Date</Label>
-                  <Input
-                    id="log-date"
-                    type="date"
-                    className="mt-1"
-                    value={logDate}
-                    onChange={(e) => setLogDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label htmlFor="log-hours">Hours</Label>
-                    <Input
-                      id="log-hours"
-                      type="number"
-                      min={0}
-                      step={1}
-                      className="mt-1"
-                      value={logHours}
-                      onChange={(e) => setLogHours(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor="log-minutes">Minutes</Label>
-                    <Input
-                      id="log-minutes"
-                      type="number"
-                      min={0}
-                      max={59}
-                      step={1}
-                      className="mt-1"
-                      value={logMinutes}
-                      onChange={(e) => setLogMinutes(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => {
-                    if (!logTaskId) return;
-                    const hoursNum = Math.max(0, parseInt(logHours || "0", 10));
-                    const minutesNum = Math.min(59, Math.max(0, parseInt(logMinutes || "0", 10)));
-                    const seconds = hoursNum * 3600 + minutesNum * 60;
-                    if (seconds <= 0) return;
-
-                    // Find task and update its timeLogs and timeTracking
-                    let foundTask: { groupId: string; taskId: string } | null = null;
-                    for (const g of groups) {
-                      for (const t of g.tasks) {
-                        if (t.id === logTaskId) {
-                          foundTask = { groupId: g.id, taskId: t.id };
-                          break;
-                        }
-                      }
-                      if (foundTask) break;
-                    }
-                    if (!foundTask) return;
-
-                    const group = groups.find((gg) => gg.id === foundTask!.groupId)!;
-                    const task = group.tasks.find((tt) => tt.id === foundTask!.taskId)!;
-
-                    const newLogs = [...(task.timeLogs || []), { durationSeconds: seconds, date: logDate }];
-                    const newHoursTotal = (task.timeTracking || 0) + seconds / 3600;
-
-                    updateTask(foundTask.groupId, {
-                      ...task,
-                      timeLogs: newLogs,
-                      timeTracking: newHoursTotal,
-                    });
-
-                    // Reset inputs
-                    setLogHours("0");
-                    setLogMinutes("0");
-                    // Keep date and task selection as-is for faster repeated entries
-                  }}
-                  disabled={!logTaskId || ownerTasks.length === 0}
-                >
-                  Save Log
-                </Button>
-              </div>
-            </div>
+            <AddHoursForm
+              ownerTasks={ownerTasks}
+              onSave={handleSaveManualLog}
+            />
           ) : (
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {role === "Admin" ? "Select a person to add hours." : "No logs available for your account yet."}
@@ -402,180 +253,38 @@ const TimeTracking: React.FC = () => {
           )}
         </Card>
 
-        <Card className="p-4 mb-4">
-          {selectedOwner ? (
-            role === "Admin" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-semibold mb-2">Payment Settings</div>
-                  <RadioGroup
-                    value={ownerSettings?.type ?? "hourly"}
-                    onValueChange={(val) =>
-                      updateSettingsForPerson(selectedOwner, { type: val as PaymentSettings["type"] })
-                    }
-                    className="flex gap-4 mb-3"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="hourly" id="type-hourly" />
-                      <Label htmlFor="type-hourly">Hourly</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="salary" id="type-salary" />
-                      <Label htmlFor="type-salary">Salary</Label>
-                    </div>
-                  </RadioGroup>
-
-                  {ownerSettings?.type === "hourly" || !ownerSettings ? (
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <Label htmlFor="hourly-rate">Hourly Rate (USD)</Label>
-                        <input
-                          id="hourly-rate"
-                          type="number"
-                          className="mt-1 w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm dark:bg-gray-800 dark:border-gray-700"
-                          value={String(ownerSettings?.hourlyRate ?? 0)}
-                          onChange={(e) =>
-                            updateSettingsForPerson(selectedOwner, {
-                              hourlyRate: Math.max(0, parseFloat(e.target.value || "0")),
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="salary-amount">Salary Amount (USD)</Label>
-                        <input
-                          id="salary-amount"
-                          type="number"
-                          className="mt-1 w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm dark:bg-gray-800 dark:border-gray-700"
-                          value={String(ownerSettings?.salaryAmount ?? 0)}
-                          onChange={(e) =>
-                            updateSettingsForPerson(selectedOwner, {
-                              salaryAmount: Math.max(0, parseFloat(e.target.value || "0")),
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>Frequency</Label>
-                        <Select
-                          value={ownerSettings?.salaryFrequency ?? "monthly"}
-                          onValueChange={(val) =>
-                            updateSettingsForPerson(selectedOwner, {
-                              salaryFrequency: val as PaymentSettings["salaryFrequency"],
-                            })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="yearly">Yearly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold">Totals</div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Selected timeframe total
-                    </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {currency(selectedTimeframePayment)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Overall total
-                    </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {currency(overallPayment)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-sm font-semibold">Totals</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Selected timeframe total
-                  </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {currency(selectedTimeframePayment)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Overall total
-                  </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {currency(overallPayment)}
-                  </span>
-                </div>
-              </div>
-            )
+        {selectedOwner ? (
+          role === "Admin" ? (
+            <PaymentSettingsCard
+              owner={selectedOwner}
+              ownerSettings={ownerSettings}
+              currency={currency}
+              selectedTimeframePayment={selectedTimeframePayment}
+              overallPayment={overallPayment}
+              onUpdate={updateSettingsForPerson}
+            />
           ) : (
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {role === "Admin"
-                ? "Select a person to manage payment settings and view totals."
-                : "No logs available for your account yet."}
-            </div>
-          )}
-        </Card>
+            <TotalsCard
+              selectedTimeframePayment={selectedTimeframePayment}
+              overallPayment={overallPayment}
+              currency={currency}
+              messageWhenNoOwner="No logs available for your account yet."
+            />
+          )
+        ) : (
+          <TotalsCard
+            selectedTimeframePayment={0}
+            overallPayment={0}
+            currency={currency}
+            messageWhenNoOwner={role === "Admin"
+              ? "Select a person to manage payment settings and view totals."
+              : "No logs available for your account yet."
+            }
+          />
+        )}
 
-        <Card className="p-4">
-          {selectedOwner ? (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
-                  Showing logs for: <span className="font-semibold">{selectedOwner}</span>
-                </div>
-                <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                  Total Time: {formatDuration(totalSeconds)}
-                </div>
-              </div>
-
-              {logsForOwner.length > 0 ? (
-                <div className="w-full overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Task</TableHead>
-                        <TableHead className="text-right">Duration</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {logsForOwner.map((log, idx) => (
-                        <TableRow key={`${log.taskContent}-${log.date}-${idx}`}>
-                          <TableCell className="whitespace-nowrap">{log.date}</TableCell>
-                          <TableCell className="min-w-[16rem]">{log.taskContent}</TableCell>
-                          <TableCell className="text-right whitespace-nowrap">
-                            {formatDuration(log.durationSeconds)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 dark:text-gray-400">No time logs yet for this person.</div>
-              )}
-            </>
-          ) : (
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              No people available. Add owners and time logs from the Task Manager.
-            </div>
-          )}
+        <Card className="mb-4">
+          <LogsTable logs={logsForOwner} selectedOwner={selectedOwner} totalSeconds={totalSeconds} />
         </Card>
       </div>
     </div>
