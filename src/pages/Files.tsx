@@ -11,9 +11,12 @@ import { FileIcon, LinkIcon, UploadIcon } from "lucide-react";
 import { FileMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
 import { showSuccess, showError } from "@/utils/toast";
+import { addManyFiles, addExternalLink } from "@/services/db";
+import { useSession } from "@/context/session-context";
 
 const Files: React.FC = () => {
   const { groups, libraryFiles, setLibraryFiles, externalLinks, setExternalLinks } = useTaskData();
+  const { session } = useSession();
 
   // Gather any non-image files from tasks (future-proof; currently FilesCell adds images only)
   const taskNonImageFiles = React.useMemo<FileMeta[]>(() => {
@@ -73,6 +76,9 @@ const Files: React.FC = () => {
 
     if (added.length > 0) {
       setLibraryFiles((prev) => [...prev, ...added]);
+      if (session?.user) {
+        addManyFiles(session.user.id, added).catch(() => {});
+      }
       showSuccess(`${added.length} file${added.length > 1 ? "s" : ""} uploaded`);
     } else {
       showError("Please select non-image files");
@@ -94,6 +100,9 @@ const Files: React.FC = () => {
       return;
     }
     setExternalLinks((prev) => [...prev, { id: uuidv4(), url, label }]);
+    if (session?.user) {
+      addExternalLink(session.user.id, { id: "", url, label }).catch(() => {});
+    }
     setNewLinkUrl("");
     setNewLinkLabel("");
     showSuccess("Link added");

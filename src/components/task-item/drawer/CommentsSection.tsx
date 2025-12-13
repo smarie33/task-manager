@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
 import { loadProfile } from "@/utils/profile-storage";
+import { insertComment } from "@/services/db";
+import { useSession } from "@/context/session-context";
 
 type CommentsSectionProps = {
   taskId: string;
@@ -22,6 +24,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 }) => {
   const [newCommentText, setNewCommentText] = React.useState("");
   const profile = loadProfile();
+  const { session } = useSession();
 
   return (
     <div className="space-y-3">
@@ -71,6 +74,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
               const updated = [...(comments ?? []), newComment];
               onUpdateTaskField(taskId, "comments", updated as Task["comments"]);
               setNewCommentText("");
+              if (session?.user) {
+                insertComment(session.user.id, taskId, text, author).catch(() => {});
+              }
             }}
             disabled={readOnly}
           >

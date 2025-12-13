@@ -1,8 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { StatusOption, TaskGroupData, FileMeta, LinkMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
+import { useSession } from "@/context/session-context";
+import { loadAll } from "@/services/db";
 
 const initialStatuses: StatusOption[] = [
   { name: "To Do", color: "#ef4444" },
@@ -116,6 +118,25 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [externalLinks, setExternalLinks] = useState<LinkMeta[]>([]);
   // ADDED: global images folder
   const [libraryImages, setLibraryImages] = useState<FileMeta[]>([]);
+
+  // NEW: load from Supabase when session is ready
+  const { session } = useSession();
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!session?.user) return;
+      const { groups, statuses, files, images, links } = await loadAll(session.user.id);
+      if (cancelled) return;
+      setGroups(groups);
+      setAvailableStatuses(statuses);
+      setLibraryFiles(files);
+      setLibraryImages(images);
+      setExternalLinks(links);
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
 
   return (
     <TaskDataContext.Provider

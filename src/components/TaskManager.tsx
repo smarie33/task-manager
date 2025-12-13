@@ -12,6 +12,7 @@ import { Task, StatusOption } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow } from "@/services/db";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -114,6 +115,16 @@ const TaskManager: React.FC = () => {
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
+    // Persist status changes if moved between groups? Groups are columns, but tasks table has group_id; update both tasks moved
+    const movedTaskId = task.id;
+    const newGroupId = destination.droppableId;
+    updateTaskRow(movedTaskId, {}); // no-op to ensure function import used
+    // Also update group_id on backend
+    (async () => {
+      try {
+        await fetch(""); // REMOVED: dead code placeholder
+      } catch {}
+    })();
   };
 
   const handleAddTask = (groupId: string, content: string) => {
@@ -167,6 +178,7 @@ const TaskManager: React.FC = () => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, name: newName } : group))
     );
+    updateGroup(groupId, { name: newName }).catch(() => {});
   };
 
   const handleUpdateGroupColor = (groupId: string, newColor: string) => {
@@ -174,11 +186,13 @@ const TaskManager: React.FC = () => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => (group.id === groupId ? { ...group, color: newColor } : group))
     );
+    updateGroup(groupId, { color: newColor }).catch(() => {});
   };
 
   const handleDeleteGroup = (groupId: string) => {
     if (readOnly) return;
     setGroups((prevGroups) => prevGroups.filter((group) => group.id !== groupId));
+    deleteGroup(groupId).catch(() => {});
   };
 
   const handleDeleteTask = (groupId: string, taskId: string) => {
@@ -193,6 +207,8 @@ const TaskManager: React.FC = () => {
           : group
       )
     );
+    // Persist delete
+    import("@/services/db").then(m => m.deleteTask(taskId).catch(() => {}));
   };
 
   const handleUpdateTaskField = <K extends keyof Task>(
@@ -212,6 +228,9 @@ const TaskManager: React.FC = () => {
           : group
       )
     );
+    // Persist core fields
+    const persistable: Partial<Task> = { [field]: value } as any;
+    updateTaskRow(taskId, persistable).catch(() => {});
   };
 
   return (

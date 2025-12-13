@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, FilterIcon } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
+import { addManyFiles } from "@/services/db";
+import { useSession } from "@/context/session-context";
 
 type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
@@ -24,6 +26,7 @@ const flattenTasks = (groups: TaskGroupData[]) =>
 const Images: React.FC = () => {
   const { toast } = useToast();
   const { libraryImages, setLibraryImages, groups } = useTaskData();
+  const { session } = useSession();
 
   // All tasks for assignment/filtering
   const allTasks = React.useMemo(() => flattenTasks(groups), [groups]);
@@ -88,6 +91,10 @@ const Images: React.FC = () => {
 
     if (newFiles.length > 0) {
       setLibraryImages((prev) => [...prev, ...newFiles]);
+      // Persist
+      if (session?.user) {
+        addManyFiles(session.user.id, newFiles).catch(() => {});
+      }
       toast({
         title: "Upload complete",
         description: `${newFiles.length} image${newFiles.length > 1 ? "s" : ""} added${chosenTaskId ? " to task" : ""}.`,

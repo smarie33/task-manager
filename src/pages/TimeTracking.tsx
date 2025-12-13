@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { insertTimeLog, updateTaskRow } from "@/services/db";
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -220,6 +221,15 @@ const TimeTracking: React.FC = () => {
         return { ...g, tasks: newTasks };
       })
     );
+    // Persist: new log + updated timeTracking hours
+    if (session?.user) {
+      insertTimeLog(session.user.id, taskId, date, seconds).catch(() => {});
+      // compute hours increment and persist total; here we recompute from state-next in microtask: keep simple and set after update
+      // Update task row with new timeTracking value (approximate; UI state is source of truth)
+      const task = groups.flatMap(g => g.tasks).find(t => t.id === taskId);
+      const currentHours = (task?.timeTracking || 0) + seconds / 3600;
+      updateTaskRow(taskId, { timeTracking: currentHours }).catch(() => {});
+    }
   };
 
   return (

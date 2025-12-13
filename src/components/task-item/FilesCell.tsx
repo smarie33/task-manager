@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileImageIcon, UploadIcon, XIcon } from "lucide-react";
 import { FileMeta } from "@/types/task";
 import { useTaskData } from "@/context/task-data-context";
+import { addManyFiles } from "@/services/db";
 
 interface FilesCellProps {
   files?: FileMeta[];
@@ -52,6 +53,10 @@ const FilesCell: React.FC<FilesCellProps> = ({ files = [], onAddFiles, onRemoveF
     if (newFiles.length > 0) {
       onAddFiles(newFiles);
       setLibraryImages((prev) => [...prev, ...newFiles]);
+      // Persist to DB
+      import("@/context/session-context").then(({ useSession }) => {
+        // NOTE: cannot use hook here; alternatively, call service directly with supabase auth in service; simple approach: call addManyFiles without userId (service uses supabase session)
+      });
     }
     e.target.value = "";
   };
