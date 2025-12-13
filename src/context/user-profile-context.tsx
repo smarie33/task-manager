@@ -43,14 +43,14 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       .from("profiles")
       .select("*")
       .eq("id", session.user.id)
-      .limit(1)
-      .single();
+      .limit(1);
     if (error) {
       setProfile(null);
       setLoading(false);
       throw new Error(error.message);
     }
-    setProfile(data as UserProfile);
+    const row = (data && Array.isArray(data) ? data[0] : null) as UserProfile | null;
+    setProfile(row);
     setLoading(false);
   }, [session?.user]);
 
