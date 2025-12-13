@@ -17,6 +17,7 @@ import Images from "./pages/Images";
 import { SessionProvider } from "@/context/session-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
+import { UserProfileProvider } from "@/context/user-profile-context";
 
 const queryClient = new QueryClient();
 
@@ -25,28 +26,30 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <SessionProvider>
-          <TaskDataProvider>
-            <PayrollProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                  <Route path="/time-tracking" element={<ProtectedRoute><TimeTracking /></ProtectedRoute>} />
-                  <Route path="/files" element={<ProtectedRoute><Files /></ProtectedRoute>} />
-                  <Route path="/images" element={<ProtectedRoute><Images /></ProtectedRoute>} />
-                  <Route path="/tags" element={<ProtectedRoute><Tags /></ProtectedRoute>} />
-                  <Route path="/tags/:tagName" element={<ProtectedRoute><TagPage /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
-                </Routes>
-              </BrowserRouter>
-            </PayrollProvider>
-          </TaskDataProvider>
-        </SessionProvider>
-      </AuthProvider>
+      <SessionProvider>
+        <UserProfileProvider>
+          <AuthProvider>
+            <TaskDataProvider>
+              <PayrollProvider>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                    <Route path="/time-tracking" element={<ProtectedRoute><TimeTracking /></ProtectedRoute>} />
+                    <Route path="/files" element={<ProtectedRoute><Files /></ProtectedRoute>} />
+                    <Route path="/images" element={<ProtectedRoute><Images /></ProtectedRoute>} />
+                    <Route path="/tags" element={<ProtectedRoute><Tags /></ProtectedRoute>} />
+                    <Route path="/tags/:tagName" element={<ProtectedRoute><TagPage /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
+                  </Routes>
+                </BrowserRouter>
+              </PayrollProvider>
+            </TaskDataProvider>
+          </AuthProvider>
+        </UserProfileProvider>
+      </SessionProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

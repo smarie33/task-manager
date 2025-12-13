@@ -9,29 +9,31 @@ import { useToast } from "@/components/ui/use-toast";
 import type { Role } from "@/hooks/useAdminUsers";
 
 type AddUserFormProps = {
-  onCreate: (name: string, password: string, role: Role) => void;
+  onCreate: (name: string, email: string, password: string, role: Role) => void;
   defaultRole?: Role;
 };
 
 const AddUserForm: React.FC<AddUserFormProps> = ({ onCreate, defaultRole = "Viewer" }) => {
   const { toast } = useToast();
   const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<Role>(defaultRole);
 
   const handleAdd = () => {
-    if (!name.trim() || !password.trim()) {
-      toast({ title: "Missing info", description: "Please enter a name and password." });
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      toast({ title: "Missing info", description: "Please enter a name, email, and password." });
       return;
     }
-    onCreate(name.trim(), password, role);
+    onCreate(name.trim(), email.trim(), password, role);
     setName("");
+    setEmail("");
     setPassword("");
     setRole(defaultRole);
   };
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <div className="space-y-1">
         <Label htmlFor="newUserName">Name</Label>
         <Input
@@ -39,6 +41,16 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onCreate, defaultRole = "View
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New user's name"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="newUserEmail">Email</Label>
+        <Input
+          id="newUserEmail"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="user@example.com"
         />
       </div>
       <div className="space-y-1">

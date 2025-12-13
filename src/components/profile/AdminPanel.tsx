@@ -12,19 +12,18 @@ const AdminPanel: React.FC = () => {
   const { toast } = useToast();
   const { users, addUser, approveUser, changeRole, deleteUser } = useAdminUsers();
 
-  // Added: handlers that wrap hook actions and show toasts
-  const handleApprove = (id: string) => {
-    approveUser(id);
+  const handleApprove = async (id: string) => {
+    await approveUser(id);
     toast({ title: "User approved", description: "The user can now access the app." });
   };
 
-  const handleChangeRole = (id: string, role: Role) => {
-    changeRole(id, role);
+  const handleChangeRole = async (id: string, role: Role) => {
+    await changeRole(id, role);
     toast({ title: "Role updated", description: `Role changed to ${role}.` });
   };
 
-  const handleDelete = (id: string) => {
-    deleteUser(id);
+  const handleDelete = async (id: string) => {
+    await deleteUser(id);
     toast({ title: "User deleted", description: "The user was removed." });
   };
 
@@ -38,16 +37,14 @@ const AdminPanel: React.FC = () => {
         <CardDescription>Approve new users, set roles, and manage accounts.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Add user (creates a pending user) */}
         <AddUserForm
-          onCreate={(name, password, role) => {
-            addUser(name, password, role);
+          onCreate={async (name, email, password, role) => {
+            await addUser(name, email, password, role);
             toast({ title: "User created", description: "User added as pending. Approve to activate." });
           }}
           defaultRole="Viewer"
         />
 
-        {/* Pending users */}
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Pending Users</h3>
           <UsersTable
@@ -61,7 +58,6 @@ const AdminPanel: React.FC = () => {
           />
         </div>
 
-        {/* Active users */}
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Active Users</h3>
           <UsersTable
@@ -75,7 +71,7 @@ const AdminPanel: React.FC = () => {
         </div>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
-        Users are stored locally in your browser for this demo. For real auth, connect a backend.
+        Users and roles are securely managed via Supabase.
       </CardFooter>
     </Card>
   );

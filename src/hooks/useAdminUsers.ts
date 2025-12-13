@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Role = "Admin" | "Editor" | "Viewer";
 export type UserStatus = "pending" | "active";
@@ -9,62 +9,66 @@ export type UserStatus = "pending" | "active";
 export type AdminUser = {
   id: string;
   name: string;
-  password: string;
+  email: string;
   role: Role;
   status: UserStatus;
   createdAt: string;
 };
 
-export const USERS_STORAGE_KEY = "admin:users";
-
-const loadUsers = (): AdminUser[] => {
-  const raw = localStorage.getItem(USERS_STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as AdminUser[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveUsers = (users: AdminUser[]) => {
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-};
-
 export function useAdminUsers() {
-  const [users, setUsers] = React.useState<AdminUser[]>(
-    () => (typeof window !== "undefined" ? loadUsers() : [])
-  );
+  const [users, setUsers] = React.useState<AdminUser[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const persist = (next: AdminUser[]) => {
-    setUsers(next);
-    saveUsers(next);
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "list" },
+    });
+    if (error) {
+      setUsers([]);
+      setLoading(false);
+      throw error;
+    }
+    setUsers((data as any)?.users ?? []);
+    setLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    load().catch(() => {});
+  }, [load]);
+
+  const addUser = async (name: string, email: string, password: string, role: Role) => {
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "create", payload: { name, email, password, role } },
+    });
+    if (error) throw error;
+    await load();
+    return data;
   };
 
-  const addUser = (name: string, password: string, role: Role) => {
-    const newUser: AdminUser = {
-      id: uuidv4(),
-      name: name.trim(),
-      password,
-      role,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    persist([newUser, ...users]);
+  const approveUser = async (id: string) => {
+    const { error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "approve", payload: { id } },
+    });
+    if (error) throw error;
+    await load();
   };
 
-  const approveUser = (id: string) => {
-    persist(users.map((u) => (u.id === id ? { ...u, status: "active" } : u)));
+  const changeRole = async (id: string, role: Role) => {
+    const { error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "changeRole", payload: { id, role } },
+    });
+    if (error) throw error;
+    await load();
   };
 
-  const changeRole = (id: string, role: Role) => {
-    persist(users.map((u) => (u.id === id ? { ...u, role } : u)));
+  const deleteUser = async (id: string) => {
+    const { error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "delete", payload: { id } },
+    });
+    if (error) throw error;
+    await load();
   };
 
-  const deleteUser = (id: string) => {
-    persist(users.filter((u) => u.id !== id));
-  };
-
-  return { users, addUser, approveUser, changeRole, deleteUser };
+  return { users, loading, addUser, approveUser, changeRole, deleteUser };
 }

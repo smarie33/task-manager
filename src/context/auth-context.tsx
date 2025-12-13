@@ -1,33 +1,22 @@
 "use client";
 
 import React from "react";
-import type { Role } from "@/hooks/useAdminUsers";
+import type { Role } from "@/context/user-profile-context";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type AuthState = {
   role: Role;
   setRole: (r: Role) => void;
 };
 
-const AUTH_ROLE_KEY = "auth:role";
-
 const AuthContext = React.createContext<AuthState | undefined>(undefined);
 
-const loadRole = (): Role => {
-  if (typeof window === "undefined") return "Admin";
-  const raw = window.localStorage.getItem(AUTH_ROLE_KEY);
-  if (raw === "Admin" || raw === "Editor" || raw === "Viewer") return raw;
-  return "Admin";
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRoleState] = React.useState<Role>(loadRole);
+  const { profile } = useUserProfile();
+  const role: Role = profile?.role ?? "Viewer";
 
-  const setRole = (r: Role) => {
-    setRoleState(r);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(AUTH_ROLE_KEY, r);
-    }
-  };
+  // No-op setter for compatibility
+  const setRole = (_r: Role) => {};
 
   const value = React.useMemo(() => ({ role, setRole }), [role]);
 

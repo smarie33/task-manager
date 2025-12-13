@@ -10,7 +10,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { loadProfile, saveProfile, profileSchema, type ProfileFormValues } from "@/utils/profile-storage";
+import { useUserProfile } from "@/context/user-profile-context";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Name is required").max(120, "Name is too long"),
+  phone: z
+    .string()
+    .min(7, "Phone must be at least 7 digits")
+    .max(20, "Phone is too long")
+    .regex(/^[0-9+()\-\\s]*$/, "Only digits, spaces, and +()- are allowed")
+    .optional()
+    .or(z.literal("")),
+  address: z.string().min(1, "Address is required").max(300, "Address is too long"),
+  email: z.string().email("Please enter a valid email").optional().or(z.literal("")),
+  avatarDataUrl: z.string().optional().or(z.literal("")),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const initialsFromName = (name: string) => {
   if (!name) return "ME";
@@ -22,18 +39,25 @@ const initialsFromName = (name: string) => {
 
 const ProfileFormCard: React.FC = () => {
   const { toast } = useToast();
-  const stored = typeof window !== "undefined" ? loadProfile() : null;
+  const { profile, updateProfile, loading } = useUserProfile();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: stored?.name ?? "",
-      email: stored?.email ?? "",
-      phone: stored?.phone ?? "",
-      address: stored?.address ?? "",
-      avatarDataUrl: stored?.avatarDataUrl ?? "",
+      name: profile?.name ?? "",
+      email: profile?.email ?? "",
+      phone: profile?.phone ?? "",
+      address: profile?.address ?? "",
+      avatarDataUrl: profile?.avatar_url ?? "",
     },
     mode: "onChange",
+    values: {
+      name: profile?.name ?? "",
+      email: profile?.email ?? "",
+      phone: profile?.phone ?? "",
+      address: profile?.address ?? "",
+      avatarDataUrl: profile?.avatar_url ?? "",
+    },
   });
 
   const avatar = form.watch("avatarDataUrl");
@@ -49,8 +73,14 @@ const ProfileFormCard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = (values: ProfileFormValues) => {
-    saveProfile(values);
+  const onSubmit = async (values: ProfileFormValues) => {
+    await updateProfile({
+      name: values.name,
+      email: values.email || null,
+      phone: values.phone || null,
+      address: values.address,
+      avatar_url: values.avatarDataUrl || null,
+    });
     toast({
       title: "Profile saved",
       description: "Your personal information was updated successfully.",
@@ -86,16 +116,16 @@ const ProfileFormCard: React.FC = () => {
                   onChange={(e) => handleAvatarChange(e.target.files?.[0] ?? null)}
                   aria-label="Upload profile photo"
                 />
-                <Button type="button" variant="secondary" size="sm">
+                <Button type="button" variant="secondary" size="sm" disabled={loading}>
                   Upload Photo
                 </Button>
               </label>
-              <Button type="button" variant="ghost" size="sm" onClick={onClearPhoto} disabled={!avatar}>
+              <Button type="button" variant="ghost" size="sm" onClick={onClearPhoto} disabled={!avatar || loading}>
                 Remove
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center">
-              PNG, JPG up to a few MB. Your photo is stored locally in your browser.
+              PNG, JPG up to a few MB. Your photo is stored in your profile.
             </p>
           </div>
 
@@ -163,7 +193,9 @@ const ProfileFormCard: React.FC = () => {
                 />
 
                 <div className="pt-2">
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit" disabled={loading}>
+                    Save Changes
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -171,7 +203,7 @@ const ProfileFormCard: React.FC = () => {
         </div>
       </CardContent>
       <CardFooter className="justify-between text-xs text-muted-foreground">
-        <span>Profile data is stored locally in your browser.</span>
+        <span>Profile data is securely stored.</span>
       </CardFooter>
     </Card>
   );
