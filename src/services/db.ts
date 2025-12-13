@@ -296,3 +296,8 @@ export async function addExternalLink(userId: string, link: LinkMeta) {
   }]);
   if (error) throw new Error(error.message);
 }
+
+export async function updateTaskGroup(taskId: string, groupId: string) {
+  const { error } = await supabase.from("tasks").update({ group_id: groupId }).eq("id", taskId);
+  if (error) throw new Error(error.message);
+}

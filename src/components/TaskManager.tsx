@@ -12,7 +12,7 @@ import { Task, StatusOption } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow } from "@/services/db";
+import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -115,16 +115,13 @@ const TaskManager: React.FC = () => {
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
-    // Persist status changes if moved between groups? Groups are columns, but tasks table has group_id; update both tasks moved
+
+    // Persist group change only when the group actually changed
     const movedTaskId = task.id;
     const newGroupId = destination.droppableId;
-    updateTaskRow(movedTaskId, {}); // no-op to ensure function import used
-    // Also update group_id on backend
-    (async () => {
-      try {
-        await fetch(""); // REMOVED: dead code placeholder
-      } catch {}
-    })();
+    if (source.droppableId !== destination.droppableId) {
+      updateTaskGroup(movedTaskId, newGroupId).catch(() => {});
+    }
   };
 
   const handleAddTask = (groupId: string, content: string) => {
