@@ -45,7 +45,7 @@ const getPeriodDays = (freq?: PaymentSettings["salaryFrequency"]): number => {
 };
 
 const TimeTracking: React.FC = () => {
-  const { groups, updateTask } = useTaskData();
+  const { groups, setGroups } = useTaskData();
   const { settings, updateSettingsForPerson } = usePayroll();
   const { role } = useAuth();
   const { session } = useSession();
@@ -206,24 +206,20 @@ const TimeTracking: React.FC = () => {
 
   // Save manual log handler
   const handleSaveManualLog = (taskId: string, date: string, seconds: number) => {
-    // Find the task and update
-    let found: { groupId: string; taskIndex: number } | null = null;
-    for (const g of groups) {
-      const idx = g.tasks.findIndex((t) => t.id === taskId);
-      if (idx !== -1) {
-        found = { groupId: g.id, taskIndex: idx };
-        break;
-      }
-    }
-    if (!found) return;
-    const group = groups.find((gg) => gg.id === found!.groupId)!;
-    const task = group.tasks[found.taskIndex];
-
-    const newLogs = [...(task.timeLogs || []), { durationSeconds: seconds, date }];
-    const newHoursTotal = (task.timeTracking || 0) + seconds / 3600;
-
-    // updateTask expects: (groupId, updatedTask)
-    updateTask(found.groupId, { ...task, timeLogs: newLogs, timeTracking: newHoursTotal });
+    // Immutably update the task's logs and timeTracking with setGroups
+    setGroups((prev) =>
+      prev.map((g) => {
+        const taskIndex = g.tasks.findIndex((t) => t.id === taskId);
+        if (taskIndex === -1) return g;
+        const newTasks = g.tasks.map((t, idx) => {
+          if (idx !== taskIndex) return t;
+          const newLogs = [...(t.timeLogs || []), { durationSeconds: seconds, date }];
+          const newHoursTotal = (t.timeTracking || 0) + seconds / 3600;
+          return { ...t, timeLogs: newLogs, timeTracking: newHoursTotal };
+        });
+        return { ...g, tasks: newTasks };
+      })
+    );
   };
 
   return (
