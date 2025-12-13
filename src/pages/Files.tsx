@@ -31,6 +31,24 @@ const Files: React.FC = () => {
   const [newLinkUrl, setNewLinkUrl] = React.useState("");
   const [newLinkLabel, setNewLinkLabel] = React.useState("");
 
+  // New: active task filter
+  const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
+  const getTaskNameById = React.useCallback(
+    (id: string | null) => {
+      if (!id) return null;
+      for (const g of groups) {
+        const t = g.tasks.find((tt) => tt.id === id);
+        if (t) return t.content;
+      }
+      return null;
+    },
+    [groups]
+  );
+  const filteredFiles = React.useMemo(() => {
+    if (!selectedTaskId) return nonImageFiles;
+    return nonImageFiles.filter((f) => f.sourceTaskId === selectedTaskId);
+  }, [nonImageFiles, selectedTaskId]);
+
   const pickFiles = () => fileInputRef.current?.click();
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,14 +153,26 @@ const Files: React.FC = () => {
 
         {/* Non-image files list */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            Files (non-images)
-          </h2>
-          {nonImageFiles.length === 0 ? (
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Files (non-images)
+              {selectedTaskId ? (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  filtered by "{getTaskNameById(selectedTaskId) ?? "Selected Task"}"
+                </span>
+              ) : null}
+            </h2>
+            {selectedTaskId ? (
+              <Button variant="outline" size="sm" onClick={() => setSelectedTaskId(null)}>
+                Clear filter
+              </Button>
+            ) : null}
+          </div>
+          {filteredFiles.length === 0 ? (
             <p className="text-sm text-gray-600 dark:text-gray-400">No non-image files uploaded yet.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {nonImageFiles.map((f) => (
+              {filteredFiles.map((f) => (
                 <Card key={f.id} className="shadow-sm">
                   <CardHeader className="py-3 px-4">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -160,6 +190,12 @@ const Files: React.FC = () => {
                         <p className="text-muted-foreground">Size</p>
                         <p>{typeof f.size === "number" ? `${Math.round(f.size / 1024)} KB` : "N/A"}</p>
                       </div>
+                      {f.sourceTaskId ? (
+                        <div className="col-span-2">
+                          <p className="text-muted-foreground">From Task</p>
+                          <p className="truncate">{f.sourceTaskContent || getTaskNameById(f.sourceTaskId) || "Unknown"}</p>
+                        </div>
+                      ) : null}
                       <div className="col-span-2">
                         <a
                           href={f.url}
@@ -216,7 +252,17 @@ const Files: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {tasksWithFiles.map(({ task, groupName }, idx) => (
-              <Card key={`${task.id}-${idx}`} className="shadow-sm">
+              <Card
+                key={`${task.id}-${idx}`}
+                className={`shadow-sm cursor-pointer ${selectedTaskId === task.id ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
+                onClick={() => setSelectedTaskId(task.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setSelectedTaskId(task.id);
+                }}
+                title="Click to filter files by this task"
+              >
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-base">{task.content}</CardTitle>
                 </CardHeader>
