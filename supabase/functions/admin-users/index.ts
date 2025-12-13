@@ -41,7 +41,31 @@ serve(async (req) => {
     .eq("id", callerId)
     .single()
 
-  if (profileErr || !callerProfile || callerProfile.role !== "Admin" || callerProfile.status !== "active") {
+  // BOOTSTRAP: if there are no active admins yet, promote the caller to Admin/active
+  const { count: adminActiveCount } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "Admin")
+    .eq("status", "active")
+
+  if ((adminActiveCount ?? 0) === 0) {
+    await supabase.from("profiles").update({ role: "Admin", status: "active" }).eq("id", callerId)
+  }
+
+  // Re-evaluate caller after potential bootstrap
+  const effective = callerProfile
+    ? callerProfile
+    : { role: "Viewer", status: "pending" }
+  const { data: refreshed, error: refErr } = await supabase
+    .from("profiles")
+    .select("role,status")
+    .eq("id", callerId)
+    .single()
+
+  const finalRole = refreshed?.role ?? effective.role
+  const finalStatus = refreshed?.status ?? effective.status
+
+  if (profileErr || refErr || finalRole !== "Admin" || finalStatus !== "active") {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   }
 
