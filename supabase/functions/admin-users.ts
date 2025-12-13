@@ -1,16 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
-
 type Role = "Admin" | "Editor" | "Viewer"
 type UserStatus = "pending" | "active"
 
 serve(async (req) => {
+  // Build CORS headers dynamically to mirror what the browser is requesting
+  const requestedHeaders = req.headers.get("Access-Control-Request-Headers") || "authorization, x-client-info, apikey, content-type"
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": requestedHeaders,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders })
   }
@@ -54,7 +56,6 @@ serve(async (req) => {
     const map = new Map<string, { email: string | null; createdAt: string }>()
     let page = 1
     const perPage = 1000
-    // Single page fetch is typically enough for small apps
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage })
     if (!error && data?.users) {
       for (const u of data.users) {
@@ -101,7 +102,6 @@ serve(async (req) => {
       }
       const newUser = createRes.user
 
-      // Ensure profile has desired name/role (trigger created default)
       await supabase
         .from("profiles")
         .update({

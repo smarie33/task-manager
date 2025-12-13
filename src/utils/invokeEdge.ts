@@ -9,7 +9,6 @@ export async function invokeEdge<T = any>(
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token ?? null;
 
-  // First attempt: standard client invocation
   const first = await supabase.functions.invoke<T>(name, {
     body,
     headers: token
@@ -21,7 +20,6 @@ export async function invokeEdge<T = any>(
     return { data: (first.data as T) ?? null, error: null };
   }
 
-  // If it's a transport/CORS failure, retry with direct fetch to full URL
   const msg = String(first.error?.message || "").toLowerCase();
   const shouldFallback =
     msg.includes("failed to send a request") ||
@@ -40,6 +38,7 @@ export async function invokeEdge<T = any>(
   try {
     const response = await fetch(`${BASE_URL}/${name}`, {
       method: "POST",
+      mode: "cors",
       headers: {
         "Content-Type": "application/json",
         apikey: ANON_KEY,
