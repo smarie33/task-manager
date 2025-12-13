@@ -108,7 +108,8 @@ const TimeTracking: React.FC = () => {
     for (const c of candidates) {
       if (c && owners.includes(c)) return c;
     }
-    return owners[0] ?? null;
+    // For non-admins, do not fall back to someone else
+    return null;
   }, [owners, profile, session]);
 
   React.useEffect(() => {
@@ -309,7 +310,9 @@ const TimeTracking: React.FC = () => {
             />
           ) : (
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {role === "Admin" ? "Select a person to add hours." : "No logs available for your account yet."}
+              {role === "Admin"
+                ? "Select a person to add hours."
+                : "No tasks are assigned to you yet. Ask an admin to assign you to tasks before logging time."}
             </div>
           )}
         </Card>
