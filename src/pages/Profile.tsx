@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import AdminPanel from "@/components/profile/AdminPanel";
 import ProfileFormCard from "@/components/profile/ProfileFormCard";
+import PasswordUpdateCard from "@/components/profile/PasswordUpdateCard";
 import { useAuth } from "@/context/auth-context";
 import AppHeader from "@/components/AppHeader";
 
@@ -24,6 +25,7 @@ const Profile: React.FC = () => {
         {role === "Admin" ? <AdminPanel /> : null}
 
         <ProfileFormCard />
+        <PasswordUpdateCard />
       </div>
     </div>
   );
