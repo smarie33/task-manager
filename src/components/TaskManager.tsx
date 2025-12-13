@@ -115,11 +115,10 @@ const TaskManager: React.FC = () => {
     destinationGroup.tasks.splice(destination.index, 0, task);
 
     setGroups(newGroups);
-
     // Persist group change only when the group actually changed
-    const movedTaskId = task.id;
-    const newGroupId = destination.droppableId;
     if (source.droppableId !== destination.droppableId) {
+      const movedTaskId = task.id;
+      const newGroupId = destination.droppableId;
       updateTaskGroup(movedTaskId, newGroupId).catch(() => {});
     }
   };
