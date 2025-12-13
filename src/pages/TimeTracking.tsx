@@ -89,6 +89,16 @@ const TimeTracking: React.FC = () => {
       .catch(() => setAdminUsers([]));
   }, [role]);
 
+  // Ensure this helper exists: map selected owner label to actual user id
+  const resolveOwnerToUserId = React.useCallback((owner: string | null): string | null => {
+    if (!owner || !adminUsers || adminUsers.length === 0) return null;
+    const lower = owner.toLowerCase();
+    const byEmail = adminUsers.find(u => (u.email || "").toLowerCase() === lower);
+    if (byEmail) return byEmail.id;
+    const byName = adminUsers.find(u => (u.name || "").toLowerCase() === lower);
+    return byName ? byName.id : null;
+  }, [adminUsers]);
+
   // NEW: Build owner options for dropdown:
   // - Admin: all active users (name if present, otherwise email)
   // - Others: owners derived from tasks (unchanged)
