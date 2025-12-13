@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserProfile } from "@/context/user-profile-context";
+import { saveProfile } from "@/utils/profile-storage";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -81,6 +82,8 @@ const ProfileFormCard: React.FC = () => {
       address: values.address,
       avatar_url: values.avatarDataUrl || null,
     });
+    // Keep local storage in sync for any components still reading from it
+    saveProfile(values);
     toast({
       title: "Profile saved",
       description: "Your personal information was updated successfully.",

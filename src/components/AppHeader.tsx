@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
-import { loadProfile } from "@/utils/profile-storage";
+import { useUserProfile } from "@/context/user-profile-context";
 
 const initialsFromName = (name?: string) => {
   if (!name) return "ME";
@@ -16,7 +16,7 @@ const initialsFromName = (name?: string) => {
 };
 
 const AppHeader: React.FC = () => {
-  const stored = typeof window !== "undefined" ? loadProfile() : null;
+  const { profile } = useUserProfile();
 
   return (
     <div className="w-full flex items-center justify-between p-4 border-b bg-background">
@@ -47,10 +47,10 @@ const AppHeader: React.FC = () => {
 
       <div className="flex items-center gap-3">
         <Avatar className="h-9 w-9">
-          {stored?.avatarDataUrl ? (
-            <AvatarImage src={stored.avatarDataUrl} alt={stored?.name || "Profile photo"} />
+          {profile?.avatar_url ? (
+            <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />
           ) : (
-            <AvatarFallback className="text-xs">{initialsFromName(stored?.name)}</AvatarFallback>
+            <AvatarFallback className="text-xs">{initialsFromName(profile?.name ?? undefined)}</AvatarFallback>
           )}
         </Avatar>
         <Button asChild variant="secondary">
