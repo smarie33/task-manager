@@ -4,49 +4,67 @@ import React from "react";
 import AppHeader from "@/components/AppHeader";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/context/session-context";
+import WikiSidebar from "@/components/wiki/WikiSidebar";
+import { Link } from "react-router-dom";
 
 const Wiki: React.FC = () => {
+  const { session } = useSession();
+  const userId = session?.user?.id ?? null;
+  const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
+
+  React.useEffect(() => {
+    if (!userId) {
+      setEntries([]);
+      return;
+    }
+    supabase
+      .from("wiki_entries")
+      .select("id,title,slug")
+      .eq("user_id", userId)
+      .order("title", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        setEntries(data || []);
+      });
+  }, [userId]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
-      <main className="p-4 container mx-auto max-w-4xl flex-1 w-full">
-        <Card>
-          <CardHeader>
-            <CardTitle>Wiki</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <section id="overview" className="space-y-2">
-              <h2 className="text-xl font-semibold">Overview</h2>
-              <p className="text-muted-foreground">
-                Welcome to your project wiki. Add helpful docs, how-tos, and process notes here.
-              </p>
-            </section>
-
-            <section id="getting-started" className="space-y-2">
-              <h2 className="text-xl font-semibold">Getting Started</h2>
-              <p>
-                Use this page to document your workflows, conventions, and any information your team needs.
-              </p>
-            </section>
-
-            <section id="guides" className="space-y-2">
-              <h2 className="text-xl font-semibold">Guides</h2>
-              <ul className="list-disc pl-6">
-                <li>Project overview</li>
-                <li>Setup instructions</li>
-                <li>Usage tips</li>
-                <li>Troubleshooting</li>
-              </ul>
-            </section>
-
-            <section id="faq" className="space-y-2">
-              <h2 className="text-xl font-semibold">FAQ</h2>
-              <p className="text-muted-foreground">
-                Add common questions and answers here to help your team find information quickly.
-              </p>
-            </section>
-          </CardContent>
-        </Card>
+      <main className="p-4 container mx-auto max-w-6xl flex-1 w-full">
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Wiki Entries (A–Z)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {userId ? (
+                  entries.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No entries yet.</div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {entries.map((e) => (
+                        <li key={e.id} className="flex items-center justify-between">
+                          <Link to={`/wiki/${e.slug}`} className="text-blue-600 hover:underline">
+                            {e.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                ) : (
+                  <div className="text-sm text-muted-foreground">Sign in to view your wiki entries.</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            <WikiSidebar />
+          </div>
+        </div>
       </main>
       <MadeWithDyad />
     </div>
