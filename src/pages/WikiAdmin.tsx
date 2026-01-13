@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/context/user-profile-context";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { Trash2 } from "lucide-react";
 
 type WikiTag = { id: string; name: string };
 type WikiCategory = { id: string; name: string };
@@ -140,6 +141,88 @@ const WikiAdmin: React.FC = () => {
     setScripts((prev) => [...prev, data]);
     setNewScript("");
     toast({ title: "Script created", description: `Added "${data.name}"` });
+  };
+
+  // Delete helpers (RLS-safe)
+  const removeTag = async (id: string, name: string) => {
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to manage tags." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot delete tags." });
+      return;
+    }
+    if (!window.confirm(`Delete tag "${name}"? This will unlink it from all entries.`)) return;
+    const { error: linkErr } = await supabase
+      .from("wiki_entry_tags")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("tag_id", id);
+    if (linkErr) throw new Error(linkErr.message);
+    const { error } = await supabase
+      .from("wiki_tags")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    setTags((prev) => prev.filter((t) => t.id !== id));
+    setSelectedTagIds((prev) => prev.filter((tid) => tid !== id));
+    toast({ title: "Tag deleted", description: `"${name}" was removed.` });
+  };
+
+  const removeCategory = async (id: string, name: string) => {
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to manage categories." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot delete categories." });
+      return;
+    }
+    if (!window.confirm(`Delete category "${name}"? This will unlink it from all entries.`)) return;
+    const { error: linkErr } = await supabase
+      .from("wiki_entry_categories")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("category_id", id);
+    if (linkErr) throw new Error(linkErr.message);
+    const { error } = await supabase
+      .from("wiki_categories")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    setSelectedCategoryIds((prev) => prev.filter((cid) => cid !== id));
+    toast({ title: "Category deleted", description: `"${name}" was removed.` });
+  };
+
+  const removeScript = async (id: string, name: string) => {
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to manage scripts." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot delete scripts." });
+      return;
+    }
+    if (!window.confirm(`Delete script "${name}"? This will unlink it from all entries.`)) return;
+    const { error: linkErr } = await supabase
+      .from("wiki_entry_scripts")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("script_id", id);
+    if (linkErr) throw new Error(linkErr.message);
+    const { error } = await supabase
+      .from("wiki_scripts")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    setScripts((prev) => prev.filter((s) => s.id !== id));
+    setSelectedScriptIds((prev) => prev.filter((sid) => sid !== id));
+    toast({ title: "Script deleted", description: `"${name}" was removed.` });
   };
 
   const toggleSelection = (list: string[], id: string, setter: (v: string[]) => void) => {
@@ -277,13 +360,22 @@ const WikiAdmin: React.FC = () => {
                 <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
                   {tags.length === 0 && <div className="text-sm text-muted-foreground">No tags yet.</div>}
                   {tags.map((t) => (
-                    <label key={t.id} className="flex items-center gap-2">
+                    <div key={t.id} className="flex items-center gap-2">
                       <Checkbox
                         checked={selectedTagIds.includes(t.id)}
                         onCheckedChange={() => toggleSelection(selectedTagIds, t.id, setSelectedTagIds)}
                       />
-                      <span>{t.name}</span>
-                    </label>
+                      <span className="flex-1">{t.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => removeTag(t.id, t.name)}
+                        aria-label={`Delete tag ${t.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -292,13 +384,22 @@ const WikiAdmin: React.FC = () => {
                 <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
                   {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories yet.</div>}
                   {categories.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2">
+                    <div key={c.id} className="flex items-center gap-2">
                       <Checkbox
                         checked={selectedCategoryIds.includes(c.id)}
                         onCheckedChange={() => toggleSelection(selectedCategoryIds, c.id, setSelectedCategoryIds)}
                       />
-                      <span>{c.name}</span>
-                    </label>
+                      <span className="flex-1">{c.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => removeCategory(c.id, c.name)}
+                        aria-label={`Delete category ${c.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -307,13 +408,22 @@ const WikiAdmin: React.FC = () => {
                 <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
                   {scripts.length === 0 && <div className="text-sm text-muted-foreground">No scripts yet.</div>}
                   {scripts.map((s) => (
-                    <label key={s.id} className="flex items-center gap-2">
+                    <div key={s.id} className="flex items-center gap-2">
                       <Checkbox
                         checked={selectedScriptIds.includes(s.id)}
                         onCheckedChange={() => toggleSelection(selectedScriptIds, s.id, setSelectedScriptIds)}
                       />
-                      <span>{s.name}</span>
-                    </label>
+                      <span className="flex-1">{s.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => removeScript(s.id, s.name)}
+                        aria-label={`Delete script ${s.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </div>
