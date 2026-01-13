@@ -3,12 +3,11 @@
 import React from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
-import { useContext } from "react";
-import { SessionContext } from "@/context/session-context"; // get session to know login state
+import { Link } from "react-router-dom";
+import { useSession } from "@/context/session-context";
 
 const WikiMenu: React.FC = () => {
-  const { session } = useContext(SessionContext);
+  const { session } = useSession();
   const loggedIn = !!session;
 
   return (
@@ -35,7 +34,6 @@ const WikiMenu: React.FC = () => {
         <DropdownMenuItem asChild>
           <Link to="/wiki#faq">FAQ</Link>
         </DropdownMenuItem>
-        {/* Show Admin only when logged in */}
         {loggedIn && (
           <DropdownMenuItem asChild>
             <Link to="/wiki/admin">Admin</Link>
