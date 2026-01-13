@@ -18,12 +18,14 @@ type Entry = {
 
 type Tag = { id: string; name: string };
 type Category = { id: string; name: string };
+type Script = { id: string; name: string };
 
 const WikiEntry: React.FC = () => {
   const { slug } = useParams();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
 
   useEffect(() => {
     if (!slug) return;
@@ -59,6 +61,19 @@ const WikiEntry: React.FC = () => {
             .filter(Boolean);
           setCategories(list);
         }
+
+        // Load scripts
+        const { data: scriptLinks, error: scriptsErr } = await supabase
+          .from("wiki_entry_scripts")
+          .select("script_id, wiki_scripts(name,id)")
+          .eq("entry_id", data.id);
+        if (scriptsErr) throw new Error(scriptsErr.message);
+        if (scriptLinks) {
+          const list: Script[] = scriptLinks
+            .map((l: any) => l.wiki_scripts)
+            .filter(Boolean);
+          setScripts(list);
+        }
       });
   }, [slug]);
 
@@ -78,7 +93,7 @@ const WikiEntry: React.FC = () => {
               <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
             )}
 
-            {(tags.length > 0 || categories.length > 0) && (
+            {(tags.length > 0 || categories.length > 0 || scripts.length > 0) && (
               <div className="flex flex-wrap gap-2">
                 {tags.map((t) => (
                   <span key={t.id} className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
@@ -88,6 +103,11 @@ const WikiEntry: React.FC = () => {
                 {categories.map((c) => (
                   <span key={c.id} className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs">
                     {c.name}
+                  </span>
+                ))}
+                {scripts.map((s) => (
+                  <span key={s.id} className="px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs">
+                    {s.name}
                   </span>
                 ))}
               </div>

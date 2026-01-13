@@ -16,6 +16,7 @@ import "react-quill/dist/quill.snow.css";
 
 type WikiTag = { id: string; name: string };
 type WikiCategory = { id: string; name: string };
+type WikiScript = { id: string; name: string };
 
 const slugify = (text: string) =>
   text
@@ -31,10 +32,12 @@ const WikiAdmin: React.FC = () => {
 
   const [tags, setTags] = useState<WikiTag[]>([]);
   const [categories, setCategories] = useState<WikiCategory[]>([]);
+  const [scripts, setScripts] = useState<WikiScript[]>([]);
 
   // Tag/category creation inputs
   const [newTag, setNewTag] = useState("");
   const [newCategory, setNewCategory] = useState("");
+  const [newScript, setNewScript] = useState("");
 
   // Entry form state
   const [title, setTitle] = useState("");
@@ -45,6 +48,7 @@ const WikiAdmin: React.FC = () => {
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedScriptIds, setSelectedScriptIds] = useState<string[]>([]);
 
   const computedSlug = useMemo(() => slugify(title), [title]);
 
@@ -67,6 +71,11 @@ const WikiAdmin: React.FC = () => {
     supabase.from("wiki_categories").select("id,name").order("name", { ascending: true }).then(({ data, error }) => {
       if (error) throw new Error(error.message);
       setCategories(data || []);
+    });
+    // Load scripts
+    supabase.from("wiki_scripts").select("id,name").order("name", { ascending: true }).then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      setScripts(data || []);
     });
   }, []);
 
@@ -110,6 +119,27 @@ const WikiAdmin: React.FC = () => {
     setCategories((prev) => [...prev, data]);
     setNewCategory("");
     toast({ title: "Category created", description: `Added "${data.name}"` });
+  };
+
+  const addScript = async () => {
+    if (!newScript.trim()) return;
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to add scripts." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot create scripts." });
+      return;
+    }
+    const { data, error } = await supabase
+      .from("wiki_scripts")
+      .insert({ user_id: profile.id, name: newScript })
+      .select("id,name")
+      .single();
+    if (error) throw new Error(error.message);
+    setScripts((prev) => [...prev, data]);
+    setNewScript("");
+    toast({ title: "Script created", description: `Added "${data.name}"` });
   };
 
   const toggleSelection = (list: string[], id: string, setter: (v: string[]) => void) => {
@@ -159,11 +189,18 @@ const WikiAdmin: React.FC = () => {
       if (tagLinkError) throw new Error(tagLinkError.message);
     }
 
-    // Link categories (include user_id to satisfy RLS)
+    // Link categories
     if (selectedCategoryIds.length) {
-      const rows = selectedCategoryIds.map((categoryId) => ({ user_id: profile.id, entry_id: entry.id, category_id: categoryId }));
+      const rows = selectedCategoryIds.map((categoryId) => ({ entry_id: entry.id, category_id: categoryId, user_id: profile.id }));
       const { error: catLinkError } = await supabase.from("wiki_entry_categories").insert(rows);
       if (catLinkError) throw new Error(catLinkError.message);
+    }
+
+    // Link scripts
+    if (selectedScriptIds.length) {
+      const rows = selectedScriptIds.map((scriptId) => ({ entry_id: entry.id, script_id: scriptId, user_id: profile.id }));
+      const { error: scriptLinkErr } = await supabase.from("wiki_entry_scripts").insert(rows);
+      if (scriptLinkErr) throw new Error(scriptLinkErr.message);
     }
 
     toast({ title: "Entry created", description: "Your wiki entry was saved." });
@@ -180,7 +217,7 @@ const WikiAdmin: React.FC = () => {
             <CardTitle>Wiki Admin</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="newTag">Add Tag</Label>
                 <div className="flex gap-2">
@@ -196,6 +233,14 @@ const WikiAdmin: React.FC = () => {
                   <Button onClick={addCategory}>Add</Button>
                 </div>
                 <div className="text-sm text-muted-foreground">Create categories to group entries.</div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newScript">Add Script</Label>
+                <div className="flex gap-2">
+                  <Input id="newScript" value={newScript} onChange={(e) => setNewScript(e.target.value)} placeholder="New script word" />
+                  <Button onClick={addScript}>Add</Button>
+                </div>
+                <div className="text-sm text-muted-foreground">Create scripts to classify entries.</div>
               </div>
             </div>
           </CardContent>
@@ -226,7 +271,7 @@ const WikiAdmin: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-3 gap-6">
               <div className="space-y-3">
                 <Label>Tags</Label>
                 <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
@@ -253,6 +298,21 @@ const WikiAdmin: React.FC = () => {
                         onCheckedChange={() => toggleSelection(selectedCategoryIds, c.id, setSelectedCategoryIds)}
                       />
                       <span>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label>Scripts</Label>
+                <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
+                  {scripts.length === 0 && <div className="text-sm text-muted-foreground">No scripts yet.</div>}
+                  {scripts.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedScriptIds.includes(s.id)}
+                        onCheckedChange={() => toggleSelection(selectedScriptIds, s.id, setSelectedScriptIds)}
+                      />
+                      <span>{s.name}</span>
                     </label>
                   ))}
                 </div>
