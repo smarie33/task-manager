@@ -120,7 +120,7 @@ const WikiEntry: React.FC = () => {
       }
     });
 
-    // Apply highlighting and then force color override for C# tokens
+    // Apply highlighting and then force color override for #032f62 -> #fbbf24
     el.querySelectorAll("pre code").forEach((codeEl) => {
       hljs.highlightElement(codeEl as HTMLElement);
 
@@ -139,12 +139,14 @@ const WikiEntry: React.FC = () => {
         (codeEl as HTMLElement).classList.contains("language-cs");
 
       if (isCsharp) {
-        // Convert any spans currently rendered with #032f62 (rgb(3, 47, 98)) to #fbbf24
-        const spans = (codeEl as HTMLElement).querySelectorAll("span");
-        spans.forEach((s) => {
-          const computed = window.getComputedStyle(s).color;
-          if (computed === "rgb(3, 47, 98)") {
-            (s as HTMLElement).style.color = "#fbbf24";
+        // Update any descendant element currently using #032f62 (rgb(3, 47, 98)) to #fbbf24
+        const nodes = (codeEl as HTMLElement).querySelectorAll("*");
+        nodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            const computed = window.getComputedStyle(node).color;
+            if (computed === "rgb(3, 47, 98)" || computed === "rgba(3, 47, 98, 1)") {
+              node.style.color = "#fbbf24";
+            }
           }
         });
       }
