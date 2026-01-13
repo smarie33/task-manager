@@ -198,6 +198,11 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 
+  /* Specific recolor for the token 'inventory-recipe_card-type-holder' */
+  .wiki-prose .hljs-custom-accent {
+    color: #fbbf24 !important; /* amber-400 for strong contrast on charcoal */
+  }
+
   /* Targeted override: replace dark blue (#032f62) tokens with a lighter blue */
   .wiki-prose .hljs-keyword,
   .wiki-prose .hljs-title,

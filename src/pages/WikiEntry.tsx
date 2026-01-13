@@ -110,7 +110,6 @@ const WikiEntry: React.FC = () => {
       if (!code) {
         code = document.createElement("code");
         code.textContent = pre.textContent ?? "";
-        // Do not force a language class so highlight.js can auto-detect
         pre.innerHTML = "";
         pre.appendChild(code);
       }
@@ -119,7 +118,19 @@ const WikiEntry: React.FC = () => {
         code.classList.remove("language-cs");
         code.classList.add("language-csharp");
       }
-      hljs.highlightElement(code as HTMLElement);
+    });
+
+    // Apply highlighting and wrap the specific token for recoloring
+    el.querySelectorAll("pre code").forEach((codeEl) => {
+      hljs.highlightElement(codeEl as HTMLElement);
+
+      const target = "inventory-recipe_card-type-holder";
+      const html = (codeEl as HTMLElement).innerHTML;
+      if (html.includes(target)) {
+        (codeEl as HTMLElement).innerHTML = html.split(target).join(
+          `<span class="hljs-custom-accent">${target}</span>`
+        );
+      }
     });
   }, [entry?.content]);
 
