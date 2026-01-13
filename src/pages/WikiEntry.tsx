@@ -28,6 +28,7 @@ const WikiEntry: React.FC = () => {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
