@@ -198,14 +198,10 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 
-  /* Readable token colors on dark background (replace dark blue) */
+  /* Targeted override: replace dark blue (#032f62) tokens with a lighter blue */
   .wiki-prose .hljs-keyword,
-  .wiki-prose .hljs-selector-tag,
   .wiki-prose .hljs-title,
-  .wiki-prose .hljs-section,
-  .wiki-prose .hljs-doctag,
-  .wiki-prose .hljs-name,
   .wiki-prose .hljs-type {
-    color: #93c5fd !important; /* Sky-300: lighter blue for better contrast */
+    color: #60a5fa !important; /* Tailwind blue-400 for better contrast */
   }
 }
