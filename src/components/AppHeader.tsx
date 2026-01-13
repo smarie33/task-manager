@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import { useUserProfile } from "@/context/user-profile-context";
+import { useLocation } from "react-router-dom";
+import WikiMenu from "@/components/wiki/WikiMenu";
 
 const initialsFromName = (name?: string) => {
   if (!name) return "ME";
@@ -17,6 +19,8 @@ const initialsFromName = (name?: string) => {
 
 const AppHeader: React.FC = () => {
   const { profile } = useUserProfile();
+  const location = useLocation();
+  const isWikiPage = location.pathname.startsWith("/wiki");
 
   return (
     <div className="w-full flex items-center justify-between p-4 border-b bg-background">
@@ -49,6 +53,7 @@ const AppHeader: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3">
+        {isWikiPage && <WikiMenu />}
         <Avatar className="h-9 w-9">
           {profile?.avatar_url ? (
             <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />

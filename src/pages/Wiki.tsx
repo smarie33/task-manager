@@ -14,23 +14,37 @@ const Wiki: React.FC = () => {
           <CardHeader>
             <CardTitle>Wiki</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              Welcome to your project wiki. Add helpful docs, how-tos, and process notes here.
-            </p>
-            <div className="prose dark:prose-invert max-w-none">
-              <h2>Getting Started</h2>
+          <CardContent className="space-y-6">
+            <section id="overview" className="space-y-2">
+              <h2 className="text-xl font-semibold">Overview</h2>
+              <p className="text-muted-foreground">
+                Welcome to your project wiki. Add helpful docs, how-tos, and process notes here.
+              </p>
+            </section>
+
+            <section id="getting-started" className="space-y-2">
+              <h2 className="text-xl font-semibold">Getting Started</h2>
               <p>
                 Use this page to document your workflows, conventions, and any information your team needs.
               </p>
-              <h3>Sections</h3>
+            </section>
+
+            <section id="guides" className="space-y-2">
+              <h2 className="text-xl font-semibold">Guides</h2>
               <ul className="list-disc pl-6">
                 <li>Project overview</li>
                 <li>Setup instructions</li>
                 <li>Usage tips</li>
                 <li>Troubleshooting</li>
               </ul>
-            </div>
+            </section>
+
+            <section id="faq" className="space-y-2">
+              <h2 className="text-xl font-semibold">FAQ</h2>
+              <p className="text-muted-foreground">
+                Add common questions and answers here to help your team find information quickly.
+              </p>
+            </section>
           </CardContent>
         </Card>
       </main>
