@@ -34,6 +34,13 @@ const WikiEntry: React.FC = () => {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const { profile } = useUserProfile();
 
+  const formatDate = (d?: string | null) => {
+    if (!d) return null;
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return d;
+    return parsed.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  };
+
   useEffect(() => {
     if (!slug) return;
     supabase
@@ -124,7 +131,7 @@ const WikiEntry: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {entry?.entry_date && (
-              <div className="text-sm text-muted-foreground">Date: {entry.entry_date}</div>
+              <div className="text-sm text-muted-foreground">Date: {formatDate(entry.entry_date)}</div>
             )}
             {entry?.author && (
               <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
@@ -133,7 +140,7 @@ const WikiEntry: React.FC = () => {
             {/* Render HTML with highlighted code */}
             <div
               ref={contentRef}
-              className="prose dark:prose-invert max-w-none"
+              className="prose dark:prose-invert wiki-prose max-w-none"
               dangerouslySetInnerHTML={{ __html: entry?.content || "" }}
             />
           </CardContent>

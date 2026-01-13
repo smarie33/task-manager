@@ -91,7 +91,7 @@ const WikiEdit: React.FC = () => {
     );
   }
 
-  const saveChanges = async () => {
+  const saveChanges = async (publishedOverride?: boolean) => {
     if (!entryId) return;
     if (!profile?.id) {
       toast({ title: "Not signed in", description: "Please sign in to edit entries." });
@@ -111,7 +111,7 @@ const WikiEdit: React.FC = () => {
         author,
         entry_date: date,
         content,
-        published,
+        published: publishedOverride ?? published,
         updated_at: new Date().toISOString(),
       })
       .eq("id", entryId);
@@ -138,18 +138,18 @@ const WikiEdit: React.FC = () => {
       if (scriptErr) throw new Error(scriptErr.message);
     }
 
-    toast({ title: "Saved", description: published ? "Entry updated and published." : "Entry saved as draft." });
+    toast({ title: "Saved", description: (publishedOverride ?? published) ? "Entry updated and published." : "Entry saved as draft." });
     navigate(`/wiki/${targetSlug}`);
   };
 
   const publishNow = async () => {
     setPublished(true);
-    await saveChanges();
+    await saveChanges(true);
   };
 
   const saveDraft = async () => {
     setPublished(false);
-    await saveChanges();
+    await saveChanges(false);
   };
 
   return (

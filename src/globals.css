@@ -154,4 +154,31 @@
     transform: translateY(0.12em);
     margin: 0;
   }
+
+  /* Wiki entry content list styles */
+  .wiki-prose ul,
+  .wiki-prose ol {
+    list-style-position: outside;
+    padding-left: 1.25rem;
+  }
+
+  .wiki-prose ul {
+    list-style-type: disc;
+  }
+
+  .wiki-prose ol {
+    list-style-type: decimal;
+  }
+
+  .wiki-prose li {
+    margin: 0.25rem 0;
+  }
+
+  .wiki-prose ul ul {
+    list-style-type: circle;
+  }
+
+  .wiki-prose ul ul ul {
+    list-style-type: square;
+  }
 }
