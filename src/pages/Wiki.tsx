@@ -23,6 +23,7 @@ const Wiki: React.FC = () => {
       .from("wiki_entries")
       .select("id,title,slug")
       .eq("user_id", userId)
+      .eq("published", true)
       .order("title", { ascending: true })
       .then(({ data, error }) => {
         if (error) throw new Error(error.message);

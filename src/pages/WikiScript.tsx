@@ -24,7 +24,6 @@ const WikiScript: React.FC = () => {
       return;
     }
     (async () => {
-      // Find script id for this user by name
       const { data: scriptRows, error: scriptErr } = await supabase
         .from("wiki_scripts")
         .select("id,name")
@@ -37,20 +36,26 @@ const WikiScript: React.FC = () => {
         setEntries([]);
         return;
       }
-      // Load linked entries
       const { data: links, error: linkErr } = await supabase
         .from("wiki_entry_scripts")
-        .select("wiki_entries(id,title,slug)")
+        .select("entry_id")
         .eq("user_id", userId)
-        .eq("script_id", script.id)
-        .order("created_at", { ascending: true });
+        .eq("script_id", script.id);
       if (linkErr) throw new Error(linkErr.message);
-      const list: EntryBrief[] = (links || [])
-        .map((l: any) => l.wiki_entries)
-        .filter(Boolean);
-      // Sort A–Z by title
-      list.sort((a, b) => a.title.localeCompare(b.title));
-      setEntries(list);
+      const entryIds = (links || []).map((l: any) => l.entry_id);
+      if (entryIds.length === 0) {
+        setEntries([]);
+        return;
+      }
+      const { data: rows, error: eErr } = await supabase
+        .from("wiki_entries")
+        .select("id,title,slug")
+        .eq("user_id", userId)
+        .in("id", entryIds)
+        .eq("published", true)
+        .order("title", { ascending: true });
+      if (eErr) throw new Error(eErr.message);
+      setEntries(rows || []);
     })();
   }, [userId, scriptName]);
 
@@ -62,7 +67,7 @@ const WikiScript: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Entries in “{scriptName}”</CardTitle>
+                <CardTitle>Entries in "{scriptName}"</CardTitle>
               </CardHeader>
               <CardContent>
                 {entries.length === 0 ? (

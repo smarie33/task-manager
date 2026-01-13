@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/context/user-profile-context";
@@ -48,6 +49,7 @@ const WikiAdmin: React.FC = () => {
   const [author, setAuthor] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [content, setContent] = useState("");
+  const [published, setPublished] = useState(false);
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -285,6 +287,7 @@ const WikiAdmin: React.FC = () => {
         author,
         entry_date: date,
         content,
+        published,
       })
       .select("id,slug")
       .single();
@@ -379,6 +382,14 @@ const WikiAdmin: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex items-center gap-3">
+              <Switch checked={published} onCheckedChange={(v) => setPublished(!!v)} />
+              <Label>Published</Label>
+              <span className="text-xs text-muted-foreground">
+                Turn off to save as draft (not visible on non-admin pages).
+              </span>
+            </div>
+
             <div className="grid sm:grid-cols-3 gap-6">
               <div className="space-y-3">
                 <Label>Tags</Label>
@@ -466,7 +477,7 @@ const WikiAdmin: React.FC = () => {
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={createEntry}>Create Entry</Button>
+              <Button onClick={createEntry}>{published ? "Publish Entry" : "Save Draft"}</Button>
             </div>
           </CardContent>
         </Card>

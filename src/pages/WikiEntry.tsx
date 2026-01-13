@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
+import { Button } from "@/components/ui/button";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type Entry = {
   id: string;
@@ -30,6 +32,7 @@ const WikiEntry: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [scripts, setScripts] = useState<Script[]>([]);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const { profile } = useUserProfile();
 
   useEffect(() => {
     if (!slug) return;
@@ -110,7 +113,14 @@ const WikiEntry: React.FC = () => {
       <main className="p-4 container mx-auto max-w-4xl flex-1 w-full">
         <Card>
           <CardHeader>
-            <CardTitle>{entry?.title || "Wiki Entry"}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{entry?.title || "Wiki Entry"}</CardTitle>
+              {profile?.role && profile.role !== "Viewer" && entry?.slug && (
+                <Button variant="outline" size="sm" onClick={() => (window.location.href = `/wiki/${entry.slug}/edit`)}>
+                  Edit
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {entry?.entry_date && (

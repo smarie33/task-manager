@@ -71,6 +71,7 @@ const WikiSidebar: React.FC = () => {
         .from("wiki_entries")
         .select("id,title,slug")
         .eq("user_id", userId)
+        .eq("published", true)
         .or(`title.ilike.${like},content.ilike.${like},author.ilike.${like}`)
         .order("title", { ascending: true })
         .limit(25);

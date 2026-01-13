@@ -24,6 +24,7 @@ import WikiEntry from "./pages/WikiEntry";
 import WikiTag from "./pages/WikiTag";
 import WikiCategory from "./pages/WikiCategory";
 import WikiScript from "./pages/WikiScript";
+import WikiEdit from "./pages/WikiEdit";
 
 const queryClient = new QueryClient();
 
@@ -50,9 +51,7 @@ const App = () => (
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     {/* ADD: wiki routes */}
                     <Route path="/wiki/admin" element={<ProtectedRoute><WikiAdmin /></ProtectedRoute>} />
-                    <Route path="/wiki/scripts/:scriptName" element={<ProtectedRoute><WikiScript /></ProtectedRoute>} />
-                    <Route path="/wiki/categories/:categoryName" element={<ProtectedRoute><WikiCategory /></ProtectedRoute>} />
-                    <Route path="/wiki/tags/:tagName" element={<ProtectedRoute><WikiTag /></ProtectedRoute>} />
+                    <Route path="/wiki/:slug/edit" element={<ProtectedRoute><WikiEdit /></ProtectedRoute>} />
                     <Route path="/wiki/:slug" element={<ProtectedRoute><WikiEntry /></ProtectedRoute>} />
                     <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

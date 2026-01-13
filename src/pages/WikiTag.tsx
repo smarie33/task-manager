@@ -24,7 +24,6 @@ const WikiTag: React.FC = () => {
       return;
     }
     (async () => {
-      // Find tag id for this user by name
       const { data: tagRows, error: tagErr } = await supabase
         .from("wiki_tags")
         .select("id,name")
@@ -37,20 +36,26 @@ const WikiTag: React.FC = () => {
         setEntries([]);
         return;
       }
-      // Load linked entries
       const { data: links, error: linkErr } = await supabase
         .from("wiki_entry_tags")
-        .select("wiki_entries(id,title,slug)")
+        .select("entry_id")
         .eq("user_id", userId)
-        .eq("tag_id", tag.id)
-        .order("created_at", { ascending: true });
+        .eq("tag_id", tag.id);
       if (linkErr) throw new Error(linkErr.message);
-      const list: EntryBrief[] = (links || [])
-        .map((l: any) => l.wiki_entries)
-        .filter(Boolean);
-      // Sort A–Z by title
-      list.sort((a, b) => a.title.localeCompare(b.title));
-      setEntries(list);
+      const entryIds = (links || []).map((l: any) => l.entry_id);
+      if (entryIds.length === 0) {
+        setEntries([]);
+        return;
+      }
+      const { data: rows, error: eErr } = await supabase
+        .from("wiki_entries")
+        .select("id,title,slug")
+        .eq("user_id", userId)
+        .in("id", entryIds)
+        .eq("published", true)
+        .order("title", { ascending: true });
+      if (eErr) throw new Error(eErr.message);
+      setEntries(rows || []);
     })();
   }, [userId, tagName]);
 
@@ -62,7 +67,7 @@ const WikiTag: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Entries tagged “{tagName}”</CardTitle>
+                <CardTitle>Entries tagged "{tagName}"</CardTitle>
               </CardHeader>
               <CardContent>
                 {entries.length === 0 ? (
