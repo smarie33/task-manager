@@ -11,6 +11,7 @@ import "highlight.js/styles/github.css";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
 import { Button } from "@/components/ui/button";
 import { useUserProfile } from "@/context/user-profile-context";
+import { Badge } from "@/components/ui/badge";
 
 type Entry = {
   id: string;
@@ -131,7 +132,7 @@ const WikiEntry: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {entry?.entry_date && (
-              <div className="text-sm text-muted-foreground">Date: {formatDate(entry.entry_date)}</div>
+              <div className="text-sm text-muted-foreground">Date: {entry.entry_date}</div>
             )}
             {entry?.author && (
               <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
@@ -140,9 +141,45 @@ const WikiEntry: React.FC = () => {
             {/* Render HTML with highlighted code */}
             <div
               ref={contentRef}
-              className="prose dark:prose-invert wiki-prose max-w-none"
+              className="prose dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: entry?.content || "" }}
             />
+
+            {/* Associated taxonomy */}
+            {(categories.length > 0 || tags.length > 0 || scripts.length > 0) && (
+              <div className="pt-6 mt-4 border-t space-y-4">
+                {categories.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Categories</div>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map((c) => (
+                        <Badge key={c.id} variant="secondary">{c.name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tags.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Tags</div>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((t) => (
+                        <Badge key={t.id} variant="outline">{t.name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {scripts.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Scripts</div>
+                    <div className="flex flex-wrap gap-2">
+                      {scripts.map((s) => (
+                        <Badge key={s.id}>{s.name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
