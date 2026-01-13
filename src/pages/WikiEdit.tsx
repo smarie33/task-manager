@@ -14,8 +14,6 @@ import { useUserProfile } from "@/context/user-profile-context";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
 
 const slugify = (text: string) =>
   text.toLowerCase().trim().replace(/[\s_]+/g, "-").replace(/[^a-z0-9\-]/g, "").replace(/\-+/g, "-");
@@ -55,11 +53,8 @@ const WikiEdit: React.FC = () => {
       });
   }, [slug]);
 
-  // Quill modules and formats (code block support)
+  // Quill modules and formats: simple toolbar (code-block enabled)
   const quillModules = {
-    syntax: {
-      highlight: (text: string) => hljs.highlightAuto(text).value,
-    },
     toolbar: [
       [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline", "strike", "blockquote", "code"],

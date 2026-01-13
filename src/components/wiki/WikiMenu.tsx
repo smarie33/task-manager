@@ -37,15 +37,17 @@ const WikiMenu: React.FC = () => {
             Github
           </a>
         </DropdownMenuItem>
-        {canManageDrafts && (
-          <DropdownMenuItem asChild>
-            <Link to="/wiki/admin/drafts">Drafts</Link>
-          </DropdownMenuItem>
-        )}
         {loggedIn && (
-          <DropdownMenuItem asChild>
-            <Link to="/wiki/admin">Admin</Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link to="/wiki/admin">Admin</Link>
+            </DropdownMenuItem>
+            {canManageDrafts && (
+              <DropdownMenuItem asChild className="pl-6 text-muted-foreground">
+                <Link to="/wiki/admin/drafts">↳ Drafts</Link>
+              </DropdownMenuItem>
+            )}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
