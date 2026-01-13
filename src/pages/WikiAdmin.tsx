@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/context/user-profile-context";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import hljs from "highlight.js";
+import "highlight.js/styles/github.css";
 import { Trash2 } from "lucide-react";
 
 type WikiTag = { id: string; name: string };
@@ -79,6 +81,29 @@ const WikiAdmin: React.FC = () => {
       setScripts(data || []);
     });
   }, []);
+
+  // Quill modules and formats to enable code blocks and inline code
+  const quillModules = {
+    syntax: {
+      highlight: (text: string) => hljs.highlightAuto(text).value,
+    },
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike", "blockquote", "code"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image"],
+      ["code-block"],
+      ["clean"],
+    ],
+  };
+
+  const quillFormats = [
+    "header",
+    "bold", "italic", "underline", "strike", "blockquote", "code",
+    "list", "bullet",
+    "link", "image",
+    "code-block",
+  ];
 
   const addTag = async () => {
     if (!newTag.trim()) return;
@@ -431,7 +456,13 @@ const WikiAdmin: React.FC = () => {
 
             <div className="space-y-2">
               <Label>Content</Label>
-              <ReactQuill theme="snow" value={content} onChange={setContent} />
+              <ReactQuill
+                theme="snow"
+                value={content}
+                onChange={setContent}
+                modules={quillModules}
+                formats={quillFormats}
+              />
             </div>
 
             <div className="flex justify-end">
