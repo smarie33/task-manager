@@ -61,11 +61,11 @@ const WikiAdmin: React.FC = () => {
   useEffect(() => {
     // Load existing tags and categories
     supabase.from("wiki_tags").select("id,name").order("name", { ascending: true }).then(({ data, error }) => {
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       setTags(data || []);
     });
     supabase.from("wiki_categories").select("id,name").order("name", { ascending: true }).then(({ data, error }) => {
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       setCategories(data || []);
     });
   }, []);
@@ -73,7 +73,7 @@ const WikiAdmin: React.FC = () => {
   const addTag = async () => {
     if (!newTag.trim()) return;
     const { data, error } = await supabase.from("wiki_tags").insert({ name: newTag }).select("id,name").single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     setTags((prev) => [...prev, data]);
     setNewTag("");
     toast({ title: "Tag created", description: `Added "${data.name}"` });
@@ -82,7 +82,7 @@ const WikiAdmin: React.FC = () => {
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     const { data, error } = await supabase.from("wiki_categories").insert({ name: newCategory }).select("id,name").single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     setCategories((prev) => [...prev, data]);
     setNewCategory("");
     toast({ title: "Category created", description: `Added "${data.name}"` });
@@ -117,20 +117,20 @@ const WikiAdmin: React.FC = () => {
       })
       .select("id,slug")
       .single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 
     // Link tags
     if (selectedTagIds.length) {
       const rows = selectedTagIds.map((tagId) => ({ entry_id: entry.id, tag_id: tagId }));
       const { error: tagLinkError } = await supabase.from("wiki_entry_tags").insert(rows);
-      if (tagLinkError) throw tagLinkError;
+      if (tagLinkError) throw new Error(tagLinkError.message);
     }
 
     // Link categories
     if (selectedCategoryIds.length) {
       const rows = selectedCategoryIds.map((categoryId) => ({ entry_id: entry.id, category_id: categoryId }));
       const { error: catLinkError } = await supabase.from("wiki_entry_categories").insert(rows);
-      if (catLinkError) throw catLinkError;
+      if (catLinkError) throw new Error(catLinkError.message);
     }
 
     toast({ title: "Entry created", description: "Your wiki entry was saved." });

@@ -33,14 +33,15 @@ const WikiEntry: React.FC = () => {
       .eq("slug", slug)
       .single()
       .then(async ({ data, error }) => {
-        if (error) throw error;
+        if (error) throw new Error(error.message);
         setEntry(data);
         // Load tags
         const { data: tagLinks, error: tagsErr } = await supabase
           .from("wiki_entry_tags")
           .select("tag_id, wiki_tags(name,id)")
           .eq("entry_id", data.id);
-        if (!tagsErr && tagLinks) {
+        if (tagsErr) throw new Error(tagsErr.message);
+        if (tagLinks) {
           const list: Tag[] = tagLinks
             .map((l: any) => l.wiki_tags)
             .filter(Boolean);
@@ -51,7 +52,8 @@ const WikiEntry: React.FC = () => {
           .from("wiki_entry_categories")
           .select("category_id, wiki_categories(name,id)")
           .eq("entry_id", data.id);
-        if (!catsErr && catLinks) {
+        if (catsErr) throw new Error(catsErr.message);
+        if (catLinks) {
           const list: Category[] = catLinks
             .map((l: any) => l.wiki_categories)
             .filter(Boolean);
