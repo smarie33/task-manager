@@ -72,7 +72,19 @@ const WikiAdmin: React.FC = () => {
 
   const addTag = async () => {
     if (!newTag.trim()) return;
-    const { data, error } = await supabase.from("wiki_tags").insert({ name: newTag }).select("id,name").single();
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to add tags." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot create tags." });
+      return;
+    }
+    const { data, error } = await supabase
+      .from("wiki_tags")
+      .insert({ user_id: profile.id, name: newTag })
+      .select("id,name")
+      .single();
     if (error) throw new Error(error.message);
     setTags((prev) => [...prev, data]);
     setNewTag("");
@@ -81,7 +93,19 @@ const WikiAdmin: React.FC = () => {
 
   const addCategory = async () => {
     if (!newCategory.trim()) return;
-    const { data, error } = await supabase.from("wiki_categories").insert({ name: newCategory }).select("id,name").single();
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to add categories." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot create categories." });
+      return;
+    }
+    const { data, error } = await supabase
+      .from("wiki_categories")
+      .insert({ user_id: profile.id, name: newCategory })
+      .select("id,name")
+      .single();
     if (error) throw new Error(error.message);
     setCategories((prev) => [...prev, data]);
     setNewCategory("");
@@ -105,10 +129,19 @@ const WikiAdmin: React.FC = () => {
       toast({ title: "Invalid slug", description: "The slug derived from the title is empty." });
       return;
     }
-    // Create the entry
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to create entries." });
+      return;
+    }
+    if (profile.role === "Viewer") {
+      toast({ title: "Permission denied", description: "Viewers cannot create entries." });
+      return;
+    }
+    // Create the entry (include user_id to satisfy RLS)
     const { data: entry, error } = await supabase
       .from("wiki_entries")
       .insert({
+        user_id: profile.id,
         title,
         slug,
         author,
@@ -119,16 +152,16 @@ const WikiAdmin: React.FC = () => {
       .single();
     if (error) throw new Error(error.message);
 
-    // Link tags
+    // Link tags (include user_id to satisfy RLS)
     if (selectedTagIds.length) {
-      const rows = selectedTagIds.map((tagId) => ({ entry_id: entry.id, tag_id: tagId }));
+      const rows = selectedTagIds.map((tagId) => ({ user_id: profile.id, entry_id: entry.id, tag_id: tagId }));
       const { error: tagLinkError } = await supabase.from("wiki_entry_tags").insert(rows);
       if (tagLinkError) throw new Error(tagLinkError.message);
     }
 
-    // Link categories
+    // Link categories (include user_id to satisfy RLS)
     if (selectedCategoryIds.length) {
-      const rows = selectedCategoryIds.map((categoryId) => ({ entry_id: entry.id, category_id: categoryId }));
+      const rows = selectedCategoryIds.map((categoryId) => ({ user_id: profile.id, entry_id: entry.id, category_id: categoryId }));
       const { error: catLinkError } = await supabase.from("wiki_entry_categories").insert(rows);
       if (catLinkError) throw new Error(catLinkError.message);
     }
