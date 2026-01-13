@@ -19,6 +19,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import { UserProfileProvider } from "@/context/user-profile-context";
 import Wiki from "./pages/Wiki";
+import WikiAdmin from "./pages/WikiAdmin";
+import WikiEntry from "./pages/WikiEntry";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +45,9 @@ const App = () => (
                     <Route path="/tags/:tagName" element={<ProtectedRoute><TagPage /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    {/* ADD: wiki route */}
+                    {/* ADD: wiki routes */}
+                    <Route path="/wiki/admin" element={<ProtectedRoute><WikiAdmin /></ProtectedRoute>} />
+                    <Route path="/wiki/:slug" element={<ProtectedRoute><WikiEntry /></ProtectedRoute>} />
                     <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
                   </Routes>
