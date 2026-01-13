@@ -140,11 +140,19 @@ const WikiEntry: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {entry?.entry_date && (
-                  <div className="text-sm text-muted-foreground">Date: {entry.entry_date}</div>
-                )}
-                {entry?.author && (
-                  <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
+                {(entry?.entry_date || entry?.author) && (
+                  <div className="text-sm text-muted-foreground flex items-center justify-between">
+                    {entry?.entry_date ? (
+                      <span>Date: {formatDate(entry.entry_date)}</span>
+                    ) : (
+                      <span />
+                    )}
+                    {entry?.author ? (
+                      <span>Author: {entry.author}</span>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
                 )}
 
                 {/* Render HTML with highlighted code */}
