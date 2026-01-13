@@ -471,8 +471,6 @@ const WikiAdmin: React.FC = () => {
                 theme="snow"
                 value={content}
                 onChange={setContent}
-                modules={quillModules}
-                formats={quillFormats}
               />
             </div>
 

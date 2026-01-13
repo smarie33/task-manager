@@ -5,10 +5,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/session-context";
+import { useUserProfile } from "@/context/user-profile-context";
 
 const WikiMenu: React.FC = () => {
   const { session } = useSession();
+  const { profile } = useUserProfile();
   const loggedIn = !!session;
+  const canManageDrafts = !!profile && profile.role !== "Viewer";
 
   return (
     <DropdownMenu>
@@ -23,17 +26,22 @@ const WikiMenu: React.FC = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <Link to="/wiki#overview">Overview</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/wiki#getting-started">Getting Started</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
           <Link to="/wiki#guides">Guides</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/wiki#faq">FAQ</Link>
+          <a
+            href="https://github.com/MosleyGraphics/bonum-maleficus"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Github
+          </a>
         </DropdownMenuItem>
+        {canManageDrafts && (
+          <DropdownMenuItem asChild>
+            <Link to="/wiki/admin/drafts">Drafts</Link>
+          </DropdownMenuItem>
+        )}
         {loggedIn && (
           <DropdownMenuItem asChild>
             <Link to="/wiki/admin">Admin</Link>
