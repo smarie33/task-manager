@@ -181,4 +181,20 @@
   .wiki-prose ul ul ul {
     list-style-type: square;
   }
+
+  /* Charcoal code block styling for wiki entries */
+  .wiki-prose pre {
+    background-color: #1f2937; /* charcoal (tailwind gray-800) */
+    color: #e5e7eb; /* light text (tailwind gray-200) */
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  .wiki-prose pre code {
+    background: transparent;
+    color: inherit;
+    white-space: pre;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
 }

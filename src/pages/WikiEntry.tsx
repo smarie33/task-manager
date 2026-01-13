@@ -8,6 +8,8 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+// Register C# explicitly (ensures language is available even in minimal builds)
+import csharp from "highlight.js/lib/languages/csharp";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
 import { Button } from "@/components/ui/button";
 import { useUserProfile } from "@/context/user-profile-context";
@@ -98,6 +100,9 @@ const WikiEntry: React.FC = () => {
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
+
+    // Ensure the C# language is registered
+    hljs.registerLanguage("csharp", csharp);
 
     // Ensure each <pre> has a <code> child for highlight.js
     el.querySelectorAll("pre").forEach((pre) => {
