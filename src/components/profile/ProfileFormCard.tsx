@@ -23,7 +23,12 @@ const profileSchema = z.object({
     .regex(/^[0-9+()\-\\s]*$/, "Only digits, spaces, and +()- are allowed")
     .optional()
     .or(z.literal("")),
-  address: z.string().min(1, "Address is required").max(300, "Address is too long"),
+  address: z
+    .string()
+    .min(1, "Address is required")
+    .max(300, "Address is too long")
+    .optional()
+    .or(z.literal("")),
   email: z.string().email("Please enter a valid email").optional().or(z.literal("")),
   avatarDataUrl: z.string().optional().or(z.literal("")),
 });
@@ -79,7 +84,7 @@ const ProfileFormCard: React.FC = () => {
       name: values.name,
       email: values.email || null,
       phone: values.phone || null,
-      address: values.address,
+      address: values.address || null,
       avatar_url: values.avatarDataUrl || null,
     });
     // Keep local storage in sync for any components still reading from it
