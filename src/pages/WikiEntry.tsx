@@ -104,20 +104,21 @@ const WikiEntry: React.FC = () => {
     // Ensure the C# language is registered
     hljs.registerLanguage("csharp", csharp);
 
-    // Ensure each <pre> has a <code> child for highlight.js
+    // Normalize and highlight each code block
     el.querySelectorAll("pre").forEach((pre) => {
-      const hasCode = !!pre.querySelector("code");
-      if (!hasCode) {
-        const code = document.createElement("code");
+      let code = pre.querySelector("code");
+      if (!code) {
+        code = document.createElement("code");
         code.textContent = pre.textContent ?? "";
-        code.className = "language-plaintext";
+        // Do not force a language class so highlight.js can auto-detect
         pre.innerHTML = "";
         pre.appendChild(code);
       }
-    });
-
-    // Apply highlighting
-    el.querySelectorAll("pre code").forEach((code) => {
+      // Map 'language-cs' to 'language-csharp' if present
+      if (code.classList.contains("language-cs")) {
+        code.classList.remove("language-cs");
+        code.classList.add("language-csharp");
+      }
       hljs.highlightElement(code as HTMLElement);
     });
   }, [entry?.content]);
@@ -143,7 +144,7 @@ const WikiEntry: React.FC = () => {
                 {(entry?.entry_date || entry?.author) && (
                   <div className="text-sm text-muted-foreground flex items-center justify-between">
                     {entry?.entry_date ? (
-                      <span>Date: {formatDate(entry.entry_date)}</span>
+                      <span>{formatDate(entry.entry_date)}</span>
                     ) : (
                       <span />
                     )}
