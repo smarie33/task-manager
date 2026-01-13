@@ -203,6 +203,20 @@
     color: #fbbf24 !important; /* amber-400 for strong contrast on charcoal */
   }
 
+  /* Robust override: replace dark blue tokens with #fbbf24 specifically within wiki code blocks */
+  .wiki-prose code.hljs .hljs-keyword,
+  .wiki-prose code.hljs .hljs-title,
+  .wiki-prose code.hljs .hljs-type,
+  .wiki-prose code.hljs .hljs-name,
+  .wiki-prose code.hljs .hljs-attr,
+  .wiki-prose code.hljs .hljs-attribute,
+  .wiki-prose code.hljs .hljs-selector-tag,
+  .wiki-prose code.hljs .hljs-built_in,
+  .wiki-prose code.hljs .hljs-symbol,
+  .wiki-prose code.hljs .hljs-class .hljs-title {
+    color: #fbbf24 !important;
+  }
+
   /* C# specific overrides: replace dark blue (#032f62) with #fbbf24 */
   .wiki-prose code.hljs.language-csharp .hljs-title,
   .wiki-prose code.hljs.language-csharp .hljs-type,
