@@ -4,8 +4,9 @@ import React, { useEffect, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import WikiSidebar from "@/components/wiki/WikiSidebar";
 
 type Entry = {
   id: string;
@@ -80,43 +81,47 @@ const WikiEntry: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
-      <main className="p-4 container mx-auto max-w-4xl flex-1 w-full">
-        <Card>
-          <CardHeader>
-            <CardTitle>{entry?.title || "Wiki Entry"}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {entry?.entry_date && (
-              <div className="text-sm text-muted-foreground">Date: {entry.entry_date}</div>
-            )}
-            {entry?.author && (
-              <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
-            )}
-
-            {(tags.length > 0 || categories.length > 0 || scripts.length > 0) && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((t) => (
-                  <span key={t.id} className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-                    {t.name}
-                  </span>
-                ))}
-                {categories.map((c) => (
-                  <span key={c.id} className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs">
-                    {c.name}
-                  </span>
-                ))}
-                {scripts.map((s) => (
-                  <span key={s.id} className="px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs">
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Render HTML from WYSIWYG safely */}
-            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: entry?.content || "" }} />
-          </CardContent>
-        </Card>
+      <main className="p-4 container mx-auto max-w-6xl flex-1 w-full">
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>{entry?.title || "Wiki Entry"}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {entry?.entry_date && (
+                  <div className="text-sm text-muted-foreground">Date: {entry.entry_date}</div>
+                )}
+                {entry?.author && (
+                  <div className="text-sm text-muted-foreground">Author: {entry.author}</div>
+                )}
+                {(tags.length > 0 || categories.length > 0 || scripts.length > 0) && (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((t) => (
+                      <Link key={t.id} to={`/wiki/tags/${encodeURIComponent(t.name)}`} className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
+                        {t.name}
+                      </Link>
+                    ))}
+                    {categories.map((c) => (
+                      <Link key={c.id} to={`/wiki/categories/${encodeURIComponent(c.name)}`} className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs">
+                        {c.name}
+                      </Link>
+                    ))}
+                    {scripts.map((s) => (
+                      <Link key={s.id} to={`/wiki/scripts/${encodeURIComponent(s.name)}`} className="px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs">
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: entry?.content || "" }} />
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            <WikiSidebar />
+          </div>
+        </div>
       </main>
       <MadeWithDyad />
     </div>
