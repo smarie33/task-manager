@@ -18,6 +18,7 @@ import { SessionProvider } from "@/context/session-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import { UserProfileProvider } from "@/context/user-profile-context";
+import Wiki from "./pages/Wiki";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,8 @@ const App = () => (
                     <Route path="/tags/:tagName" element={<ProtectedRoute><TagPage /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    {/* ADD: wiki route */}
+                    <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
                   </Routes>
                 </BrowserRouter>

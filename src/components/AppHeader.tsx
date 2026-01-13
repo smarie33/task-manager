@@ -41,6 +41,9 @@ const AppHeader: React.FC = () => {
             <DropdownMenuItem asChild>
               <Link to="/tags">Tags</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/wiki">Wiki</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
