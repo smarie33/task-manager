@@ -14,10 +14,16 @@ const AuthorSelect: React.FC<AuthorSelectProps> = ({ value, onChange }) => {
   const { users } = useAdminUsers();
   const { profile } = useUserProfile();
 
+  const emailToUsername = (email?: string | null) => {
+    if (!email) return "";
+    const local = String(email).split("@")[0] ?? "";
+    return local;
+  };
+
   const options = React.useMemo(() => {
     const nonViewer = (users || []).filter((u) => u.role !== "Viewer" && u.status === "active");
-    const list = nonViewer.map((u) => ({ id: u.id, name: u.name || u.email || "Unknown" }));
-    const currentName = profile?.name || profile?.email || "Unknown";
+    const list = nonViewer.map((u) => ({ id: u.id, name: (u.name?.trim() || emailToUsername(u.email) || "Unknown") }));
+    const currentName = (profile?.name?.trim() || emailToUsername(profile?.email) || "Unknown");
     const exists = list.find((o) => o.name === currentName);
     const combined = exists ? list : [{ id: profile?.id || "me", name: currentName }, ...list];
     const seen = new Set<string>();

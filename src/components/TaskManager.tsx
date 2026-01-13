@@ -27,9 +27,14 @@ const TaskManager: React.FC = () => {
   // Load users for owner dropdown
   const { users } = useAdminUsers();
   const ownerOptions = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
     const labels = users
       .filter((u) => u.status === "active")
-      .map((u) => (u.name && u.name.trim().length > 0 ? u.name : u.email));
+      .map((u) => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
+      .filter((v) => !!v);
     return Array.from(new Set(labels)).sort();
   }, [users]);
 

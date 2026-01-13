@@ -100,13 +100,17 @@ const TimeTracking: React.FC = () => {
   }, [adminUsers]);
 
   // NEW: Build owner options for dropdown:
-  // - Admin: all active users (name if present, otherwise email)
+  // - Admin: all active users (name preferred, otherwise username from email)
   // - Others: owners derived from tasks (unchanged)
   const ownersOptions = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
     if (role === "Admin" && Array.isArray(adminUsers)) {
       const labels = adminUsers
         .filter(u => u.status === "active")
-        .map(u => (u.name && u.name.trim().length > 0 ? u.name : (u.email || "")))
+        .map(u => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
         .filter(Boolean) as string[];
       return Array.from(new Set(labels)).sort((a, b) => a.localeCompare(b));
     }
@@ -116,13 +120,16 @@ const TimeTracking: React.FC = () => {
   // Profile/session-based guess for non-admins
   const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
   const currentOwnerGuess = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
     const name = profile?.name?.trim();
-    const email = session?.user?.email?.trim();
-    const candidates = [name, email].filter(Boolean) as string[];
+    const username = emailToUsername(session?.user?.email ?? null);
+    const candidates = [name, username].filter(Boolean) as string[];
     for (const c of candidates) {
       if (c && ownersOptions.includes(c)) return c;
     }
-    // For non-admins, do not fall back to someone else
     return null;
   }, [ownersOptions, profile, session]);
 
