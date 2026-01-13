@@ -17,6 +17,8 @@ import "react-quill/dist/quill.snow.css";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import { Trash2 } from "lucide-react";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 type WikiTag = { id: string; name: string };
 type WikiCategory = { id: string; name: string };
@@ -33,6 +35,7 @@ const slugify = (text: string) =>
 const WikiAdmin: React.FC = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
+  const { users: adminUsers } = useAdminUsers();
 
   const [tags, setTags] = useState<WikiTag[]>([]);
   const [categories, setCategories] = useState<WikiCategory[]>([]);
@@ -66,6 +69,21 @@ const WikiAdmin: React.FC = () => {
     const defaultAuthor = profile?.name || profile?.email || "Unknown";
     setAuthor(defaultAuthor);
   }, [profile?.name, profile?.email]);
+
+  const authorOptions = useMemo(() => {
+    const nonViewer = (adminUsers || []).filter((u) => u.role !== "Viewer" && u.status === "active");
+    const list = nonViewer.map((u) => ({ id: u.id, name: u.name || u.email || "Unknown" }));
+    const currentName = profile?.name || profile?.email || "Unknown";
+    const exists = list.find((o) => o.name === currentName);
+    const combined = exists ? list : [{ id: profile?.id || "me", name: currentName }, ...list];
+    // De-duplicate by name, keep order
+    const seen = new Set<string>();
+    return combined.filter((o) => {
+      if (seen.has(o.name)) return false;
+      seen.add(o.name);
+      return true;
+    });
+  }, [adminUsers, profile?.name, profile?.email, profile?.id]);
 
   useEffect(() => {
     // Load existing tags and categories
@@ -378,7 +396,18 @@ const WikiAdmin: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="author">Author</Label>
-                <Input id="author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
+                <Select value={author} onValueChange={(v) => setAuthor(v)}>
+                  <SelectTrigger id="author">
+                    <SelectValue placeholder="Select author" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {authorOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.name}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
