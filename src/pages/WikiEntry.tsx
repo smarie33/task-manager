@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
+import "highlight.js/styles/monokai.css";
 // Register C# explicitly (ensures language is available even in minimal builds)
 import csharp from "highlight.js/lib/languages/csharp";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
@@ -120,36 +120,8 @@ const WikiEntry: React.FC = () => {
       }
     });
 
-    // Apply highlighting and then force color override for #032f62 -> #fbbf24
     el.querySelectorAll("pre code").forEach((codeEl) => {
       hljs.highlightElement(codeEl as HTMLElement);
-
-      // Recolor specific token example (kept from previous change)
-      const target = "inventory-recipe_card-type-holder";
-      const html = (codeEl as HTMLElement).innerHTML;
-      if (html.includes(target)) {
-        (codeEl as HTMLElement).innerHTML = html.split(target).join(
-          `<span class="hljs-custom-accent">${target}</span>`
-        );
-      }
-
-      // Only adjust C# code blocks
-      const isCsharp =
-        (codeEl as HTMLElement).classList.contains("language-csharp") ||
-        (codeEl as HTMLElement).classList.contains("language-cs");
-
-      if (isCsharp) {
-        // Update any descendant element currently using #032f62 (rgb(3, 47, 98)) to #fbbf24
-        const nodes = (codeEl as HTMLElement).querySelectorAll("*");
-        nodes.forEach((node) => {
-          if (node instanceof HTMLElement) {
-            const computed = window.getComputedStyle(node).color;
-            if (computed === "rgb(3, 47, 98)" || computed === "rgba(3, 47, 98, 1)") {
-              node.style.color = "#fbbf24";
-            }
-          }
-        });
-      }
     });
   }, [entry?.content]);
 
