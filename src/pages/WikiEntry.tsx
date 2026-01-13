@@ -104,7 +104,7 @@ const WikiEntry: React.FC = () => {
     // Ensure the C# language is registered
     hljs.registerLanguage("csharp", csharp);
 
-    // Normalize and highlight each code block
+    // Normalize pre/code
     el.querySelectorAll("pre").forEach((pre) => {
       let code = pre.querySelector("code");
       if (!code) {
@@ -120,16 +120,33 @@ const WikiEntry: React.FC = () => {
       }
     });
 
-    // Apply highlighting and wrap the specific token for recoloring
+    // Apply highlighting and then force color override for C# tokens
     el.querySelectorAll("pre code").forEach((codeEl) => {
       hljs.highlightElement(codeEl as HTMLElement);
 
+      // Recolor specific token example (kept from previous change)
       const target = "inventory-recipe_card-type-holder";
       const html = (codeEl as HTMLElement).innerHTML;
       if (html.includes(target)) {
         (codeEl as HTMLElement).innerHTML = html.split(target).join(
           `<span class="hljs-custom-accent">${target}</span>`
         );
+      }
+
+      // Only adjust C# code blocks
+      const isCsharp =
+        (codeEl as HTMLElement).classList.contains("language-csharp") ||
+        (codeEl as HTMLElement).classList.contains("language-cs");
+
+      if (isCsharp) {
+        // Convert any spans currently rendered with #032f62 (rgb(3, 47, 98)) to #fbbf24
+        const spans = (codeEl as HTMLElement).querySelectorAll("span");
+        spans.forEach((s) => {
+          const computed = window.getComputedStyle(s).color;
+          if (computed === "rgb(3, 47, 98)") {
+            (s as HTMLElement).style.color = "#fbbf24";
+          }
+        });
       }
     });
   }, [entry?.content]);
