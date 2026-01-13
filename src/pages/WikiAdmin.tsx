@@ -112,39 +112,6 @@ const WikiAdmin: React.FC = () => {
     toast({ title: "Category created", description: `Added "${data.name}"` });
   };
 
-  // Create a default taxonomy: "Scripts"
-  const createScriptsTaxonomy = async () => {
-    if (!profile?.id) {
-      toast({ title: "Not signed in", description: "Please sign in to create taxonomies." });
-      return;
-    }
-    if (profile.role === "Viewer") {
-      toast({ title: "Permission denied", description: "Viewers cannot create taxonomies." });
-      return;
-    }
-    // Check if "Scripts" already exists for this user
-    const { data: existing, error: checkErr } = await supabase
-      .from("wiki_categories")
-      .select("id,name")
-      .eq("user_id", profile.id)
-      .eq("name", "Scripts")
-      .limit(1);
-    if (checkErr) throw new Error(checkErr.message);
-    if (existing && existing.length > 0) {
-      toast({ title: "Already exists", description: `"Scripts" taxonomy is already created.` });
-      return;
-    }
-    // Insert "Scripts" category
-    const { data, error } = await supabase
-      .from("wiki_categories")
-      .insert({ user_id: profile.id, name: "Scripts" })
-      .select("id,name")
-      .single();
-    if (error) throw new Error(error.message);
-    setCategories((prev) => [...prev, data]);
-    toast({ title: "Taxonomy created", description: `Created "Scripts" category.` });
-  };
-
   const toggleSelection = (list: string[], id: string, setter: (v: string[]) => void) => {
     if (list.includes(id)) {
       setter(list.filter((x) => x !== id));
@@ -229,11 +196,6 @@ const WikiAdmin: React.FC = () => {
                   <Button onClick={addCategory}>Add</Button>
                 </div>
                 <div className="text-sm text-muted-foreground">Create categories to group entries.</div>
-                <div className="pt-2">
-                  <Button variant="outline" size="sm" onClick={createScriptsTaxonomy}>
-                    Create "Scripts" taxonomy
-                  </Button>
-                </div>
               </div>
             </div>
           </CardContent>
