@@ -47,6 +47,11 @@ const WikiMenu: React.FC = () => {
                 <Link to="/wiki/admin/drafts">↳ Drafts</Link>
               </DropdownMenuItem>
             )}
+            {canManageDrafts && (
+              <DropdownMenuItem asChild className="pl-6 text-muted-foreground">
+                <Link to="/wiki/admin/importing">↳ Importing</Link>
+              </DropdownMenuItem>
+            )}
           </>
         )}
       </DropdownMenuContent>

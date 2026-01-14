@@ -26,6 +26,7 @@ import WikiCategory from "./pages/WikiCategory";
 import WikiScript from "./pages/WikiScript";
 import WikiEdit from "./pages/WikiEdit";
 import WikiDrafts from "./pages/WikiDrafts";
+import WikiImporting from "./pages/WikiImporting";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
                     {/* ADD: wiki routes */}
                     <Route path="/wiki/admin" element={<ProtectedRoute><WikiAdmin /></ProtectedRoute>} />
                     <Route path="/wiki/admin/drafts" element={<ProtectedRoute><WikiDrafts /></ProtectedRoute>} />
+                    <Route path="/wiki/admin/importing" element={<ProtectedRoute><WikiImporting /></ProtectedRoute>} />
                     <Route path="/wiki/scripts/:scriptName" element={<ProtectedRoute><WikiScript /></ProtectedRoute>} />
                     <Route path="/wiki/categories/:categoryName" element={<ProtectedRoute><WikiCategory /></ProtectedRoute>} />
                     <Route path="/wiki/tags/:tagName" element={<ProtectedRoute><WikiTag /></ProtectedRoute>} />
