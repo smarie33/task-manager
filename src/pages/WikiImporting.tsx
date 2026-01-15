@@ -11,41 +11,46 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-type CsvData = { headers: string[]; rows: string[][] };
+type CsvCell = { value: string; quoted: boolean };
+type CsvRow = CsvCell[];
+type CsvDataRich = { headers: string[]; rows: CsvRow };
 
-const parseCSV = (text: string): CsvData => {
+const parseCSV = (text: string): CsvDataRich => {
   const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = normalized.split("\n").filter((l) => l.length > 0);
   if (lines.length === 0) return { headers: [], rows: [] };
 
-  const parseLine = (line: string): string[] => {
-    const cells: string[] = [];
+  const parseLine = (line: string): CsvRow => {
+    const cells: CsvRow = [];
     let current = "";
     let inQuotes = false;
+    let fieldWasQuoted = false;
 
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
 
       if (ch === '"') {
-        // Handle escaped quotes inside quoted fields ("")
         if (inQuotes && line[i + 1] === '"') {
           current += '"';
           i++;
         } else {
           inQuotes = !inQuotes;
+          fieldWasQuoted = true;
         }
       } else if (ch === "," && !inQuotes) {
-        cells.push(current.trim());
+        cells.push({ value: current.trim(), quoted: fieldWasQuoted });
         current = "";
+        fieldWasQuoted = false;
       } else {
         current += ch;
       }
     }
-    cells.push(current.trim());
+    cells.push({ value: current.trim(), quoted: fieldWasQuoted });
     return cells;
   };
 
-  const headers = parseLine(lines[0]);
+  const headerCells = parseLine(lines[0]);
+  const headers = headerCells.map((c) => c.value);
   const rows = lines.slice(1).map(parseLine);
   return { headers, rows };
 };
@@ -53,7 +58,8 @@ const parseCSV = (text: string): CsvData => {
 const WikiImporting: React.FC = () => {
   const { toast } = useToast();
   const [destination, setDestination] = useState<"task" | "wiki">("task");
-  const [csvPreview, setCsvPreview] = useState<CsvData | null>(null);
+  const [csvPreview, setCsvPreview] = useState<CsvDataRich | null>(null);
+  const [normalizedPreview, setNormalizedPreview] = useState<{ csFileName: string; fullMethodCode: string }[] | null>(null);
   const [fileName, setFileName] = useState<string>("");
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +72,21 @@ const WikiImporting: React.FC = () => {
     setFileName(file.name);
     const text = await file.text();
     const parsed = parseCSV(text);
+
+    // Normalize: .cs -> CS File Name, quoted fields -> Full Method Code
+    const normalized = parsed.rows.map((row) => {
+      const csCell = row.find((c) => /\.cs$/i.test(c.value.trim()));
+      const quotedCells = row.filter((c) => c.quoted).map((c) => c.value);
+      const nonCsCells = row.filter((c) => !/\.cs$/i.test(c.value.trim())).map((c) => c.value);
+
+      return {
+        csFileName: csCell?.value ?? "",
+        fullMethodCode: quotedCells.length ? quotedCells.join(" ") : nonCsCells.join(" "),
+      };
+    });
+
     setCsvPreview(parsed);
+    setNormalizedPreview(normalized);
     toast({ title: "CSV loaded", description: `Parsed ${parsed.rows.length} rows from ${file.name}.` });
   };
 
@@ -82,7 +102,7 @@ const WikiImporting: React.FC = () => {
     });
   };
 
-  const previewRows = csvPreview ? csvPreview.rows.slice(0, 10) : [];
+  const previewRows = normalizedPreview ? normalizedPreview.slice(0, 10) : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -130,24 +150,22 @@ const WikiImporting: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {csvPreview.headers.map((h, idx) => (
-                          <TableHead key={idx}>{h || `Column ${idx + 1}`}</TableHead>
-                        ))}
+                        <TableHead>CS File Name</TableHead>
+                        <TableHead>Full Method Code</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewRows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={Math.max(1, csvPreview.headers.length)}>
+                          <TableCell colSpan={2}>
                             <div className="text-sm text-muted-foreground">No rows to preview.</div>
                           </TableCell>
                         </TableRow>
                       )}
                       {previewRows.map((row, rIdx) => (
                         <TableRow key={rIdx}>
-                          {row.map((cell, cIdx) => (
-                            <TableCell key={cIdx} className="whitespace-nowrap">{cell}</TableCell>
-                          ))}
+                          <TableCell className="whitespace-nowrap">{row.csFileName}</TableCell>
+                          <TableCell className="whitespace-pre-wrap break-words">{row.fullMethodCode}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
