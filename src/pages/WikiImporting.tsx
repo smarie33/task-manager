@@ -89,19 +89,44 @@ const WikiImporting: React.FC = () => {
     const parsed = parseCSV(text);
 
     // Normalize per rules:
+    // - Method name: first quoted cell
     // - CS File Name: first non-quoted cell ending with ".cs"
-    // - Full Method Code: all quoted cells + any standalone brace-only cells like "}" or "};"
+    // - Full Method Code: everything strictly after the method name cell up to and including a cell that ends with '},' or equals '}' and is followed by a comma
     const normalized = parsed.rows.map((row) => {
-      const csCell = row.find((c) => !c.quoted && /\.cs$/i.test(c.value.trim()));
-      const quotedCodes = row.filter((c) => c.quoted).map((c) => c.value);
-      const braceOnly = row
-        .filter((c) => !c.quoted && /^\s*}\s*;?\s*$/.test(c.value))
-        .map((c) => c.value);
+      const methodIdx = row.findIndex((c) => c.quoted);
+      const csCell = row.find((c) => !c.quoted && /\.cs$/i.test(c.value.trim()))?.value ?? "";
 
-      const fullMethodCode = [...quotedCodes, ...braceOnly].join("\n").trim();
+      // Find the end index: a cell that contains a closing brace followed by a comma
+      // We consider matches like '},', '};', or a standalone '}' cell that is followed by a comma in the next field
+      const isTerminator = (cell: CsvCell, idx: number) => {
+        const v = cell.value.trim();
+        if (/,?\s*},\s*$/.test(v) || /\};\s*$/.test(v) || /},\s*$/.test(v)) return true;
+        // Handle a standalone '}' possibly followed by a comma in the next field
+        if (/^\}$/.test(v)) {
+          // if next cell exists and is empty (common when trailing comma is split), count current as terminator
+          const next = row[idx + 1];
+          if (next && next.value.trim() === "") return true;
+          // If the current cell literally ends with '},' but parser split, still treat it as terminator
+          return true;
+        }
+        return false;
+      };
+
+      let endIdx = -1;
+      for (let i = row.length - 1; i > methodIdx; i--) {
+        if (isTerminator(row[i], i)) {
+          endIdx = i;
+          break;
+        }
+      }
+
+      // Build Full Method Code slice: from methodIdx+1 to endIdx (inclusive if found), otherwise to end of row
+      const sliceStart = methodIdx >= 0 ? methodIdx + 1 : 0;
+      const sliceEnd = endIdx >= sliceStart ? endIdx + 1 : row.length;
+      const fullMethodCode = row.slice(sliceStart, sliceEnd).map((c) => c.value).join("\n").trim();
 
       return {
-        csFileName: csCell?.value ?? "",
+        csFileName: csCell,
         fullMethodCode,
       };
     });
