@@ -7,29 +7,44 @@ import { CsvData, CsvRow, detectCsFileName, extractFullMethodCode, getCellByHead
 type EnsureIdFn = (name: string) => Promise<string | null>;
 
 const ensureByName = async (table: "wiki_tags" | "wiki_categories" | "wiki_scripts", userId: string, name: string) => {
-  if (!name) return null;
+  const normalized = (name || "").trim();
+  if (!normalized) return null;
+  // Case-insensitive lookup to honor unique constraints like (user_id, lower(name))
   const { data: found, error: findErr } = await supabase
     .from(table)
     .select("id")
     .eq("user_id", userId)
-    .eq("name", name)
+    .ilike("name", normalized)
     .limit(1);
   if (findErr) throw new Error(findErr.message);
   if (found && found.length > 0) return found[0].id as string;
-  const { data: created, error: createErr } = await supabase
+  // Use upsert to avoid race conditions on duplicates
+  const { data: upserted, error: upsertErr } = await supabase
     .from(table)
-    .insert({ user_id: userId, name })
+    .upsert({ user_id: userId, name: normalized }, { onConflict: "user_id,name" })
     .select("id")
     .single();
-  if (createErr) throw new Error(createErr.message);
-  return (created.id as string) ?? null;
+  if (upsertErr) throw new Error(upsertErr.message);
+  return (upserted.id as string) ?? null;
 };
 
 const ensureTag = (userId: string): EnsureIdFn => (name: string) => ensureByName("wiki_tags", userId, name);
 const ensureCategory = (userId: string): EnsureIdFn => (name: string) => ensureByName("wiki_categories", userId, name);
 const ensureScript = (userId: string): EnsureIdFn => (name: string) => ensureByName("wiki_scripts", userId, name);
 
-const unique = (arr: string[]) => Array.from(new Set(arr.filter(Boolean).map((s) => s.trim())));
+const uniqueCI = (arr: string[]) => {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of arr) {
+    const v = (raw || "").trim();
+    if (!v) continue;
+    const key = v.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+};
 
 const extractMethodName = (headers: string[], row: CsvRow) => {
   const headerMethodName = getCellByHeader(headers, row, "Method Name");
@@ -66,11 +81,11 @@ export const importWikiFromCsv = async (userId: string, author: string, data: Cs
     // Taxonomies from headers
     const accessModifier = getCellByHeader(data.headers, row, "Access Modifier");
     const returnType = getCellByHeader(data.headers, row, "Return Type");
-    const tagNames = unique([accessModifier, returnType]);
+    const tagNames = uniqueCI([accessModifier, returnType]);
 
     const csFileName = extractCsFileNameFromRow(data.headers, row);
     const relatedMethodsRaw = getCellByHeader(data.headers, row, "Related Methods");
-    const categoryNames = unique(splitList(relatedMethodsRaw));
+    const categoryNames = uniqueCI(splitList(relatedMethodsRaw));
 
     const contentHtml =
       `<pre><code class="language-csharp">${fullMethodCode
