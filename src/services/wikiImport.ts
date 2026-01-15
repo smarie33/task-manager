@@ -87,9 +87,12 @@ export const importWikiFromCsv = async (userId: string, author: string, data: Cs
     const relatedMethodsRaw = getCellByHeader(data.headers, row, "Related Methods");
     const categoryNames = uniqueCI(splitList(relatedMethodsRaw));
 
+    // Normalize line breaks: convert CRLF/CR to \n and literal "\n" sequences to real newlines
+    const normalizedCode = fullMethodCode
+      .replace(/\r\n?/g, "\n")
+      .replace(/\\n/g, "\n");
     const contentHtml =
-      `<pre><code class="language-csharp">${fullMethodCode
-        .replace(/\n/g, "\r")
+      `<pre><code class="language-csharp">${normalizedCode
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")}</code></pre>`;
