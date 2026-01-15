@@ -128,6 +128,83 @@ const WikiImporting: React.FC = () => {
     return { methodName, fullMethodCode };
   };
 
+  const getHeaderIndex = React.useCallback(
+    (name: string) => (csvPreview ? csvPreview.headers.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase()) : -1),
+    [csvPreview]
+  );
+
+  const getCellValueByHeader = (row: CsvRow, headerName: string): string => {
+    const idx = getHeaderIndex(headerName);
+    return idx >= 0 && row[idx] ? row[idx].value.trim() : "";
+  };
+
+  const splitList = (val: string): string[] => {
+    if (!val) return [];
+    // split on semicolons or commas, trim parts
+    return val
+      .split(/[;,]/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  // Ensure-or-create helpers for taxonomy entities, returning id
+  const ensureTag = async (name: string): Promise<string | null> => {
+    if (!name || !profile?.id) return null;
+    const { data: found, error: findErr } = await supabase
+      .from("wiki_tags")
+      .select("id")
+      .eq("user_id", profile.id)
+      .eq("name", name)
+      .limit(1);
+    if (findErr) throw new Error(findErr.message);
+    if (found && found.length > 0) return found[0].id;
+    const { data: created, error: createErr } = await supabase
+      .from("wiki_tags")
+      .insert({ user_id: profile.id, name })
+      .select("id")
+      .single();
+    if (createErr) throw new Error(createErr.message);
+    return created.id;
+  };
+
+  const ensureCategory = async (name: string): Promise<string | null> => {
+    if (!name || !profile?.id) return null;
+    const { data: found, error: findErr } = await supabase
+      .from("wiki_categories")
+      .select("id")
+      .eq("user_id", profile.id)
+      .eq("name", name)
+      .limit(1);
+    if (findErr) throw new Error(findErr.message);
+    if (found && found.length > 0) return found[0].id;
+    const { data: created, error: createErr } = await supabase
+      .from("wiki_categories")
+      .insert({ user_id: profile.id, name })
+      .select("id")
+      .single();
+    if (createErr) throw new Error(createErr.message);
+    return created.id;
+  };
+
+  const ensureScript = async (name: string): Promise<string | null> => {
+    if (!name || !profile?.id) return null;
+    const { data: found, error: findErr } = await supabase
+      .from("wiki_scripts")
+      .select("id")
+      .eq("user_id", profile.id)
+      .eq("name", name)
+      .limit(1);
+    if (findErr) throw new Error(findErr.message);
+    if (found && found.length > 0) return found[0].id;
+    const { data: created, error: createErr } = await supabase
+      .from("wiki_scripts")
+      .insert({ user_id: profile.id, name })
+      .select("id")
+      .single();
+    if (createErr) throw new Error(createErr.message);
+    return created.id;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -218,17 +295,35 @@ const WikiImporting: React.FC = () => {
     const today = new Date().toISOString().slice(0, 10);
     const author = profile.name || profile.email || "Unknown";
 
-    // Insert entries sequentially to keep it simple
     let success = 0;
+
     for (let i = 0; i < csvPreview.rows.length; i++) {
       const row = csvPreview.rows[i];
-      const { methodName, fullMethodCode } = extractMethodAndCode(row);
+
+      // Prefer header-based extraction; fallback to previous detection if missing
+      const headerMethodName = getCellValueByHeader(row, "Method Name");
+      const headerFullCode = getCellValueByHeader(row, "Full Method Code");
+      const { methodName: detectedMethod, fullMethodCode: detectedCode } = extractMethodAndCode(row);
+
+      const methodName = (headerMethodName || detectedMethod).trim();
+      const fullMethodCode = (headerFullCode || detectedCode).trim();
 
       if (!methodName || !fullMethodCode) {
-        continue; // skip rows without required content
+        continue;
       }
 
-      // Wrap content in a code block for C# highlighting
+      // Taxonomy source values
+      const accessModifier = getCellValueByHeader(row, "Access Modifier");
+      const returnType = getCellValueByHeader(row, "Return Type");
+      let csFileName = getCellValueByHeader(row, "CS File Name");
+      if (!csFileName) {
+        const fallbackCs = row.find((c) => !c.quoted && /\.cs$/i.test(c.value.trim()));
+        csFileName = fallbackCs ? fallbackCs.value.trim() : "";
+      }
+      const relatedMethodsRaw = getCellValueByHeader(row, "Related Methods");
+      const relatedMethods = splitList(relatedMethodsRaw);
+
+      // Wrap code for highlighting
       const contentHtml =
         `<pre><code class="language-csharp">${fullMethodCode
           .replace(/&/g, "&amp;")
@@ -240,12 +335,9 @@ const WikiImporting: React.FC = () => {
         baseSlug = `imported-${Date.now()}-${i + 1}`;
       }
 
-      // Ensure slug uniqueness for the current user by probing and appending suffix if needed
+      // Ensure slug uniqueness for this user
       let slug = baseSlug;
       let attempt = 1;
-      // Check if slug exists for this user
-      // Note: Using a small loop to adjust slug if already taken
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data: existing, error: checkErr } = await supabase
           .from("wiki_entries")
@@ -253,34 +345,74 @@ const WikiImporting: React.FC = () => {
           .eq("user_id", profile.id)
           .eq("slug", slug)
           .limit(1);
-
         if (checkErr) throw new Error(checkErr.message);
         if (!existing || existing.length === 0) break;
         attempt += 1;
         slug = `${baseSlug}-${attempt}`;
       }
 
-      const { error: insertErr } = await supabase.from("wiki_entries").insert({
-        user_id: profile.id,
-        title: methodName,
-        slug,
-        author,
-        entry_date: today,
-        content: contentHtml,
-        published: true,
-      });
+      // Create entry and retrieve id
+      const { data: inserted, error: insertErr } = await supabase
+        .from("wiki_entries")
+        .insert({
+          user_id: profile.id,
+          title: methodName,
+          slug,
+          author,
+          entry_date: today,
+          content: contentHtml,
+          published: true,
+        })
+        .select("id")
+        .single();
 
-      if (!insertErr) {
-        success += 1;
-      } else {
-        // Let errors surface to fail fast for debugging
-        throw new Error(insertErr.message);
+      if (insertErr) throw new Error(insertErr.message);
+      const entryId = inserted.id as string;
+
+      // Build taxonomy links
+      // Tags: access modifier + return type (unique)
+      const tagNames = Array.from(new Set([accessModifier, returnType].map((s) => s.trim()).filter(Boolean)));
+      const tagIds: string[] = [];
+      for (const t of tagNames) {
+        const id = await ensureTag(t);
+        if (id) tagIds.push(id);
       }
+      if (tagIds.length > 0) {
+        const rows = tagIds.map((tagId) => ({ user_id: profile.id, entry_id: entryId, tag_id: tagId }));
+        const { error: linkErr } = await supabase.from("wiki_entry_tags").insert(rows);
+        if (linkErr) throw new Error(linkErr.message);
+      }
+
+      // Scripts: cs file name (single)
+      if (csFileName) {
+        const scriptId = await ensureScript(csFileName);
+        if (scriptId) {
+          const { error: sErr } = await supabase
+            .from("wiki_entry_scripts")
+            .insert({ user_id: profile.id, entry_id: entryId, script_id: scriptId });
+          if (sErr) throw new Error(sErr.message);
+        }
+      }
+
+      // Categories: related methods (list)
+      const categoryNames = Array.from(new Set(relatedMethods));
+      const categoryIds: string[] = [];
+      for (const c of categoryNames) {
+        const id = await ensureCategory(c);
+        if (id) categoryIds.push(id);
+      }
+      if (categoryIds.length > 0) {
+        const rows = categoryIds.map((category_id) => ({ user_id: profile.id, entry_id: entryId, category_id }));
+        const { error: cErr } = await supabase.from("wiki_entry_categories").insert(rows);
+        if (cErr) throw new Error(cErr.message);
+      }
+
+      success += 1;
     }
 
     toast({
       title: "Wiki import complete",
-      description: `Created ${success} published entr${success === 1 ? "y" : "ies"} in the wiki.`,
+      description: `Created ${success} published entr${success === 1 ? "y" : "ies"} with taxonomies.`,
     });
   };
 
