@@ -30,6 +30,13 @@ type Tag = { id: string; name: string };
 type Category = { id: string; name: string };
 type Script = { id: string; name: string };
 
+// Normalize literal backslash-n sequences to real newlines for correct rendering in <pre><code>
+const normalizeEntryHtml = (html: string) => {
+  if (!html) return "";
+  // Replace literal "\n" with actual newline, and normalize CRLF/CR to LF
+  return html.replace(/\\n/g, "\n").replace(/\r\n?/g, "\n");
+};
+
 const WikiEntry: React.FC = () => {
   const { slug } = useParams();
   const [entry, setEntry] = useState<Entry | null>(null);
@@ -162,7 +169,7 @@ const WikiEntry: React.FC = () => {
                 <div
                   ref={contentRef}
                   className="prose dark:prose-invert wiki-prose max-w-none"
-                  dangerouslySetInnerHTML={{ __html: entry?.content || "" }}
+                  dangerouslySetInnerHTML={{ __html: normalizeEntryHtml(entry?.content || "") }}
                 />
 
                 {/* Associated taxonomy with links */}
