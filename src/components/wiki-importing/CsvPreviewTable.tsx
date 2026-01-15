@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import type { CsvData } from "@/utils/csv";
 
 export type CsvData = {
   headers: string[];
@@ -39,7 +40,9 @@ const CsvPreviewTable: React.FC<Props> = ({
   }, [data.headers, visibleHeaderIndexes]);
 
   const filteredRows = useMemo(() => {
-    return data.rows.map((row) => visibleHeaderIndexes.map((idx) => row[idx] ?? ""));
+    return data.rows.map((row) =>
+      visibleHeaderIndexes.map((idx) => (row[idx]?.value ?? ""))
+    );
   }, [data.rows, visibleHeaderIndexes]);
 
   const totalRows = filteredRows.length;
@@ -129,7 +132,7 @@ const CsvPreviewTable: React.FC<Props> = ({
                 </TableCell>
               </TableRow>
             ) : (
-              pageRows.map((row, i) => (
+              {pageRows.map((row, i) => (
                 <TableRow key={`${pageStart + i}`}>
                   {row.map((cell, ci) => (
                     <TableCell key={ci} className="whitespace-nowrap">
@@ -137,7 +140,7 @@ const CsvPreviewTable: React.FC<Props> = ({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
+              ))}
             )}
           </TableBody>
         </Table>
