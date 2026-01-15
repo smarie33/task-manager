@@ -76,6 +76,30 @@ const WikiImporting: React.FC = () => {
     return headers;
   }, [csvPreview]);
 
+  // New: headers to remove (case sensitive)
+  const removedHeaders = React.useMemo(
+    () =>
+      new Set([
+        "Column 7",
+        "Column 8",
+        "Column 9",
+        "Column 10",
+        "Column 11",
+        "Column 12",
+        "CS File Name",
+        "Full Method Code",
+      ]),
+    []
+  );
+
+  // New: indices of columns to display, preserving order
+  const displayColIndices = React.useMemo(() => {
+    return origHeaders
+      .map((h, idx) => ({ h, idx }))
+      .filter(({ h }) => !removedHeaders.has(h))
+      .map(({ idx }) => idx);
+  }, [origHeaders, removedHeaders]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -201,33 +225,28 @@ const WikiImporting: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {origHeaders.map((h, idx) => (
-                          <TableHead key={idx}>{h}</TableHead>
+                        {displayColIndices.map((idx) => (
+                          <TableHead key={idx}>{origHeaders[idx]}</TableHead>
                         ))}
-                        <TableHead>CS File Name</TableHead>
-                        <TableHead>Full Method Code</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewIndices.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={Math.max(2, origHeaders.length + 2)}>
+                          <TableCell colSpan={Math.max(1, displayColIndices.length)}>
                             <div className="text-sm text-muted-foreground">No rows to preview.</div>
                           </TableCell>
                         </TableRow>
                       )}
                       {previewIndices.map((rIdx) => {
                         const origRow = csvPreview!.rows[rIdx];
-                        const normRow = normalizedPreview?.[rIdx] ?? { csFileName: "", fullMethodCode: "" };
                         return (
                           <TableRow key={rIdx}>
-                            {origHeaders.map((_, cIdx) => (
+                            {displayColIndices.map((cIdx) => (
                               <TableCell key={cIdx} className="whitespace-nowrap">
                                 {(origRow[cIdx]?.value ?? "")}
                               </TableCell>
                             ))}
-                            <TableCell className="whitespace-nowrap">{normRow.csFileName}</TableCell>
-                            <TableCell className="whitespace-pre-wrap break-words">{normRow.fullMethodCode}</TableCell>
                           </TableRow>
                         );
                       })}
