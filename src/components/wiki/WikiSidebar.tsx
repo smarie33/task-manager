@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import { Link } from "react-router-dom";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 type EntryBrief = { id: string; title: string; slug: string };
 type WikiTag = { id: string; name: string };
@@ -23,6 +24,23 @@ const WikiSidebar: React.FC = () => {
   const [tags, setTags] = React.useState<WikiTag[]>([]);
   const [categories, setCategories] = React.useState<WikiCategory[]>([]);
   const [scripts, setScripts] = React.useState<WikiScript[]>([]);
+
+  const groupedCategories = React.useMemo(() => {
+    const map: Record<string, WikiCategory[]> = {};
+    for (const c of categories) {
+      const first = c.name?.trim()?.charAt(0) ?? "";
+      const key = /^[A-Za-z]/.test(first) ? first.toUpperCase() : "#";
+      if (!map[key]) map[key] = [];
+      map[key].push(c);
+    }
+    const keys = Object.keys(map).sort((a, b) => {
+      if (a === "#" && b !== "#") return 1;
+      if (b === "#" && a !== "#") return -1;
+      return a.localeCompare(b);
+    });
+    keys.forEach((k) => map[k].sort((a, b) => a.name.localeCompare(b.name)));
+    return keys.map((k) => [k, map[k]] as [string, WikiCategory[]]);
+  }, [categories]);
 
   React.useEffect(() => {
     if (!userId) return;
@@ -132,25 +150,6 @@ const WikiSidebar: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Categories</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {categories.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No categories yet.</div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <Link key={c.id} to={`/wiki/categories/${encodeURIComponent(c.name)}`}>
-                  <Badge variant="outline" className="text-xs cursor-pointer">{c.name}</Badge>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Scripts</CardTitle>
         </CardHeader>
         <CardContent>
@@ -164,6 +163,39 @@ const WikiSidebar: React.FC = () => {
                 </Link>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Categories (A–Z)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {categories.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No categories yet.</div>
+          ) : (
+            <Accordion type="multiple" className="w-full">
+              {groupedCategories.map(([letter, cats]) => (
+                <AccordionItem key={letter} value={letter}>
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center">
+                      <span className="mr-2">{letter}</span>
+                      <span className="text-xs text-muted-foreground">({cats.length})</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-wrap gap-2">
+                      {cats.map((c) => (
+                        <Link key={c.id} to={`/wiki/categories/${encodeURIComponent(c.name)}`}>
+                          <Badge variant="outline" className="text-xs cursor-pointer">{c.name}</Badge>
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           )}
         </CardContent>
       </Card>
