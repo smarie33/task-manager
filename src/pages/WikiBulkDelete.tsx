@@ -4,6 +4,7 @@ import React from "react";
 import AppHeader from "@/components/AppHeader";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import EntriesBulkDeleteSection from "@/components/wiki-bulk-delete/EntriesBulkDeleteSection";
+import TaxonomyBulkDeleteSection from "@/components/wiki-bulk-delete/TaxonomyBulkDeleteSection";
 
 const WikiBulkDelete: React.FC = () => {
   return (
@@ -11,6 +12,7 @@ const WikiBulkDelete: React.FC = () => {
       <AppHeader />
       <main className="p-4 container mx-auto max-w-5xl flex-1 w-full space-y-6">
         <EntriesBulkDeleteSection />
+        <TaxonomyBulkDeleteSection />
       </main>
       <MadeWithDyad />
     </div>
