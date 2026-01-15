@@ -65,7 +65,7 @@ const WikiImporting: React.FC = () => {
     if (destination === "task") {
       toast({
         title: "Import not configured",
-        description: "Task Manager import isn’t set up yet on this page.",
+        description: "Task Manager import isn't set up yet on this page.",
       });
       return;
     }
@@ -127,7 +127,7 @@ const WikiImporting: React.FC = () => {
                   <Button onClick={handleImport} disabled={!hasRows}>Import</Button>
                 </div>
 
-                <CsvPreviewTable data={csvData} maxRows={10} removeHeaders={REMOVED_HEADERS} />
+                <CsvPreviewTable data={csvData} pageSize={10} removeHeaders={REMOVED_HEADERS} />
               </div>
             )}
           </CardContent>
