@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserProfile } from "@/context/user-profile-context";
+import { slugify } from "@/utils/slugify";
 
 type CsvCell = { value: string; quoted: boolean };
 type CsvRow = CsvCell[];
@@ -57,6 +60,7 @@ const parseCSV = (text: string): CsvDataRich => {
 
 const WikiImporting: React.FC = () => {
   const { toast } = useToast();
+  const { profile } = useUserProfile();
   const [destination, setDestination] = useState<"task" | "wiki">("task");
   const [csvPreview, setCsvPreview] = useState<CsvDataRich | null>(null);
   const [normalizedPreview, setNormalizedPreview] = useState<{ csFileName: string; fullMethodCode: string }[] | null>(null);
@@ -99,6 +103,30 @@ const WikiImporting: React.FC = () => {
       .filter(({ h }) => !removedHeaders.has(h))
       .map(({ idx }) => idx);
   }, [origHeaders, removedHeaders]);
+
+  // Helper: derive method name (first quoted cell) and full method code from a row
+  const extractMethodAndCode = (row: CsvRow) => {
+    const methodIdx = row.findIndex((c) => c.quoted);
+    const methodName = methodIdx >= 0 ? row[methodIdx].value.trim() : "";
+    // Use existing slice rule set earlier
+    const isTerminator = (cell: CsvCell, idx: number) => {
+      const v = cell.value.trim();
+      if (/,?\s*},\s*$/.test(v) || /\};\s*$/.test(v) || /},\s*$/.test(v)) return true;
+      if (/^\}$/.test(v)) return true;
+      return false;
+    };
+    let endIdx = -1;
+    for (let i = row.length - 1; i > methodIdx; i--) {
+      if (isTerminator(row[i], i)) {
+        endIdx = i;
+        break;
+      }
+    }
+    const sliceStart = methodIdx >= 0 ? methodIdx + 1 : 0;
+    const sliceEnd = endIdx >= sliceStart ? endIdx + 1 : row.length;
+    const fullMethodCode = row.slice(sliceStart, sliceEnd).map((c) => c.value).join("\n").trim();
+    return { methodName, fullMethodCode };
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,15 +195,92 @@ const WikiImporting: React.FC = () => {
   );
   const previewIndices = Array.from({ length: previewCount }, (_, i) => i);
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!csvPreview || csvPreview.rows.length === 0) {
       toast({ title: "No data", description: "Please select a CSV file with at least one data row." });
       return;
     }
-    const destLabel = destination === "task" ? "Task Manager" : "Wiki";
+
+    if (destination === "task") {
+      toast({
+        title: "Import not configured",
+        description: "Task Manager import isn't set up yet on this page.",
+      });
+      return;
+    }
+
+    // Destination: wiki
+    if (!profile?.id) {
+      toast({ title: "Not signed in", description: "Please sign in to import into the wiki." });
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const author = profile.name || profile.email || "Unknown";
+
+    // Insert entries sequentially to keep it simple
+    let success = 0;
+    for (let i = 0; i < csvPreview.rows.length; i++) {
+      const row = csvPreview.rows[i];
+      const { methodName, fullMethodCode } = extractMethodAndCode(row);
+
+      if (!methodName || !fullMethodCode) {
+        continue; // skip rows without required content
+      }
+
+      // Wrap content in a code block for C# highlighting
+      const contentHtml =
+        `<pre><code class="language-csharp">${fullMethodCode
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")}</code></pre>`;
+
+      let baseSlug = slugify(methodName);
+      if (!baseSlug) {
+        baseSlug = `imported-${Date.now()}-${i + 1}`;
+      }
+
+      // Ensure slug uniqueness for the current user by probing and appending suffix if needed
+      let slug = baseSlug;
+      let attempt = 1;
+      // Check if slug exists for this user
+      // Note: Using a small loop to adjust slug if already taken
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: existing, error: checkErr } = await supabase
+          .from("wiki_entries")
+          .select("id")
+          .eq("user_id", profile.id)
+          .eq("slug", slug)
+          .limit(1);
+
+        if (checkErr) throw new Error(checkErr.message);
+        if (!existing || existing.length === 0) break;
+        attempt += 1;
+        slug = `${baseSlug}-${attempt}`;
+      }
+
+      const { error: insertErr } = await supabase.from("wiki_entries").insert({
+        user_id: profile.id,
+        title: methodName,
+        slug,
+        author,
+        entry_date: today,
+        content: contentHtml,
+        published: true,
+      });
+
+      if (!insertErr) {
+        success += 1;
+      } else {
+        // Let errors surface to fail fast for debugging
+        throw new Error(insertErr.message);
+      }
+    }
+
     toast({
-      title: "Import complete",
-      description: `Ready to import ${csvPreview.rows.length} rows to ${destLabel}.`,
+      title: "Wiki import complete",
+      description: `Created ${success} published entr${success === 1 ? "y" : "ies"} in the wiki.`,
     });
   };
 
