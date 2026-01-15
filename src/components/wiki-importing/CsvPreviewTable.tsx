@@ -132,7 +132,7 @@ const CsvPreviewTable: React.FC<Props> = ({
                 </TableCell>
               </TableRow>
             ) : (
-              {pageRows.map((row, i) => (
+              pageRows.map((row, i) => (
                 <TableRow key={`${pageStart + i}`}>
                   {row.map((cell, ci) => (
                     <TableCell key={ci} className="whitespace-nowrap">
@@ -140,7 +140,7 @@ const CsvPreviewTable: React.FC<Props> = ({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))}
+              ))
             )}
           </TableBody>
         </Table>
