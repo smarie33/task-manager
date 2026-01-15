@@ -52,6 +52,11 @@ const WikiMenu: React.FC = () => {
                 <Link to="/wiki/admin/importing">↳ Importing</Link>
               </DropdownMenuItem>
             )}
+            {canManageDrafts && (
+              <DropdownMenuItem asChild className="pl-6 text-muted-foreground">
+                <Link to="/wiki/admin/bulk-delete">↳ Bulk Delete</Link>
+              </DropdownMenuItem>
+            )}
           </>
         )}
       </DropdownMenuContent>
