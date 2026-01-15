@@ -74,6 +74,7 @@ export const importWikiFromCsv = async (userId: string, author: string, data: Cs
 
     const contentHtml =
       `<pre><code class="language-csharp">${fullMethodCode
+        .replace(/\n/g, "\r")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")}</code></pre>`;
