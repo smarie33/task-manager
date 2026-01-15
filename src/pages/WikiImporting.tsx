@@ -62,10 +62,25 @@ const WikiImporting: React.FC = () => {
   const [normalizedPreview, setNormalizedPreview] = useState<{ csFileName: string; fullMethodCode: string }[] | null>(null);
   const [fileName, setFileName] = useState<string>("");
 
+  // Compute headers to display: original CSV headers (or Column N fallbacks)
+  const origHeaders = React.useMemo(() => {
+    if (!csvPreview) return [];
+    const maxCols = Math.max(
+      csvPreview.headers.length,
+      ...csvPreview.rows.map((r) => r.length)
+    );
+    const headers: string[] = [];
+    for (let i = 0; i < maxCols; i++) {
+      headers.push(csvPreview.headers[i] || `Column ${i + 1}`);
+    }
+    return headers;
+  }, [csvPreview]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
       setCsvPreview(null);
+      setNormalizedPreview(null);
       setFileName("");
       return;
     }
@@ -73,15 +88,21 @@ const WikiImporting: React.FC = () => {
     const text = await file.text();
     const parsed = parseCSV(text);
 
-    // Normalize: .cs -> CS File Name, quoted fields -> Full Method Code
+    // Normalize per rules:
+    // - CS File Name: first non-quoted cell ending with ".cs"
+    // - Full Method Code: all quoted cells + any standalone brace-only cells like "}" or "};"
     const normalized = parsed.rows.map((row) => {
-      const csCell = row.find((c) => /\.cs$/i.test(c.value.trim()));
-      const quotedCells = row.filter((c) => c.quoted).map((c) => c.value);
-      const nonCsCells = row.filter((c) => !/\.cs$/i.test(c.value.trim())).map((c) => c.value);
+      const csCell = row.find((c) => !c.quoted && /\.cs$/i.test(c.value.trim()));
+      const quotedCodes = row.filter((c) => c.quoted).map((c) => c.value);
+      const braceOnly = row
+        .filter((c) => !c.quoted && /^\s*}\s*;?\s*$/.test(c.value))
+        .map((c) => c.value);
+
+      const fullMethodCode = [...quotedCodes, ...braceOnly].join("\n").trim();
 
       return {
         csFileName: csCell?.value ?? "",
-        fullMethodCode: quotedCells.length ? quotedCells.join(" ") : nonCsCells.join(" "),
+        fullMethodCode,
       };
     });
 
@@ -89,6 +110,13 @@ const WikiImporting: React.FC = () => {
     setNormalizedPreview(normalized);
     toast({ title: "CSV loaded", description: `Parsed ${parsed.rows.length} rows from ${file.name}.` });
   };
+
+  // Prepare preview indices
+  const previewCount = Math.min(
+    10,
+    csvPreview ? csvPreview.rows.length : 0
+  );
+  const previewIndices = Array.from({ length: previewCount }, (_, i) => i);
 
   const handleImport = () => {
     if (!csvPreview || csvPreview.rows.length === 0) {
@@ -101,8 +129,6 @@ const WikiImporting: React.FC = () => {
       description: `Ready to import ${csvPreview.rows.length} rows to ${destLabel}.`,
     });
   };
-
-  const previewRows = normalizedPreview ? normalizedPreview.slice(0, 10) : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -142,7 +168,7 @@ const WikiImporting: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    Previewing first {previewRows.length} of {csvPreview.rows.length} rows
+                    Previewing first {previewIndices.length} of {csvPreview.rows.length} rows
                   </div>
                   <Button onClick={handleImport}>Import</Button>
                 </div>
@@ -150,24 +176,36 @@ const WikiImporting: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        {origHeaders.map((h, idx) => (
+                          <TableHead key={idx}>{h}</TableHead>
+                        ))}
                         <TableHead>CS File Name</TableHead>
                         <TableHead>Full Method Code</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {previewRows.length === 0 && (
+                      {previewIndices.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={2}>
+                          <TableCell colSpan={Math.max(2, origHeaders.length + 2)}>
                             <div className="text-sm text-muted-foreground">No rows to preview.</div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {previewRows.map((row, rIdx) => (
-                        <TableRow key={rIdx}>
-                          <TableCell className="whitespace-nowrap">{row.csFileName}</TableCell>
-                          <TableCell className="whitespace-pre-wrap break-words">{row.fullMethodCode}</TableCell>
-                        </TableRow>
-                      ))}
+                      {previewIndices.map((rIdx) => {
+                        const origRow = csvPreview!.rows[rIdx];
+                        const normRow = normalizedPreview?.[rIdx] ?? { csFileName: "", fullMethodCode: "" };
+                        return (
+                          <TableRow key={rIdx}>
+                            {origHeaders.map((_, cIdx) => (
+                              <TableCell key={cIdx} className="whitespace-nowrap">
+                                {(origRow[cIdx]?.value ?? "")}
+                              </TableCell>
+                            ))}
+                            <TableCell className="whitespace-nowrap">{normRow.csFileName}</TableCell>
+                            <TableCell className="whitespace-pre-wrap break-words">{normRow.fullMethodCode}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
