@@ -25,6 +25,7 @@ const toTask = (row: any): Task => ({
   files: [], // used for task-specific images (metadata stored in files table)
   notes: row.notes ?? "",
   position: typeof row.position === "number" ? row.position : undefined,
+  userId: row.user_id ?? undefined,
 });
 
 export async function loadAll(
@@ -105,7 +106,7 @@ export async function loadAll(
   // Map groups
   const groupsMap = new Map<string, TaskGroupData>();
   for (const g of groupRows || []) {
-    groupsMap.set(g.id, { id: g.id, name: g.name, color: g.color, tasks: [] });
+    groupsMap.set(g.id, { id: g.id, name: g.name, color: g.color, tasks: [], userId: g.user_id ?? undefined });
   }
 
   // Map tasks into groups
@@ -160,6 +161,7 @@ export async function loadAll(
       createdAt: fr.created_at,
       sourceTaskId: fr.source_task_id ?? undefined,
       sourceTaskContent: fr.source_task_content ?? undefined,
+      userId: fr.user_id ?? undefined,
     };
     if ((fm.mimeType ?? "").startsWith("image/")) images.push(fm);
     else files.push(fm);
@@ -176,6 +178,7 @@ export async function loadAll(
     id: l.id,
     url: l.url,
     label: l.label ?? undefined,
+    userId: l.user_id ?? undefined,
   }));
 
   return { groups, statuses, files, images, links };
@@ -210,10 +213,11 @@ export async function deleteGroup(groupId: string) {
 }
 
 export async function createTask(userId: string, groupId: string, task: Omit<Task, "id">) {
+  const targetUserId = (task as any).userId ?? userId;
   const { data, error } = await supabase
     .from("tasks")
     .insert([{
-      user_id: userId,
+      user_id: targetUserId,
       group_id: groupId,
       content: task.content,
       owner: task.owner,
@@ -242,6 +246,7 @@ export async function updateTaskRow(taskId: string, fields: Partial<Task>) {
   if (fields.hasFiles !== undefined) payload.has_files = fields.hasFiles;
   if (fields.notes !== undefined) payload.notes = fields.notes;
   if ((fields as any).position !== undefined) payload.position = (fields as any).position;
+  if ((fields as any).userId !== undefined) payload.user_id = (fields as any).userId;
   if (Object.keys(payload).length === 0) return;
   const { error } = await supabase.from("tasks").update(payload).eq("id", taskId);
   if (error) throw new Error(error.message);
@@ -340,13 +345,17 @@ export async function updateTaskGroup(taskId: string, groupId: string) {
 }
 
 // ADDED: bulk update task positions (and optional group moves)
-export async function updateTaskPositions(updates: { id: string; position: number; group_id?: string }[]) {
+export async function updateTaskPositions(updates: { id: string; position: number; group_id?: string; user_id?: string }[]) {
   if (updates.length === 0) return;
   await Promise.all(
     updates.map((u) =>
       supabase
         .from("tasks")
-        .update({ position: u.position, ...(u.group_id ? { group_id: u.group_id } : {}) })
+        .update({
+          position: u.position,
+          ...(u.group_id ? { group_id: u.group_id } : {}),
+          ...(u.user_id ? { user_id: u.user_id } : {}),
+        })
         .eq("id", u.id)
     )
   ).then((results) => {
@@ -406,4 +415,49 @@ export async function bulkCreateTasks(userId: string, groupId: string, tasks: Om
     notes: row.notes ?? "",
     position: typeof row.position === "number" ? row.position : undefined,
   })) as Task[];
+}
+
+// ADDED: reassign a single task to a different user and group (admin only)
+export async function reassignTask(taskId: string, toUserId: string, toGroupId: string, position: number) {
+  // Move task and update ownership
+  const { error: taskErr } = await supabase
+    .from("tasks")
+    .update({ user_id: toUserId, group_id: toGroupId, position })
+    .eq("id", taskId);
+  if (taskErr) throw new Error(taskErr.message);
+
+  // Update related rows' ownership for consistent visibility
+  const { error: logErr } = await supabase.from("task_time_logs").update({ user_id: toUserId }).eq("task_id", taskId);
+  if (logErr) throw new Error(logErr.message);
+
+  const { error: commentErr } = await supabase.from("task_comments").update({ user_id: toUserId }).eq("task_id", taskId);
+  if (commentErr) throw new Error(commentErr.message);
+
+  const { error: fileErr } = await supabase.from("files").update({ user_id: toUserId }).eq("source_task_id", taskId);
+  if (fileErr) throw new Error(fileErr.message);
+}
+
+// ADDED: reassign a whole group (and its tasks + related rows) to a different user (admin only)
+export async function reassignGroup(groupId: string, toUserId: string) {
+  const { error: groupErr } = await supabase.from("task_groups").update({ user_id: toUserId }).eq("id", groupId);
+  if (groupErr) throw new Error(groupErr.message);
+
+  const { data: taskIds, error: tErr } = await supabase.from("tasks").select("id").eq("group_id", groupId);
+  if (tErr) throw new Error(tErr.message);
+  const ids = (taskIds || []).map((r: any) => r.id as string);
+
+  // Update tasks in group
+  const { error: tasksErr } = await supabase.from("tasks").update({ user_id: toUserId }).eq("group_id", groupId);
+  if (tasksErr) throw new Error(tasksErr.message);
+
+  if (ids.length === 0) return;
+
+  const { error: logsErr } = await supabase.from("task_time_logs").update({ user_id: toUserId }).in("task_id", ids);
+  if (logsErr) throw new Error(logsErr.message);
+
+  const { error: commentsErr } = await supabase.from("task_comments").update({ user_id: toUserId }).in("task_id", ids);
+  if (commentsErr) throw new Error(commentsErr.message);
+
+  const { error: filesErr } = await supabase.from("files").update({ user_id: toUserId }).in("source_task_id", ids);
+  if (filesErr) throw new Error(filesErr.message);
 }

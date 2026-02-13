@@ -13,7 +13,7 @@ import { useSession } from "@/context/session-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
-import { updateTaskPositions, deleteTasksByGroup } from "@/services/db";
+import { updateTaskPositions, deleteTasksByGroup, reassignTask, reassignGroup } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
@@ -114,6 +114,106 @@ const TaskManager: React.FC = () => {
     );
   };
 
+  const handleAddTask = async (groupId: string, content: string) => {
+    if (readOnly) return;
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    if (!session?.user?.id) return;
+
+    const groupOwnerUserId = (groups.find((g) => g.id === groupId)?.userId ?? session.user.id) as string;
+
+    // Determine position at end of group
+    const current = groups.find((g) => g.id === groupId);
+    const newPos = current ? current.tasks.length : 0;
+    const baseTask = {
+      content: trimmed,
+      owner: "",
+      status: availableStatuses[0]?.name || "To Do",
+      timeline: "",
+      timeTracking: 0,
+      tags: [],
+      hasFiles: false,
+      notes: "",
+      position: newPos,
+      userId: groupOwnerUserId,
+    } as Omit<Task, "id">;
+    try {
+      const row = await createTask(groupOwnerUserId, groupId, baseTask);
+      const createdTask = {
+        id: row.id as string,
+        content: row.content ?? trimmed,
+        owner: row.owner ?? "",
+        status: row.status ?? baseTask.status,
+        timeline: row.timeline ?? "",
+        timeTracking: Number(row.time_tracking ?? 0),
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        hasFiles: !!row.has_files,
+        timeLogs: [],
+        comments: [],
+        files: [],
+        notes: row.notes ?? "",
+        position: typeof row.position === "number" ? row.position : newPos,
+        userId: row.user_id ?? groupOwnerUserId,
+      } as Task;
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
+      );
+    } catch {
+      showError("Failed to create task");
+    }
+  };
+
+  // ADDED: admin reassignment helpers
+  const handleReassignGroup = async (groupId: string, toUserId: string) => {
+    if (readOnly) return;
+    try {
+      await reassignGroup(groupId, toUserId);
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId
+            ? { ...g, userId: toUserId, tasks: g.tasks.map((t) => ({ ...t, userId: toUserId })) }
+            : g
+        )
+      );
+      showSuccess("Group reassigned");
+    } catch {
+      showError("Failed to reassign group");
+    }
+  };
+
+  const handleReassignTask = async (taskId: string, fromGroupId: string, toUserId: string, toGroupId: string) => {
+    if (readOnly) return;
+
+    const destGroup = groups.find((g) => g.id === toGroupId);
+    const newPos = destGroup ? destGroup.tasks.length : 0;
+
+    try {
+      await reassignTask(taskId, toUserId, toGroupId, newPos);
+      setGroups((prev) => {
+        let moved: Task | null = null;
+        const removed = prev.map((g) => {
+          if (g.id !== fromGroupId) return g;
+          const nextTasks = g.tasks.filter((t) => {
+            const keep = t.id !== taskId;
+            if (!keep) moved = t;
+            return keep;
+          });
+          return { ...g, tasks: nextTasks };
+        });
+
+        if (!moved) return prev;
+        const updatedMoved: Task = { ...moved, userId: toUserId, position: newPos };
+
+        return removed.map((g) =>
+          g.id === toGroupId ? { ...g, tasks: [...g.tasks, updatedMoved] } : g
+        );
+      });
+      showSuccess("Task reassigned");
+    } catch {
+      showError("Failed to reassign task");
+    }
+  };
+
   const onDragEnd = (result: DropResult) => {
     if (readOnly) return;
     const { source, destination, draggableId } = result;
@@ -134,66 +234,27 @@ const TaskManager: React.FC = () => {
     sourceGroup.tasks.splice(source.index, 1);
     destinationGroup.tasks.splice(destination.index, 0, task);
 
+    // If Admin moves a task into a different user's group, update ownership in-memory too
+    const destOwner = destinationGroup.userId;
+    if (role === "Admin" && destOwner && task.userId !== destOwner) {
+      (task as any).userId = destOwner;
+    }
+
     setGroups(newGroups);
 
     // Persist ordering
     if (source.droppableId === destination.droppableId) {
-      // Reindex positions for the affected group
       const updates = destinationGroup.tasks.map((t, idx) => ({ id: t.id, position: idx }));
       updateTaskPositions(updates).catch(() => showError("Failed to save task order"));
     } else {
-      // Reindex both groups; moved task also changes group_id
       const sourceUpdates = sourceGroup.tasks.map((t, idx) => ({ id: t.id, position: idx }));
       const destUpdates = destinationGroup.tasks.map((t, idx) => ({
         id: t.id,
         position: idx,
         group_id: t.id === task.id ? destination.droppableId : undefined,
+        user_id: t.id === task.id && role === "Admin" && destinationGroup.userId ? destinationGroup.userId : undefined,
       }));
       updateTaskPositions([...sourceUpdates, ...destUpdates]).catch(() => showError("Failed to move task"));
-    }
-  };
-
-  const handleAddTask = async (groupId: string, content: string) => {
-    if (readOnly) return;
-    const trimmed = content.trim();
-    if (!trimmed) return;
-    if (!session?.user?.id) return;
-    // Determine position at end of group
-    const current = groups.find((g) => g.id === groupId);
-    const newPos = current ? current.tasks.length : 0;
-    const baseTask = {
-      content: trimmed,
-      owner: "",
-      status: availableStatuses[0]?.name || "To Do",
-      timeline: "",
-      timeTracking: 0,
-      tags: [],
-      hasFiles: false,
-      notes: "",
-      position: newPos,
-    } as Omit<Task, "id">;
-    try {
-      const row = await createTask(session.user.id, groupId, baseTask);
-      const createdTask = {
-        id: row.id as string,
-        content: row.content ?? trimmed,
-        owner: row.owner ?? "",
-        status: row.status ?? baseTask.status,
-        timeline: row.timeline ?? "",
-        timeTracking: Number(row.time_tracking ?? 0),
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        hasFiles: !!row.has_files,
-        timeLogs: [],
-        comments: [],
-        files: [],
-        notes: row.notes ?? "",
-        position: typeof row.position === "number" ? row.position : newPos,
-      } as Task;
-      setGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
-      );
-    } catch {
-      showError("Failed to create task");
     }
   };
 
@@ -447,6 +508,9 @@ const TaskManager: React.FC = () => {
                 onArchiveGroup={handleArchiveGroup}
                 otherGroups={otherGroups}
                 owners={ownerOptions}
+                isAdmin={role === "Admin"}
+                onReassignGroup={handleReassignGroup}
+                onReassignTask={handleReassignTask}
               />
             );
           })}

@@ -15,6 +15,8 @@ import AuthorSelect from "@/components/wiki/AuthorSelect";
 import PublishedSwitch from "@/components/wiki/PublishedSwitch";
 import QuillEditor from "@/components/wiki/QuillEditor";
 import TaxonomyEditor from "@/components/wiki/TaxonomyEditor";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 const slugify = (text: string) =>
   text.toLowerCase().trim().replace(/[\s_]+/g, "-").replace(/[^a-z0-9\\-]/g, "").replace(/\\-+/g, "-");
@@ -35,6 +37,9 @@ const WikiEdit: React.FC = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
 
+  const { users: adminUsers } = useAdminUsers();
+  const isAdmin = profile?.role === "Admin";
+
   const [entryId, setEntryId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [currentSlug, setCurrentSlug] = useState("");
@@ -42,6 +47,7 @@ const WikiEdit: React.FC = () => {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [content, setContent] = useState("");
   const [published, setPublished] = useState(false);
+  const [entryUserId, setEntryUserId] = useState<string | null>(null);
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -53,13 +59,14 @@ const WikiEdit: React.FC = () => {
     if (!slug) return;
     supabase
       .from("wiki_entries")
-      .select("id,title,slug,content,author,entry_date,published")
+      .select("id,user_id,title,slug,content,author,entry_date,published")
       .eq("slug", slug)
       .single()
       .then(({ data, error }) => {
         if (error) throw new Error(error.message);
-        const row = data as EntryRow;
+        const row = data as any;
         setEntryId(row.id);
+        setEntryUserId(row.user_id ?? null);
         setTitle(row.title ?? "");
         setCurrentSlug(row.slug ?? "");
         setAuthor(row.author ?? "");
@@ -93,6 +100,21 @@ const WikiEdit: React.FC = () => {
 
   const canEdit = profile?.role === "Admin" || profile?.role === "Editor";
 
+  // Admin: list of possible owners
+  const ownerOptions = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
+    const list = (adminUsers || [])
+      .filter((u) => u.status === "active")
+      .map((u) => ({
+        id: u.id,
+        label: (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)) || u.id,
+      }));
+    return list;
+  }, [adminUsers]);
+
   const saveChanges = async (publishedOverride?: boolean) => {
     if (!entryId) return;
     if (!profile?.id) {
@@ -105,9 +127,12 @@ const WikiEdit: React.FC = () => {
     }
     const targetSlug = currentSlug || computedSlug;
 
+    const effectiveOwnerUserId = isAdmin ? (entryUserId ?? profile.id) : profile.id;
+
     const { error } = await supabase
       .from("wiki_entries")
       .update({
+        user_id: effectiveOwnerUserId,
         title,
         slug: targetSlug,
         author,
@@ -120,22 +145,23 @@ const WikiEdit: React.FC = () => {
     if (error) throw new Error(error.message);
 
     // Rewrite taxonomy links
-    await supabase.from("wiki_entry_tags").delete().eq("entry_id", entryId).eq("user_id", profile.id);
-    await supabase.from("wiki_entry_categories").delete().eq("entry_id", entryId).eq("user_id", profile.id);
-    await supabase.from("wiki_entry_scripts").delete().eq("entry_id", entryId).eq("user_id", profile.id);
+    // For Admin edits, link rows should follow the entry's user_id (owner)
+    await supabase.from("wiki_entry_tags").delete().eq("entry_id", entryId);
+    await supabase.from("wiki_entry_categories").delete().eq("entry_id", entryId);
+    await supabase.from("wiki_entry_scripts").delete().eq("entry_id", entryId);
 
     if (selectedTagIds.length) {
-      const tagRows = selectedTagIds.map((tagId) => ({ entry_id: entryId, tag_id: tagId, user_id: profile.id }));
+      const tagRows = selectedTagIds.map((tagId) => ({ entry_id: entryId, tag_id: tagId, user_id: effectiveOwnerUserId }));
       const { error: tagErr } = await supabase.from("wiki_entry_tags").insert(tagRows);
       if (tagErr) throw new Error(tagErr.message);
     }
     if (selectedCategoryIds.length) {
-      const catRows = selectedCategoryIds.map((categoryId) => ({ entry_id: entryId, category_id: categoryId, user_id: profile.id }));
+      const catRows = selectedCategoryIds.map((categoryId) => ({ entry_id: entryId, category_id: categoryId, user_id: effectiveOwnerUserId }));
       const { error: catErr } = await supabase.from("wiki_entry_categories").insert(catRows);
       if (catErr) throw new Error(catErr.message);
     }
     if (selectedScriptIds.length) {
-      const scriptRows = selectedScriptIds.map((scriptId) => ({ entry_id: entryId, script_id: scriptId, user_id: profile.id }));
+      const scriptRows = selectedScriptIds.map((scriptId) => ({ entry_id: entryId, script_id: scriptId, user_id: effectiveOwnerUserId }));
       const { error: scriptErr } = await supabase.from("wiki_entry_scripts").insert(scriptRows);
       if (scriptErr) throw new Error(scriptErr.message);
     }
@@ -181,12 +207,36 @@ const WikiEdit: React.FC = () => {
                 <Label>Author</Label>
                 <AuthorSelect value={author} onChange={setAuthor} />
               </div>
+
+              {isAdmin && ownerOptions.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Entry Owner (Admin)</Label>
+                  <Select
+                    value={entryUserId ?? ""}
+                    onValueChange={(v) => setEntryUserId(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ownerOptions.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Changing this will transfer the entry and its taxonomy links to that user.
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <PublishedSwitch checked={published} onChange={setPublished} />
 
             <TaxonomyEditor
-              userId={profile?.id ?? null}
+              userId={(isAdmin ? (entryUserId ?? profile?.id) : profile?.id) ?? null}
               entryId={entryId}
               canEdit={canEdit}
               selectedTagIds={selectedTagIds}

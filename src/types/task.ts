@@ -15,12 +15,16 @@ export interface FileMeta {
   // ADDED: source task info for Images library
   sourceTaskId?: string;
   sourceTaskContent?: string;
+  // ADDED: ownership
+  userId?: string;
 }
 
 export interface LinkMeta {
   id: string;
   url: string;
   label?: string;
+  // ADDED: ownership
+  userId?: string;
 }
 
 export interface Task {
@@ -37,6 +41,8 @@ export interface Task {
   files?: FileMeta[]; // UPDATED: include mimeType for image detection
   notes?: string; // Rich text notes
   position?: number; // ADDED: ordering within a group (0-based)
+  // ADDED: ownership (maps to tasks.user_id)
+  userId?: string;
 }
 
 export interface TaskGroupData {
@@ -44,4 +50,6 @@ export interface TaskGroupData {
   name: string;
   color: string;
   tasks: Task[];
+  // ADDED: ownership (maps to task_groups.user_id)
+  userId?: string;
 }
