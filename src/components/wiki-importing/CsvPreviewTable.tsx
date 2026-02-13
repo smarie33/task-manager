@@ -6,11 +6,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button";
 import type { CsvData } from "@/utils/csv";
 
-export type CsvData = {
-  headers: string[];
-  rows: string[][];
-};
-
 type Props = {
   data: CsvData;
   removeHeaders?: string[];
@@ -40,9 +35,7 @@ const CsvPreviewTable: React.FC<Props> = ({
   }, [data.headers, visibleHeaderIndexes]);
 
   const filteredRows = useMemo(() => {
-    return data.rows.map((row) =>
-      visibleHeaderIndexes.map((idx) => (row[idx]?.value ?? ""))
-    );
+    return data.rows.map((row) => visibleHeaderIndexes.map((idx) => (row[idx]?.value ?? "")));
   }, [data.rows, visibleHeaderIndexes]);
 
   const totalRows = filteredRows.length;
@@ -72,10 +65,7 @@ const CsvPreviewTable: React.FC<Props> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-sm">Rows per page</span>
-            <Select
-              value={String(size)}
-              onValueChange={(v) => onChangePageSize(Number(v))}
-            >
+            <Select value={String(size)} onValueChange={(v) => onChangePageSize(Number(v))}>
               <SelectTrigger className="w-[90px] h-8">
                 <SelectValue placeholder={`${size}`} />
               </SelectTrigger>
@@ -90,23 +80,13 @@ const CsvPreviewTable: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={gotoPrev}
-              disabled={clampedPage <= 1}
-            >
+            <Button variant="outline" size="sm" onClick={gotoPrev} disabled={clampedPage <= 1}>
               Prev
             </Button>
             <div className="text-sm min-w-[80px] text-center">
               Page {clampedPage} / {totalPages}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={gotoNext}
-              disabled={clampedPage >= totalPages}
-            >
+            <Button variant="outline" size="sm" onClick={gotoNext} disabled={clampedPage >= totalPages}>
               Next
             </Button>
           </div>

@@ -40,8 +40,8 @@ const WikiDrafts: React.FC = () => {
       .select("id,title,slug,author,entry_date,created_at,updated_at,published")
       .eq("user_id", userId)
       .eq("published", false)
-      .order("updated_at", { ascending: false, nullsLast: true })
-      .order("created_at", { ascending: false, nullsLast: true });
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false, nullsFirst: false });
     if (error) throw new Error(error.message);
     setDrafts(data || []);
     setLoading(false);

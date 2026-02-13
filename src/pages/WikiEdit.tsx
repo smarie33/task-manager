@@ -91,6 +91,8 @@ const WikiEdit: React.FC = () => {
     );
   }
 
+  const canEdit = profile?.role === "Admin" || profile?.role === "Editor";
+
   const saveChanges = async (publishedOverride?: boolean) => {
     if (!entryId) return;
     if (!profile?.id) {
@@ -186,7 +188,7 @@ const WikiEdit: React.FC = () => {
             <TaxonomyEditor
               userId={profile?.id ?? null}
               entryId={entryId}
-              canEdit={profile?.role !== "Viewer"}
+              canEdit={canEdit}
               selectedTagIds={selectedTagIds}
               setSelectedTagIds={setSelectedTagIds}
               selectedCategoryIds={selectedCategoryIds}
@@ -202,7 +204,7 @@ const WikiEdit: React.FC = () => {
 
             <div className="flex flex-wrap gap-2 justify-end">
               <Button variant="outline" onClick={saveDraft}>Save Draft</Button>
-              <Button onClick={saveChanges}>Save Changes</Button>
+              <Button onClick={() => saveChanges()}>Save Changes</Button>
               <Button variant="secondary" onClick={publishNow}>Publish</Button>
             </div>
           </CardContent>
