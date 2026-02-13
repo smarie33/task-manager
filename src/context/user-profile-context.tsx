@@ -28,6 +28,19 @@ type Ctx = {
 
 const UserProfileContext = React.createContext<Ctx | undefined>(undefined);
 
+const normalizeRole = (raw: unknown): Role => {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (v === "admin") return "Admin";
+  if (v === "editor") return "Editor";
+  return "Viewer";
+};
+
+const normalizeStatus = (raw: unknown): UserStatus => {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (v === "active") return "active";
+  return "pending";
+};
+
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session } = useSession();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
@@ -70,7 +83,11 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .select()
         .single();
       if (!insErr && inserted) {
-        setProfile(inserted as UserProfile);
+        setProfile({
+          ...(inserted as UserProfile),
+          role: normalizeRole((inserted as any).role),
+          status: normalizeStatus((inserted as any).status),
+        });
         setLoading(false);
         return;
       }
@@ -80,7 +97,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       return;
     }
 
-    setProfile(row);
+    // Normalize role/status so the rest of the app can rely on consistent casing.
+    setProfile({
+      ...row,
+      role: normalizeRole((row as any).role),
+      status: normalizeStatus((row as any).status),
+    });
     setLoading(false);
   }, [session?.user]);
 
