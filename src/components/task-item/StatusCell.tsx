@@ -82,58 +82,70 @@ const StatusCell: React.FC<StatusCellProps> = ({
       <PopoverContent className="w-auto p-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
           {availableStatuses.map((s) => (
-            <Button
+            <div
               key={s.name}
-              variant="outline"
-              className="flex h-10 w-full items-center justify-between text-xs font-medium rounded-none py-1 px-2"
-              style={{ backgroundColor: lightenHexColor(s.color, 0.8), color: s.color, borderColor: s.color }}
-              onClick={() => {
-                onChange(s.name);
-                setStatusPopoverOpen(false);
+              className="flex items-center gap-2 border rounded-none px-2 py-1"
+              style={{
+                backgroundColor: lightenHexColor(s.color, 0.85),
+                borderColor: s.color,
+                color: s.color,
               }}
-              disabled={disabled}
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {!disabled ? (
-                  <span
-                    className="inline-flex items-center"
+              {!disabled ? (
+                <span className="inline-flex items-center gap-1">
+                  {/* Use native input here (more reliable inside clickable containers) */}
+                  <input
+                    type="color"
+                    value={s.color}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
                     }}
-                  >
-                    <Input
-                      type="color"
-                      value={s.color}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
-                        persistStatusColor(s.name, next);
-                      }}
-                      className="h-6 w-6 p-0 border-none cursor-pointer"
-                      title={`Change color for ${s.name}`}
-                    />
-                    <PaletteIcon className="h-3.5 w-3.5 ml-1 opacity-70" />
-                  </span>
-                ) : null}
-                <span className="flex-1 text-center truncate">{s.name}</span>
-              </div>
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
+                      persistStatusColor(s.name, next);
+                    }}
+                    className="h-6 w-6 p-0 border-0 bg-transparent cursor-pointer"
+                    title={`Change color for ${s.name}`}
+                  />
+                  <PaletteIcon className="h-3.5 w-3.5 opacity-70" />
+                </span>
+              ) : null}
+
+              <button
+                type="button"
+                className="flex-1 text-center truncate text-xs font-medium"
+                onClick={() => {
+                  onChange(s.name);
+                  setStatusPopoverOpen(false);
+                }}
+                disabled={disabled}
+              >
+                {s.name}
+              </button>
 
               {!["done", "in progress"].includes(s.name.toLowerCase()) && (
-                <span
-                  role="button"
+                <button
+                  type="button"
                   aria-label={`Delete status ${s.name}`}
-                  className="ml-2 text-destructive hover:text-destructive/90"
+                  className="ml-1 text-destructive hover:text-destructive/90"
                   onClick={(e) => {
-                    e.stopPropagation();
                     e.preventDefault();
+                    e.stopPropagation();
                     if (!disabled) handleDeleteStatus(s.name);
                   }}
+                  disabled={disabled}
                 >
                   <Trash2Icon className="h-4 w-4" />
-                </span>
+                </button>
               )}
-            </Button>
+            </div>
           ))}
         </div>
         <div className="flex flex-col gap-2 p-2 border-t pt-4">
