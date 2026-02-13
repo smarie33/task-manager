@@ -5,6 +5,7 @@ import { StatusOption, TaskGroupData, FileMeta, LinkMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
 import { useSession } from "@/context/session-context";
 import { loadAll } from "@/services/db";
+import { useUserProfile } from "@/context/user-profile-context";
 
 const initialStatuses: StatusOption[] = [
   { name: "To Do", color: "#ef4444" },
@@ -121,12 +122,14 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // NEW: load from Supabase when session is ready
   const { session } = useSession();
+  const { profile } = useUserProfile();
 
   React.useEffect(() => {
     let cancelled = false;
     async function run() {
       if (!session?.user) return;
-      const { groups, statuses, files, images, links } = await loadAll(session.user.id);
+      const adminReadAll = profile?.role === "Admin";
+      const { groups, statuses, files, images, links } = await loadAll(session.user.id, { adminReadAll });
       if (cancelled) return;
       setGroups(groups);
       setAvailableStatuses(statuses);
@@ -135,8 +138,10 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setExternalLinks(links);
     }
     run();
-    return () => { cancelled = true; };
-  }, [session?.user?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, profile?.role]);
 
   return (
     <TaskDataContext.Provider

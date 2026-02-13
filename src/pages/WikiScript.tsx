@@ -8,6 +8,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type EntryBrief = { id: string; title: string; slug: string };
 
@@ -15,6 +16,8 @@ const WikiScript: React.FC = () => {
   const { scriptName } = useParams();
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "Admin";
 
   const [entries, setEntries] = React.useState<EntryBrief[]>([]);
 
@@ -24,40 +27,40 @@ const WikiScript: React.FC = () => {
       return;
     }
     (async () => {
-      const { data: scriptRows, error: scriptErr } = await supabase
-        .from("wiki_scripts")
-        .select("id,name")
-        .eq("user_id", userId)
-        .eq("name", scriptName)
-        .limit(1);
+      let scriptQ = supabase.from("wiki_scripts").select("id,name").eq("name", scriptName).limit(1);
+      if (!isAdmin) scriptQ = scriptQ.eq("user_id", userId);
+      const { data: scriptRows, error: scriptErr } = await scriptQ;
       if (scriptErr) throw new Error(scriptErr.message);
       const script = scriptRows && scriptRows[0];
       if (!script) {
         setEntries([]);
         return;
       }
-      const { data: links, error: linkErr } = await supabase
-        .from("wiki_entry_scripts")
-        .select("entry_id")
-        .eq("user_id", userId)
-        .eq("script_id", script.id);
+
+      let linkQ = supabase.from("wiki_entry_scripts").select("entry_id").eq("script_id", script.id);
+      if (!isAdmin) linkQ = linkQ.eq("user_id", userId);
+      const { data: links, error: linkErr } = await linkQ;
       if (linkErr) throw new Error(linkErr.message);
+
       const entryIds = (links || []).map((l: any) => l.entry_id);
       if (entryIds.length === 0) {
         setEntries([]);
         return;
       }
-      const { data: rows, error: eErr } = await supabase
+
+      let entryQ = supabase
         .from("wiki_entries")
         .select("id,title,slug")
-        .eq("user_id", userId)
         .in("id", entryIds)
         .eq("published", true)
         .order("title", { ascending: true });
+      if (!isAdmin) entryQ = entryQ.eq("user_id", userId);
+
+      const { data: rows, error: eErr } = await entryQ;
       if (eErr) throw new Error(eErr.message);
       setEntries(rows || []);
     })();
-  }, [userId, scriptName]);
+  }, [userId, scriptName, isAdmin]);
 
   return (
     <div className="min-h-screen flex flex-col">

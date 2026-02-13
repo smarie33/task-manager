@@ -8,10 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
 import { Link } from "react-router-dom";
+import { useUserProfile } from "@/context/user-profile-context";
 
 const Wiki: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "Admin";
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
 
   React.useEffect(() => {
@@ -19,17 +22,19 @@ const Wiki: React.FC = () => {
       setEntries([]);
       return;
     }
-    supabase
+    let q = supabase
       .from("wiki_entries")
       .select("id,title,slug")
-      .eq("user_id", userId)
       .eq("published", true)
-      .order("title", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) throw new Error(error.message);
-        setEntries(data || []);
-      });
-  }, [userId]);
+      .order("title", { ascending: true });
+
+    if (!isAdmin) q = q.eq("user_id", userId);
+
+    q.then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      setEntries(data || []);
+    });
+  }, [userId, isAdmin]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -57,7 +62,7 @@ const Wiki: React.FC = () => {
                     </ul>
                   )
                 ) : (
-                  <div className="text-sm text-muted-foreground">Sign in to view your wiki entries.</div>
+                  <div className="text-sm text-muted-foreground">Sign in to view wiki entries.</div>
                 )}
               </CardContent>
             </Card>

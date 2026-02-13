@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import { Link } from "react-router-dom";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type EntryBrief = { id: string; title: string; slug: string };
 type WikiTag = { id: string; name: string };
@@ -18,6 +19,8 @@ type WikiScript = { id: string; name: string };
 const WikiSidebar: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "Admin";
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<EntryBrief[]>([]);
@@ -44,37 +47,33 @@ const WikiSidebar: React.FC = () => {
 
   React.useEffect(() => {
     if (!userId) return;
-    // Load tags, categories, scripts for the current user
-    supabase
-      .from("wiki_tags")
-      .select("id,name")
-      .eq("user_id", userId)
-      .order("name", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) throw new Error(error.message);
-        setTags(data || []);
-      });
 
-    supabase
-      .from("wiki_categories")
-      .select("id,name")
-      .eq("user_id", userId)
-      .order("name", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) throw new Error(error.message);
-        setCategories(data || []);
-      });
+    // Load tags, categories, scripts
+    let tagQ = supabase.from("wiki_tags").select("id,name").order("name", { ascending: true });
+    let catQ = supabase.from("wiki_categories").select("id,name").order("name", { ascending: true });
+    let scriptQ = supabase.from("wiki_scripts").select("id,name").order("name", { ascending: true });
 
-    supabase
-      .from("wiki_scripts")
-      .select("id,name")
-      .eq("user_id", userId)
-      .order("name", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) throw new Error(error.message);
-        setScripts(data || []);
-      });
-  }, [userId]);
+    if (!isAdmin) {
+      tagQ = tagQ.eq("user_id", userId);
+      catQ = catQ.eq("user_id", userId);
+      scriptQ = scriptQ.eq("user_id", userId);
+    }
+
+    tagQ.then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      setTags(data || []);
+    });
+
+    catQ.then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      setCategories(data || []);
+    });
+
+    scriptQ.then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      setScripts(data || []);
+    });
+  }, [userId, isAdmin]);
 
   React.useEffect(() => {
     if (!userId) return;
@@ -85,19 +84,22 @@ const WikiSidebar: React.FC = () => {
     }
     const handle = setTimeout(async () => {
       const like = `%${term}%`;
-      const { data, error } = await supabase
+      let q = supabase
         .from("wiki_entries")
         .select("id,title,slug")
-        .eq("user_id", userId)
         .eq("published", true)
         .or(`title.ilike.${like},content.ilike.${like},author.ilike.${like}`)
         .order("title", { ascending: true })
         .limit(25);
+
+      if (!isAdmin) q = q.eq("user_id", userId);
+
+      const { data, error } = await q;
       if (error) throw new Error(error.message);
       setSearchResults(data || []);
     }, 300);
     return () => clearTimeout(handle);
-  }, [searchTerm, userId]);
+  }, [searchTerm, userId, isAdmin]);
 
   return (
     <div className="space-y-4">

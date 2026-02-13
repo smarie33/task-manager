@@ -27,64 +27,79 @@ const toTask = (row: any): Task => ({
   position: typeof row.position === "number" ? row.position : undefined,
 });
 
-export async function loadAll(userId: string): Promise<LoadedData> {
+export async function loadAll(
+  userId: string,
+  opts?: {
+    /** When true, do not apply user_id filtering (requires RLS policy granting admin read access). */
+    adminReadAll?: boolean;
+  }
+): Promise<LoadedData> {
+  const adminReadAll = !!opts?.adminReadAll;
+
   // Load groups (only non-archived)
-  const { data: groupRows, error: gErr } = await supabase
+  let groupQuery = supabase
     .from("task_groups")
     .select("*")
-    .eq("user_id", userId)
     .eq("archived", false)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) groupQuery = groupQuery.eq("user_id", userId);
+  const { data: groupRows, error: gErr } = await groupQuery;
   if (gErr) throw new Error(gErr.message);
 
   // Load tasks ordered by position then created_at
-  const { data: taskRows, error: tErr } = await supabase
+  let taskQuery = supabase
     .from("tasks")
     .select("*")
-    .eq("user_id", userId)
     .order("group_id", { ascending: true })
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true });
+  if (!adminReadAll) taskQuery = taskQuery.eq("user_id", userId);
+  const { data: taskRows, error: tErr } = await taskQuery;
   if (tErr) throw new Error(tErr.message);
 
   // Load time logs
-  const { data: logRows, error: lErr } = await supabase
+  let logQuery = supabase
     .from("task_time_logs")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) logQuery = logQuery.eq("user_id", userId);
+  const { data: logRows, error: lErr } = await logQuery;
   if (lErr) throw new Error(lErr.message);
 
   // Load comments
-  const { data: commentRows, error: cErr } = await supabase
+  let commentQuery = supabase
     .from("task_comments")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) commentQuery = commentQuery.eq("user_id", userId);
+  const { data: commentRows, error: cErr } = await commentQuery;
   if (cErr) throw new Error(cErr.message);
 
   // Load files (images + non-images)
-  const { data: fileRows, error: fErr } = await supabase
+  let fileQuery = supabase
     .from("files")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) fileQuery = fileQuery.eq("user_id", userId);
+  const { data: fileRows, error: fErr } = await fileQuery;
   if (fErr) throw new Error(fErr.message);
 
   // Load external links
-  const { data: linkRows, error: eErr } = await supabase
+  let linkQuery = supabase
     .from("external_links")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) linkQuery = linkQuery.eq("user_id", userId);
+  const { data: linkRows, error: eErr } = await linkQuery;
   if (eErr) throw new Error(eErr.message);
 
   // Load statuses
-  const { data: statusRows, error: sErr } = await supabase
+  let statusQuery = supabase
     .from("statuses")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (!adminReadAll) statusQuery = statusQuery.eq("user_id", userId);
+  const { data: statusRows, error: sErr } = await statusQuery;
   if (sErr) throw new Error(sErr.message);
 
   // Map groups

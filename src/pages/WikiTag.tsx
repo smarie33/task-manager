@@ -8,6 +8,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type EntryBrief = { id: string; title: string; slug: string };
 
@@ -15,6 +16,8 @@ const WikiTag: React.FC = () => {
   const { tagName } = useParams();
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "Admin";
 
   const [entries, setEntries] = React.useState<EntryBrief[]>([]);
 
@@ -24,40 +27,40 @@ const WikiTag: React.FC = () => {
       return;
     }
     (async () => {
-      const { data: tagRows, error: tagErr } = await supabase
-        .from("wiki_tags")
-        .select("id,name")
-        .eq("user_id", userId)
-        .eq("name", tagName)
-        .limit(1);
+      let tagQ = supabase.from("wiki_tags").select("id,name").eq("name", tagName).limit(1);
+      if (!isAdmin) tagQ = tagQ.eq("user_id", userId);
+      const { data: tagRows, error: tagErr } = await tagQ;
       if (tagErr) throw new Error(tagErr.message);
       const tag = tagRows && tagRows[0];
       if (!tag) {
         setEntries([]);
         return;
       }
-      const { data: links, error: linkErr } = await supabase
-        .from("wiki_entry_tags")
-        .select("entry_id")
-        .eq("user_id", userId)
-        .eq("tag_id", tag.id);
+
+      let linkQ = supabase.from("wiki_entry_tags").select("entry_id").eq("tag_id", tag.id);
+      if (!isAdmin) linkQ = linkQ.eq("user_id", userId);
+      const { data: links, error: linkErr } = await linkQ;
       if (linkErr) throw new Error(linkErr.message);
+
       const entryIds = (links || []).map((l: any) => l.entry_id);
       if (entryIds.length === 0) {
         setEntries([]);
         return;
       }
-      const { data: rows, error: eErr } = await supabase
+
+      let entryQ = supabase
         .from("wiki_entries")
         .select("id,title,slug")
-        .eq("user_id", userId)
         .in("id", entryIds)
         .eq("published", true)
         .order("title", { ascending: true });
+      if (!isAdmin) entryQ = entryQ.eq("user_id", userId);
+
+      const { data: rows, error: eErr } = await entryQ;
       if (eErr) throw new Error(eErr.message);
       setEntries(rows || []);
     })();
-  }, [userId, tagName]);
+  }, [userId, tagName, isAdmin]);
 
   return (
     <div className="min-h-screen flex flex-col">

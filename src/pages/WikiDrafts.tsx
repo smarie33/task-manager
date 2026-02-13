@@ -28,6 +28,7 @@ const WikiDrafts: React.FC = () => {
   const { profile } = useUserProfile();
   const { toast } = useToast();
   const userId = session?.user?.id ?? null;
+  const isAdmin = profile?.role === "Admin";
 
   const [loading, setLoading] = React.useState(true);
   const [drafts, setDrafts] = React.useState<DraftEntry[]>([]);
@@ -35,17 +36,21 @@ const WikiDrafts: React.FC = () => {
   const loadDrafts = React.useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const { data, error } = await supabase
+
+    let q = supabase
       .from("wiki_entries")
       .select("id,title,slug,author,entry_date,created_at,updated_at,published")
-      .eq("user_id", userId)
       .eq("published", false)
       .order("updated_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false, nullsFirst: false });
+
+    if (!isAdmin) q = q.eq("user_id", userId);
+
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
     setDrafts(data || []);
     setLoading(false);
-  }, [userId]);
+  }, [userId, isAdmin]);
 
   React.useEffect(() => {
     if (userId) {
