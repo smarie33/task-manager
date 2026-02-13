@@ -14,7 +14,7 @@ import { CsvData, parseCSV } from "@/utils/csv";
 import { useUserProfile } from "@/context/user-profile-context";
 import { importWikiFromCsv } from "@/services/wikiImport";
 
-type Destination = "task" | "wiki";
+type Destination = "wiki";
 
 const REMOVED_HEADERS = [
   "Column 7",
@@ -31,7 +31,7 @@ const WikiImporting: React.FC = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
 
-  const [destination, setDestination] = useState<Destination>("task");
+  const [destination, setDestination] = useState<Destination>("wiki");
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [fileName, setFileName] = useState<string>("");
 
@@ -62,19 +62,12 @@ const WikiImporting: React.FC = () => {
       return;
     }
 
-    if (destination === "task") {
-      toast({
-        title: "Import not configured",
-        description: "Task Manager import isn't set up yet on this page.",
-      });
-      return;
-    }
-
     if (!profile?.id) {
       toast({ title: "Not signed in", description: "Please sign in to import into the wiki." });
       return;
     }
 
+    // destination is always "wiki" now (Task Manager removed)
     const author = profile.name || profile.email || "Unknown";
     const { created } = await importWikiFromCsv(profile.id, author, csvData);
 
@@ -101,13 +94,10 @@ const WikiImporting: React.FC = () => {
                     <SelectValue placeholder="Choose destination" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="task">Task Manager</SelectItem>
                     <SelectItem value="wiki">Wiki</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-muted-foreground">
-                  Choose where to import your CSV data.
-                </div>
+                <div className="text-xs text-muted-foreground">Choose where to import your CSV data.</div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="csvFile">CSV File</Label>
@@ -121,10 +111,10 @@ const WikiImporting: React.FC = () => {
             {csvData && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    {previewInfo}
-                  </div>
-                  <Button onClick={handleImport} disabled={!hasRows}>Import</Button>
+                  <div className="text-sm text-muted-foreground">{previewInfo}</div>
+                  <Button onClick={handleImport} disabled={!hasRows}>
+                    Import
+                  </Button>
                 </div>
 
                 <CsvPreviewTable data={csvData} pageSize={10} removeHeaders={REMOVED_HEADERS} />
