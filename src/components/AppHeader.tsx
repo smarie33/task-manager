@@ -4,10 +4,12 @@ import React from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/context/user-profile-context";
 import { useLocation } from "react-router-dom";
 import WikiMenu from "@/components/wiki/WikiMenu";
+import { supabase } from "@/integrations/supabase/client";
+import { Separator } from "@/components/ui/separator";
 
 const initialsFromName = (name?: string) => {
   if (!name) return "ME";
@@ -20,7 +22,13 @@ const initialsFromName = (name?: string) => {
 const AppHeader: React.FC = () => {
   const { profile } = useUserProfile();
   const location = useLocation();
+  const navigate = useNavigate();
   const isWikiPage = location.pathname.startsWith("/wiki");
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
 
   return (
     <div className="w-full flex items-center justify-between p-4 border-b bg-background">
@@ -47,6 +55,13 @@ const AppHeader: React.FC = () => {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/wiki">Wiki</Link>
+            </DropdownMenuItem>
+            <Separator className="my-1" />
+            <DropdownMenuItem onSelect={(e) => {
+              e.preventDefault();
+              handleLogout();
+            }}>
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
