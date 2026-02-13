@@ -86,7 +86,7 @@ const TaskCsvImportDialog: React.FC<Props> = ({
     // Required mapping (as requested):
     // Name -> Item(content), Owner -> Owner, Status -> Status,
     // Timeline - Start -> Timeline first date, Timeline - End -> Timeline second date,
-    // Tags -> Tags
+    // Tags -> Tags, Notes -> Notes (WYSIWYG)
 
     const tasksToCreate: Omit<Task, "id">[] = parsed.rows
       .map((row) => {
@@ -97,6 +97,7 @@ const TaskCsvImportDialog: React.FC<Props> = ({
         const start = getCellByHeader(parsed.headers, row, "Timeline - Start");
         const end = getCellByHeader(parsed.headers, row, "Timeline - End");
         const tags = splitList(getCellByHeader(parsed.headers, row, "Tags"));
+        const notes = getCellByHeader(parsed.headers, row, "Notes");
 
         return {
           content: name,
@@ -109,7 +110,7 @@ const TaskCsvImportDialog: React.FC<Props> = ({
           timeLogs: [],
           comments: [],
           files: [],
-          notes: "",
+          notes,
         } as Omit<Task, "id">;
       })
       .filter(Boolean) as Omit<Task, "id">[];
@@ -219,6 +220,9 @@ const TaskCsvImportDialog: React.FC<Props> = ({
               </li>
               <li>
                 <span className="text-foreground">Tags</span> → Tags
+              </li>
+              <li>
+                <span className="text-foreground">Notes</span> → Notes (WYSIWYG)
               </li>
             </ul>
           </div>
