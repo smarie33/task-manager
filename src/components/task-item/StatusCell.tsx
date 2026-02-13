@@ -4,9 +4,11 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Trash2Icon, PlusIcon } from "lucide-react";
+import { Trash2Icon, PlusIcon, PaletteIcon } from "lucide-react";
 import { StatusOption } from "@/types/task";
 import { lightenHexColor } from "@/lib/utils";
+import { useSession } from "@/context/session-context";
+import { addStatus, updateStatus } from "@/services/db";
 
 type StatusCellProps = {
   status: string;
@@ -23,6 +25,8 @@ const StatusCell: React.FC<StatusCellProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const { session } = useSession();
+
   const currentStatusOption = availableStatuses.find((s) => s.name === status);
   const statusColor = currentStatusOption ? currentStatusOption.color : "#6b7280";
 
@@ -30,12 +34,32 @@ const StatusCell: React.FC<StatusCellProps> = ({
   const [newStatusName, setNewStatusName] = useState("");
   const [newStatusColor, setNewStatusColor] = useState("#60a5fa");
 
-  const handleAddStatus = () => {
+  const persistStatusColor = async (name: string, color: string) => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    try {
+      await updateStatus(userId, name, color);
+    } catch {
+      // Best-effort persistence; UI still updates locally.
+    }
+  };
+
+  const handleAddStatus = async () => {
+    const userId = session?.user?.id;
     const name = newStatusName.trim();
     if (name && !availableStatuses.some((s) => s.name === name)) {
       setAvailableStatuses((prev) => [...prev, { name, color: newStatusColor }]);
       setNewStatusName("");
       setNewStatusColor("#60a5fa");
+
+      // Best-effort DB persistence
+      if (userId) {
+        try {
+          await addStatus(userId, { name, color: newStatusColor });
+        } catch {
+          // ignore
+        }
+      }
     }
   };
 
@@ -69,7 +93,32 @@ const StatusCell: React.FC<StatusCellProps> = ({
               }}
               disabled={disabled}
             >
-              <span className="flex-1 text-center">{s.name}</span>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {!disabled ? (
+                  <span
+                    className="inline-flex items-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                  >
+                    <Input
+                      type="color"
+                      value={s.color}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
+                        persistStatusColor(s.name, next);
+                      }}
+                      className="h-6 w-6 p-0 border-none cursor-pointer"
+                      title={`Change color for ${s.name}`}
+                    />
+                    <PaletteIcon className="h-3.5 w-3.5 ml-1 opacity-70" />
+                  </span>
+                ) : null}
+                <span className="flex-1 text-center truncate">{s.name}</span>
+              </div>
+
               {!["done", "in progress"].includes(s.name.toLowerCase()) && (
                 <span
                   role="button"

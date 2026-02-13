@@ -293,13 +293,23 @@ export async function addStatus(userId: string, status: StatusOption) {
   if (error) throw new Error(error.message);
 }
 
+// UPDATED: update color if it exists; otherwise create it (so admins/editors can change colors reliably)
 export async function updateStatus(userId: string, name: string, color: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("statuses")
     .update({ color })
     .eq("user_id", userId)
-    .eq("name", name);
+    .eq("name", name)
+    .select("id");
   if (error) throw new Error(error.message);
+
+  // If nothing was updated (status was only local), create it.
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from("statuses")
+      .insert([{ user_id: userId, name, color }]);
+    if (insErr) throw new Error(insErr.message);
+  }
 }
 
 export async function addFileMeta(userId: string, meta: FileMeta) {
