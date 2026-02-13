@@ -16,6 +16,7 @@ import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updat
 import { updateTaskPositions, deleteTasksByGroup } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
+import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -353,6 +354,20 @@ const TaskManager: React.FC = () => {
           </Button>
         </div>
 
+        {/* ADDED: CSV import */}
+        <TaskCsvImportDialog
+          userId={session?.user?.id ?? null}
+          groups={groups}
+          availableStatuses={availableStatuses}
+          setAvailableStatuses={setAvailableStatuses}
+          disabled={readOnly}
+          onTasksImported={(groupId, tasks) => {
+            setGroups((prev) =>
+              prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, ...tasks] } : g))
+            );
+          }}
+        />
+
         {/* NEW: global collapse/expand controls (allowed in readOnly) */}
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={collapseAll}>
@@ -426,9 +441,9 @@ const TaskManager: React.FC = () => {
                 readOnly={readOnly}
                 isCollapsed={collapsedGroups[group.id] ?? false}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                visibleTasks={visibleTasks}
-                dragDisabled={!!filterActive}
-                filterActive={!!filterActive}
+                visibleTasks={filterActive ? visibleTasks : undefined}
+                dragDisabled={filterActive}
+                filterActive={filterActive}
                 onArchiveGroup={handleArchiveGroup}
                 otherGroups={otherGroups}
                 owners={ownerOptions}

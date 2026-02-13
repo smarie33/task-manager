@@ -345,3 +345,50 @@ export async function deleteTasksByGroup(groupId: string) {
   const { error } = await supabase.from("tasks").delete().eq("group_id", groupId);
   if (error) throw new Error(error.message);
 }
+
+// ADDED: bulk create tasks in a group (used by CSV import)
+export async function bulkCreateTasks(userId: string, groupId: string, tasks: Omit<Task, "id">[]) {
+  if (tasks.length === 0) return [] as Task[];
+
+  // Determine starting position at end of group
+  const { count, error: countErr } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("group_id", groupId);
+  if (countErr) throw new Error(countErr.message);
+  const basePos = count ?? 0;
+
+  const rows = tasks.map((t, idx) => ({
+    user_id: userId,
+    group_id: groupId,
+    content: t.content,
+    owner: t.owner,
+    status: t.status,
+    timeline: t.timeline,
+    time_tracking: t.timeTracking,
+    tags: t.tags,
+    has_files: t.hasFiles,
+    notes: t.notes ?? "",
+    position: basePos + idx,
+  }));
+
+  const { data, error } = await supabase.from("tasks").insert(rows).select();
+  if (error) throw new Error(error.message);
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    content: row.content ?? "",
+    owner: row.owner ?? "",
+    status: row.status ?? "To Do",
+    timeline: row.timeline ?? "",
+    timeTracking: Number(row.time_tracking ?? 0),
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    hasFiles: !!row.has_files,
+    timeLogs: [],
+    comments: [],
+    files: [],
+    notes: row.notes ?? "",
+    position: typeof row.position === "number" ? row.position : undefined,
+  })) as Task[];
+}

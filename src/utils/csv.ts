@@ -2,7 +2,7 @@
 
 export type CsvCell = { value: string; quoted: boolean };
 export type CsvRow = CsvCell[];
-export type CsvData = { headers: string[]; rows: CsvRow };
+export type CsvData = { headers: string[]; rows: CsvRow[] };
 
 export const parseCSV = (text: string): CsvData => {
   const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -68,7 +68,11 @@ export const extractFullMethodCode = (row: CsvRow): string => {
 
   const sliceStart = methodIdx >= 0 ? methodIdx + 1 : 0;
   const sliceEnd = endIdx >= sliceStart ? endIdx + 1 : row.length;
-  return row.slice(sliceStart, sliceEnd).map((c) => c.value).join("\n").trim();
+  return row
+    .slice(sliceStart, sliceEnd)
+    .map((c) => c.value)
+    .join("\n")
+    .trim();
 };
 
 export const detectCsFileName = (row: CsvRow): string => {
