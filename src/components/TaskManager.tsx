@@ -18,6 +18,8 @@ import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 
+type SortKey = "owner" | "content" | "status" | "timeline";
+
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
   const [newGroupName, setNewGroupName] = useState("");
@@ -112,6 +114,73 @@ const TaskManager: React.FC = () => {
         })),
       }))
     );
+  };
+
+  const parseTimelineFirstDate = (timeline: string) => {
+    const t = String(timeline ?? "").trim();
+    if (!t) return Number.POSITIVE_INFINITY;
+    const m = t.match(/\b\d{4}-\d{2}-\d{2}\b/);
+    if (!m) return Number.POSITIVE_INFINITY;
+    const ms = new Date(m[0]).getTime();
+    return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+  };
+
+  const handleSortGroup = (groupId: string, sortBy: SortKey) => {
+    const statusRank = new Map<string, number>();
+    availableStatuses.forEach((s, idx) => statusRank.set(s.name, idx));
+
+    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+    const sortTasks = (tasks: Task[]) => {
+      const copy = [...tasks];
+      copy.sort((a, b) => {
+        if (sortBy === "owner") {
+          const ao = norm(a.owner);
+          const bo = norm(b.owner);
+          if (!ao && bo) return 1;
+          if (ao && !bo) return -1;
+          if (ao !== bo) return ao.localeCompare(bo);
+          return norm(a.content).localeCompare(norm(b.content));
+        }
+        if (sortBy === "content") {
+          const ac = norm(a.content);
+          const bc = norm(b.content);
+          if (ac !== bc) return ac.localeCompare(bc);
+          return a.id.localeCompare(b.id);
+        }
+        if (sortBy === "status") {
+          const ar = statusRank.has(a.status) ? (statusRank.get(a.status) as number) : Number.MAX_SAFE_INTEGER;
+          const br = statusRank.has(b.status) ? (statusRank.get(b.status) as number) : Number.MAX_SAFE_INTEGER;
+          if (ar !== br) return ar - br;
+          const as = norm(a.status);
+          const bs = norm(b.status);
+          if (as !== bs) return as.localeCompare(bs);
+          return norm(a.content).localeCompare(norm(b.content));
+        }
+        // timeline
+        const ad = parseTimelineFirstDate(a.timeline);
+        const bd = parseTimelineFirstDate(b.timeline);
+        if (ad !== bd) return ad - bd;
+        return norm(a.content).localeCompare(norm(b.content));
+      });
+      return copy.map((t, idx) => ({ ...t, position: idx }));
+    };
+
+    let updatesToPersist: { id: string; position: number }[] = [];
+
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const sorted = sortTasks(g.tasks);
+        updatesToPersist = sorted.map((t) => ({ id: t.id, position: t.position ?? 0 }));
+        return { ...g, tasks: sorted };
+      })
+    );
+
+    // Persist ordering for admins/editors so it sticks after reload.
+    if (!readOnly && updatesToPersist.length > 0) {
+      updateTaskPositions(updatesToPersist).catch(() => showError("Failed to save sort order"));
+    }
   };
 
   const handleAddTask = async (groupId: string, content: string) => {
@@ -511,6 +580,7 @@ const TaskManager: React.FC = () => {
                 isAdmin={role === "Admin"}
                 onReassignGroup={handleReassignGroup}
                 onReassignTask={handleReassignTask}
+                onSortGroup={handleSortGroup}
               />
             );
           })}

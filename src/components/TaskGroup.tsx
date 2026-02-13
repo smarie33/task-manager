@@ -15,6 +15,8 @@ import GroupDeleteDialog from '@/components/group/GroupDeleteDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
+type SortKey = "owner" | "content" | "status" | "timeline";
+
 interface TaskGroupProps {
   group: { id: string; name: string; color: string; tasks: Task[]; userId?: string };
   onAddTask: (groupId: string, content: string) => void;
@@ -47,6 +49,8 @@ interface TaskGroupProps {
   isAdmin?: boolean;
   onReassignGroup?: (groupId: string, toUserId: string) => void;
   onReassignTask?: (taskId: string, fromGroupId: string, toUserId: string, toGroupId: string) => void;
+  // NEW: sorting
+  onSortGroup?: (groupId: string, sortBy: SortKey) => void;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -73,6 +77,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   isAdmin = false,
   onReassignGroup,
   onReassignTask,
+  onSortGroup,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -114,6 +119,21 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 
   // Determine which tasks to render
   const tasksToShow = visibleTasks ?? group.tasks;
+
+  const SortHeader: React.FC<{ label: string; sortKey: SortKey; center?: boolean }> = ({ label, sortKey, center }) => {
+    if (!onSortGroup) {
+      return <div className={`px-2 truncate ${center ? "text-center" : ""}`}>{label}</div>;
+    }
+    return (
+      <button
+        type="button"
+        className={`px-2 truncate text-left hover:underline ${center ? "w-full text-center" : "w-full"}`}
+        onClick={() => onSortGroup(group.id, sortKey)}
+      >
+        {label}
+      </button>
+    );
+  };
 
   const handleAddTask = () => {
     if (newTaskContent.trim()) {
@@ -246,20 +266,20 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
           {/* Sticky Item Header - First column of the grid */}
           <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
-            <div className="px-2 truncate">Item</div>
+            <SortHeader label="Item" sortKey="content" />
           </div>
 
           {/* Scrollable Headers - Second column of the grid */}
           <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
             <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px]">
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-                <div className="px-2 truncate">Owner</div>
+                <SortHeader label="Owner" sortKey="owner" />
               </div>
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-                <div className="px-2 truncate">Status</div>
+                <SortHeader label="Status" sortKey="status" />
               </div>
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-                <div className="px-2 truncate">Timeline</div>
+                <SortHeader label="Timeline" sortKey="timeline" />
               </div>
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
                 <div className="px-2 truncate">Time Tracking</div>
