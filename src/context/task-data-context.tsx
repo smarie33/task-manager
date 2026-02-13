@@ -129,19 +129,41 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     async function run() {
       if (!session?.user) return;
       const adminReadAll = profile?.role === "Admin";
-      const { groups, statuses, files, images, links } = await loadAll(session.user.id, { adminReadAll });
-      if (cancelled) return;
-      setGroups(groups);
-      setAvailableStatuses(statuses);
-      setLibraryFiles(files);
-      setLibraryImages(images);
-      setExternalLinks(links);
+      try {
+        const loaded = await loadAll(session.user.id, { adminReadAll });
+        if (cancelled) return;
+        setGroups(loaded.groups);
+        setAvailableStatuses(loaded.statuses);
+        setLibraryFiles(loaded.files);
+        setLibraryImages(loaded.images);
+        setExternalLinks(loaded.links);
+
+        // Diagnostics (helps track "empty data" reports)
+        console.log("[task-data] loaded", {
+          adminReadAll,
+          sessionUserId: session.user.id,
+          sessionEmail: session.user.email,
+          profileId: profile?.id,
+          profileEmail: profile?.email,
+          profileRole: profile?.role,
+          groups: loaded.groups.length,
+          tasks: loaded.groups.reduce((sum, g) => sum + g.tasks.length, 0),
+          statuses: loaded.statuses.length,
+          files: loaded.files.length,
+          images: loaded.images.length,
+          links: loaded.links.length,
+        });
+      } catch (e) {
+        console.error("[task-data] load failed", e);
+        if (cancelled) return;
+        // Keep current state; do not wipe sample tasks on failure.
+      }
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, profile?.role]);
+  }, [session?.user?.id, session?.user?.email, profile?.id, profile?.email, profile?.role]);
 
   return (
     <TaskDataContext.Provider

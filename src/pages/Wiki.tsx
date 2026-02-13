@@ -31,10 +31,23 @@ const Wiki: React.FC = () => {
     if (!isAdmin) q = q.eq("user_id", userId);
 
     q.then(({ data, error }) => {
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("[wiki] list load failed", error);
+        setEntries([]);
+        return;
+      }
+      console.log("[wiki] list loaded", {
+        isAdmin,
+        sessionUserId: userId,
+        sessionEmail: session?.user?.email,
+        profileId: profile?.id,
+        profileEmail: profile?.email,
+        profileRole: profile?.role,
+        publishedEntries: (data || []).length,
+      });
       setEntries(data || []);
     });
-  }, [userId, isAdmin]);
+  }, [userId, isAdmin, session?.user?.email, profile?.id, profile?.email, profile?.role]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -49,7 +62,14 @@ const Wiki: React.FC = () => {
               <CardContent>
                 {userId ? (
                   entries.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No entries yet.</div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">No published entries yet.</div>
+                      {profile?.role && profile.role !== "Viewer" ? (
+                        <div className="text-xs text-muted-foreground">
+                          If you expected drafts, open <Link className="underline" to="/wiki/admin/drafts">Wiki Drafts</Link>.
+                        </div>
+                      ) : null}
+                    </div>
                   ) : (
                     <ul className="space-y-2">
                       {entries.map((e) => (
