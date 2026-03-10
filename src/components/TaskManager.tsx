@@ -79,6 +79,7 @@ const TaskManager: React.FC = () => {
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [groupDropHover, setGroupDropHover] = useState<{ groupId: string; pos: DropPos } | null>(null);
   const prevCollapsedRef = useRef<Record<string, boolean> | null>(null);
+  const pendingGroupMoveRef = useRef<{ from: string; to: string; pos: DropPos } | null>(null);
 
   const reorderGroupsById = (fromGroupId: string, toGroupId: string, pos: DropPos) => {
     const current = applyGroupOrder(groups, groupOrder);
@@ -101,6 +102,7 @@ const TaskManager: React.FC = () => {
   const onGroupDragStart = (groupId: string) => (e: React.DragEvent) => {
     setDraggingGroupId(groupId);
     setGroupDropHover(null);
+    pendingGroupMoveRef.current = null;
 
     // Collapse everything while dragging (and restore afterwards)
     if (!prevCollapsedRef.current) {
@@ -120,6 +122,13 @@ const TaskManager: React.FC = () => {
       setCollapsedGroups(prevCollapsedRef.current);
       prevCollapsedRef.current = null;
     }
+
+    const pending = pendingGroupMoveRef.current;
+    pendingGroupMoveRef.current = null;
+    if (pending) {
+      // Apply after drag has fully ended to avoid browsers getting stuck.
+      requestAnimationFrame(() => reorderGroupsById(pending.from, pending.to, pending.pos));
+    }
   };
 
   const onGroupDropZoneDragOver = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
@@ -132,13 +141,9 @@ const TaskManager: React.FC = () => {
   const onGroupDropZoneDrop = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
     e.preventDefault();
     const from = e.dataTransfer.getData("text/plain") || draggingGroupId;
-    if (!from || from === overGroupId) {
-      onGroupDragEnd();
-      return;
-    }
+    if (!from || from === overGroupId) return;
 
-    reorderGroupsById(from, overGroupId, pos);
-    onGroupDragEnd();
+    pendingGroupMoveRef.current = { from, to: overGroupId, pos };
   };
 
   // Load users for owner dropdown
