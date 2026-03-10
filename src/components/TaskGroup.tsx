@@ -44,10 +44,6 @@ interface TaskGroupProps {
   otherGroups: { id: string; name: string }[];
   // NEW: available owners list for dropdown
   owners: string[];
-  // ADDED: admin reassignment UI
-  isAdmin?: boolean;
-  onReassignGroup?: (groupId: string, toUserId: string) => void;
-  onReassignTask?: (taskId: string, fromGroupId: string, toUserId: string, toGroupId: string) => void;
   // NEW: sorting
   onSortGroup?: (groupId: string, sortBy: SortKey) => void;
 }
@@ -73,9 +69,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onArchiveGroup,
   otherGroups,
   owners,
-  isAdmin = false,
-  onReassignGroup,
-  onReassignTask,
   onSortGroup,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
@@ -113,35 +106,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       return next;
     });
   };
-
-  // Admin users list for reassignment
-  const [adminUsers, setAdminUsers] = useState<{ id: string; label: string }[]>([]);
-  const [groupOwnerUserId, setGroupOwnerUserId] = useState<string>(group.userId ?? "");
-
-  React.useEffect(() => {
-    setGroupOwnerUserId(group.userId ?? "");
-  }, [group.userId]);
-
-  React.useEffect(() => {
-    if (!isAdmin) return;
-    import("@/utils/invokeEdge")
-      .then(({ invokeEdge }) => invokeEdge<{ users: any[] }>("admin-users", { action: "list" }))
-      .then(({ data }) => {
-        const users = ((data as any)?.users ?? []) as any[];
-        const emailToUsername = (email?: string | null) => {
-          if (!email) return "";
-          return String(email).split("@")[0] ?? "";
-        };
-        const list = users
-          .filter((u) => u.status === "active")
-          .map((u) => ({
-            id: u.id,
-            label: (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)) || u.id,
-          }));
-        setAdminUsers(list);
-      })
-      .catch(() => setAdminUsers([]));
-  }, [isAdmin]);
 
   // Use controlled collapsed value if provided, otherwise local state
   const collapsed = typeof isCollapsedProp === 'boolean' ? isCollapsedProp : isCollapsed;
@@ -219,32 +183,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Admin: group owner assignment */}
-          {isAdmin && !readOnly && adminUsers.length > 0 && onReassignGroup ? (
-            <div className="hidden md:flex items-center gap-2">
-              <Label className="text-white/90 text-xs">Owner</Label>
-              <Select
-                value={groupOwnerUserId || "__none__"}
-                onValueChange={(v) => {
-                  if (v === "__none__") return;
-                  setGroupOwnerUserId(v);
-                  onReassignGroup(group.id, v);
-                }}
-              >
-                <SelectTrigger className="h-7 w-[200px] bg-white/90 text-black border-white/20">
-                  <SelectValue placeholder="Assign owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {adminUsers.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-
           <div className="relative">
             <Input
               type="color"

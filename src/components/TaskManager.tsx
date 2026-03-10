@@ -13,12 +13,14 @@ import { useSession } from "@/context/session-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
-import { updateTaskPositions, deleteTasksByGroup, deleteTasksByIds, reassignTask, reassignGroup } from "@/services/db";
+import { updateTaskPositions, deleteTasksByGroup, deleteTasksByIds } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 
 type SortKey = "owner" | "content" | "status" | "timeline";
+
+type GroupSort = "created" | "name_asc" | "name_desc" | "tasks_desc" | "tasks_asc";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -44,6 +46,35 @@ const TaskManager: React.FC = () => {
   // NEW: global filters
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
+
+  // NEW: group sorting
+  const [groupSort, setGroupSort] = useState<GroupSort>("created");
+
+  const orderedGroups = React.useMemo(() => {
+    const copy = [...groups];
+    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+    switch (groupSort) {
+      case "name_asc":
+        copy.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
+        break;
+      case "name_desc":
+        copy.sort((a, b) => norm(b.name).localeCompare(norm(a.name)));
+        break;
+      case "tasks_desc":
+        copy.sort((a, b) => (b.tasks?.length ?? 0) - (a.tasks?.length ?? 0));
+        break;
+      case "tasks_asc":
+        copy.sort((a, b) => (a.tasks?.length ?? 0) - (b.tasks?.length ?? 0));
+        break;
+      case "created":
+      default:
+        // keep existing order
+        break;
+    }
+
+    return copy;
+  }, [groups, groupSort]);
 
   // NEW: sentinel values (Radix Select items cannot use empty strings)
   const ALL_USERS = "__all_users__";
@@ -229,57 +260,6 @@ const TaskManager: React.FC = () => {
       );
     } catch {
       showError("Failed to create task");
-    }
-  };
-
-  // ADDED: admin reassignment helpers
-  const handleReassignGroup = async (groupId: string, toUserId: string) => {
-    if (readOnly) return;
-    try {
-      await reassignGroup(groupId, toUserId);
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? { ...g, userId: toUserId, tasks: g.tasks.map((t) => ({ ...t, userId: toUserId })) }
-            : g
-        )
-      );
-      showSuccess("Group reassigned");
-    } catch {
-      showError("Failed to reassign group");
-    }
-  };
-
-  const handleReassignTask = async (taskId: string, fromGroupId: string, toUserId: string, toGroupId: string) => {
-    if (readOnly) return;
-
-    const destGroup = groups.find((g) => g.id === toGroupId);
-    const newPos = destGroup ? destGroup.tasks.length : 0;
-
-    try {
-      await reassignTask(taskId, toUserId, toGroupId, newPos);
-      setGroups((prev) => {
-        let moved: Task | null = null;
-        const removed = prev.map((g) => {
-          if (g.id !== fromGroupId) return g;
-          const nextTasks = g.tasks.filter((t) => {
-            const keep = t.id !== taskId;
-            if (!keep) moved = t;
-            return keep;
-          });
-          return { ...g, tasks: nextTasks };
-        });
-
-        if (!moved) return prev;
-        const updatedMoved: Task = { ...moved, userId: toUserId, position: newPos };
-
-        return removed.map((g) =>
-          g.id === toGroupId ? { ...g, tasks: [...g.tasks, updatedMoved] } : g
-        );
-      });
-      showSuccess("Task reassigned");
-    } catch {
-      showError("Failed to reassign task");
     }
   };
 
@@ -574,12 +554,25 @@ const TaskManager: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            <Select value={groupSort} onValueChange={(val) => setGroupSort(val as GroupSort)}>
+              <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
+                <SelectValue placeholder="Sort groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created">Created order</SelectItem>
+                <SelectItem value="name_asc">Name (A → Z)</SelectItem>
+                <SelectItem value="name_desc">Name (Z → A)</SelectItem>
+                <SelectItem value="tasks_desc">Most tasks</SelectItem>
+                <SelectItem value="tasks_asc">Fewest tasks</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col items-center gap-6 pb-4">
-          {groups.map((group) => {
+          {orderedGroups.map((group) => {
             const visibleTasks = group.tasks.filter((t) => {
               const ownerOk = !selectedOwner || t.owner === selectedOwner;
               const statusOk = !selectedStatus || t.status === selectedStatus;
@@ -609,9 +602,6 @@ const TaskManager: React.FC = () => {
                 onArchiveGroup={handleArchiveGroup}
                 otherGroups={otherGroups}
                 owners={ownerOptions}
-                isAdmin={role === "Admin"}
-                onReassignGroup={handleReassignGroup}
-                onReassignTask={handleReassignTask}
                 onSortGroup={handleSortGroup}
               />
             );
