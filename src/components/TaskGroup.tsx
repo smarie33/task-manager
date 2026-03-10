@@ -1,18 +1,16 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Droppable } from 'react-beautiful-dnd';
+import { Droppable, type DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
 import TaskItem from './TaskItem';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, PaintbrushIcon, Trash2Icon, ChevronDown, ChevronRight } from 'lucide-react';
+import { GripVertical, PlusIcon, PaintbrushIcon, Trash2Icon, ChevronDown, ChevronRight } from 'lucide-react';
 import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 import { Archive } from 'lucide-react';
 import GroupDeleteDialog from '@/components/group/GroupDeleteDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 
 type SortKey = "owner" | "content" | "status" | "timeline";
 
@@ -29,23 +27,16 @@ interface TaskGroupProps {
   allTags: string[];
   onDeleteGlobalTag: (tag: string) => void;
   readOnly?: boolean;
-  // NEW: controlled collapse support
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  // NEW: optional visible tasks (filtered)
   visibleTasks?: Task[];
-  // NEW: disable dragging (when filtering)
   dragDisabled?: boolean;
-  // NEW: indicate filters are active to adjust empty state message
   filterActive?: boolean;
-  // NEW: archive action
   onArchiveGroup: (groupId: string) => void;
-  // NEW: list of other groups for reassignment
   otherGroups: { id: string; name: string }[];
-  // NEW: available owners list for dropdown
   owners: string[];
-  // NEW: sorting
   onSortGroup?: (groupId: string, sortBy: SortKey) => void;
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -70,6 +61,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   otherGroups,
   owners,
   onSortGroup,
+  dragHandleProps,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -148,6 +140,17 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
     <Card className="w-[90vw] max-w-[1500px] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between py-1 px-3 rounded-t-lg" style={{ backgroundColor: group.color }}>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20 cursor-grab active:cursor-grabbing"
+            aria-label="Reorder group"
+            title="Drag to reorder group"
+            {...(dragHandleProps ?? {})}
+          >
+            <GripVertical className="h-4 w-4" />
+          </Button>
+
           {isEditingName ? (
             <Input
               value={group.name}

@@ -1,18 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DragDropContext, DropResult } from "react-beautiful-dnd";
+import { DragDropContext, DropResult, Droppable, Draggable } from "react-beautiful-dnd";
 import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { useTaskData } from "@/context/task-data-context";
-import { Task, StatusOption } from "@/types/task";
+import { Task } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
 import { useSession } from "@/context/session-context";
-// NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
+import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow } from "@/services/db";
 import { updateTaskPositions, deleteTasksByGroup, deleteTasksByIds } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
@@ -20,7 +19,7 @@ import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 
 type SortKey = "owner" | "content" | "status" | "timeline";
 
-type GroupSort = "created" | "name_asc" | "name_desc" | "tasks_desc" | "tasks_asc";
+const GROUP_ORDER_KEY = "taskGroupOrder";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -28,6 +27,52 @@ const TaskManager: React.FC = () => {
   const { role } = useAuth();
   const { session } = useSession();
   const readOnly = role === "Viewer";
+
+  const [groupOrder, setGroupOrder] = useState<string[]>(() => {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(GROUP_ORDER_KEY) : null;
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed.filter((v) => typeof v === "string") as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const applyGroupOrder = React.useCallback(
+    (list: typeof groups, order: string[]) => {
+      if (!order || order.length === 0) return list;
+      const byId = new Map(list.map((g) => [g.id, g]));
+      const ordered: typeof groups = [];
+      for (const id of order) {
+        const g = byId.get(id);
+        if (g) ordered.push(g);
+      }
+      for (const g of list) {
+        if (!order.includes(g.id)) ordered.push(g);
+      }
+      return ordered;
+    },
+    []
+  );
+
+  useEffect(() => {
+    // Keep groupOrder in sync with actual groups (remove stale, append new)
+    setGroupOrder((prev) => {
+      const existing = new Set(groups.map((g) => g.id));
+      const next = prev.filter((id) => existing.has(id));
+      for (const g of groups) {
+        if (!next.includes(g.id)) next.push(g.id);
+      }
+      return next;
+    });
+  }, [groups]);
+
+  useEffect(() => {
+    window.localStorage.setItem(GROUP_ORDER_KEY, JSON.stringify(groupOrder));
+  }, [groupOrder]);
+
+  const orderedGroups = React.useMemo(() => applyGroupOrder(groups, groupOrder), [groups, groupOrder, applyGroupOrder]);
 
   // Load users for owner dropdown
   const { users } = useAdminUsers();
@@ -46,35 +91,6 @@ const TaskManager: React.FC = () => {
   // NEW: global filters
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
-
-  // NEW: group sorting
-  const [groupSort, setGroupSort] = useState<GroupSort>("created");
-
-  const orderedGroups = React.useMemo(() => {
-    const copy = [...groups];
-    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
-
-    switch (groupSort) {
-      case "name_asc":
-        copy.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
-        break;
-      case "name_desc":
-        copy.sort((a, b) => norm(b.name).localeCompare(norm(a.name)));
-        break;
-      case "tasks_desc":
-        copy.sort((a, b) => (b.tasks?.length ?? 0) - (a.tasks?.length ?? 0));
-        break;
-      case "tasks_asc":
-        copy.sort((a, b) => (a.tasks?.length ?? 0) - (b.tasks?.length ?? 0));
-        break;
-      case "created":
-      default:
-        // keep existing order
-        break;
-    }
-
-    return copy;
-  }, [groups, groupSort]);
 
   // NEW: sentinel values (Radix Select items cannot use empty strings)
   const ALL_USERS = "__all_users__";
@@ -264,9 +280,25 @@ const TaskManager: React.FC = () => {
   };
 
   const onDragEnd = (result: DropResult) => {
-    if (readOnly) return;
-    const { source, destination, draggableId } = result;
+    const { source, destination, draggableId, type } = result;
     if (!destination) return;
+
+    // Allow group ordering even in readOnly (view preference). Task drag remains disabled in readOnly.
+    if (type === "GROUP") {
+      if (source.index === destination.index) return;
+
+      const currentOrdered = applyGroupOrder(groups, groupOrder);
+      const next = Array.from(currentOrdered);
+      const [moved] = next.splice(source.index, 1);
+      next.splice(destination.index, 0, moved);
+
+      setGroups(next);
+      setGroupOrder(next.map((g) => g.id));
+      return;
+    }
+
+    if (readOnly) return;
+
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     const sourceGroupIndex = groups.findIndex((group) => group.id === source.droppableId);
@@ -283,12 +315,6 @@ const TaskManager: React.FC = () => {
     sourceGroup.tasks.splice(source.index, 1);
     destinationGroup.tasks.splice(destination.index, 0, task);
 
-    // If Admin moves a task into a different user's group, update ownership in-memory too
-    const destOwner = destinationGroup.userId;
-    if (role === "Admin" && destOwner && task.userId !== destOwner) {
-      (task as any).userId = destOwner;
-    }
-
     setGroups(newGroups);
 
     // Persist ordering
@@ -301,7 +327,6 @@ const TaskManager: React.FC = () => {
         id: t.id,
         position: idx,
         group_id: t.id === task.id ? destination.droppableId : undefined,
-        user_id: t.id === task.id && role === "Admin" && destinationGroup.userId ? destinationGroup.userId : undefined,
       }));
       updateTaskPositions([...sourceUpdates, ...destUpdates]).catch(() => showError("Failed to move task"));
     }
@@ -496,7 +521,6 @@ const TaskManager: React.FC = () => {
           </Button>
         </div>
 
-        {/* ADDED: CSV import */}
         <TaskCsvImportDialog
           userId={session?.user?.id ?? null}
           groups={groups}
@@ -510,7 +534,6 @@ const TaskManager: React.FC = () => {
           }}
         />
 
-        {/* NEW: global collapse/expand controls (allowed in readOnly) */}
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={collapseAll}>
             <ChevronDown className="h-4 w-4 mr-2" /> Collapse All
@@ -519,7 +542,6 @@ const TaskManager: React.FC = () => {
             <ChevronUp className="h-4 w-4 mr-2" /> Expand All
           </Button>
 
-          {/* Filters next to Expand All */}
           <div className="flex items-center gap-2 ml-2">
             <Select
               value={selectedOwner === "" ? ALL_USERS : selectedOwner}
@@ -554,59 +576,59 @@ const TaskManager: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={groupSort} onValueChange={(val) => setGroupSort(val as GroupSort)}>
-              <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
-                <SelectValue placeholder="Sort groups" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created">Created order</SelectItem>
-                <SelectItem value="name_asc">Name (A → Z)</SelectItem>
-                <SelectItem value="name_desc">Name (Z → A)</SelectItem>
-                <SelectItem value="tasks_desc">Most tasks</SelectItem>
-                <SelectItem value="tasks_asc">Fewest tasks</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </div>
+
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col items-center gap-6 pb-4">
-          {orderedGroups.map((group) => {
-            const visibleTasks = group.tasks.filter((t) => {
-              const ownerOk = !selectedOwner || t.owner === selectedOwner;
-              const statusOk = !selectedStatus || t.status === selectedStatus;
-              return ownerOk && statusOk;
-            });
-            const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
-            return (
-              <TaskGroup
-                key={group.id}
-                group={group}
-                onAddTask={handleAddTask}
-                onUpdateGroupName={handleUpdateGroupName}
-                onUpdateGroupColor={handleUpdateGroupColor}
-                onDeleteGroup={handleDeleteGroup}
-                onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
-                onUpdateTaskField={handleUpdateTaskField}
-                availableStatuses={availableStatuses}
-                setAvailableStatuses={setAvailableStatuses}
-                allTags={allTags}
-                onDeleteGlobalTag={handleDeleteGlobalTag}
-                readOnly={readOnly}
-                isCollapsed={collapsedGroups[group.id] ?? false}
-                onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                visibleTasks={filterActive ? visibleTasks : undefined}
-                dragDisabled={filterActive}
-                filterActive={filterActive}
-                onArchiveGroup={handleArchiveGroup}
-                otherGroups={otherGroups}
-                owners={ownerOptions}
-                onSortGroup={handleSortGroup}
-              />
-            );
-          })}
-        </div>
+        <Droppable droppableId="groups" type="GROUP">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col items-center gap-6 pb-4">
+              {orderedGroups.map((group, index) => {
+                const visibleTasks = group.tasks.filter((t) => {
+                  const ownerOk = !selectedOwner || t.owner === selectedOwner;
+                  const statusOk = !selectedStatus || t.status === selectedStatus;
+                  return ownerOk && statusOk;
+                });
+                const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
+
+                return (
+                  <Draggable draggableId={`group-${group.id}`} index={index} key={group.id}>
+                    {(dragProvided) => (
+                      <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="w-full flex justify-center">
+                        <TaskGroup
+                          group={group}
+                          onAddTask={handleAddTask}
+                          onUpdateGroupName={handleUpdateGroupName}
+                          onUpdateGroupColor={handleUpdateGroupColor}
+                          onDeleteGroup={handleDeleteGroup}
+                          onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
+                          onUpdateTaskField={handleUpdateTaskField}
+                          availableStatuses={availableStatuses}
+                          setAvailableStatuses={setAvailableStatuses}
+                          allTags={allTags}
+                          onDeleteGlobalTag={handleDeleteGlobalTag}
+                          readOnly={readOnly}
+                          isCollapsed={collapsedGroups[group.id] ?? false}
+                          onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                          visibleTasks={filterActive ? visibleTasks : undefined}
+                          dragDisabled={filterActive}
+                          filterActive={filterActive}
+                          onArchiveGroup={handleArchiveGroup}
+                          otherGroups={otherGroups}
+                          owners={ownerOptions}
+                          onSortGroup={handleSortGroup}
+                          dragHandleProps={dragProvided.dragHandleProps}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </DragDropContext>
     </div>
   );
