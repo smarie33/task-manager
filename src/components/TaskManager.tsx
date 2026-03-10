@@ -99,6 +99,27 @@ const TaskManager: React.FC = () => {
     setGroupOrder(next.map((g) => g.id));
   };
 
+  const finishGroupDrag = (applyPending: boolean) => {
+    setDraggingGroupId(null);
+    setGroupDropHover(null);
+
+    if (prevCollapsedRef.current) {
+      setCollapsedGroups(prevCollapsedRef.current);
+      prevCollapsedRef.current = null;
+    }
+
+    if (applyPending) {
+      const pending = pendingGroupMoveRef.current;
+      pendingGroupMoveRef.current = null;
+      if (pending) {
+        // Run after React state clears to avoid browser drag state glitches.
+        setTimeout(() => reorderGroupsById(pending.from, pending.to, pending.pos), 0);
+      }
+    } else {
+      pendingGroupMoveRef.current = null;
+    }
+  };
+
   const onGroupDragStart = (groupId: string) => (e: React.DragEvent) => {
     setDraggingGroupId(groupId);
     setGroupDropHover(null);
@@ -115,20 +136,9 @@ const TaskManager: React.FC = () => {
   };
 
   const onGroupDragEnd = () => {
-    setDraggingGroupId(null);
-    setGroupDropHover(null);
-
-    if (prevCollapsedRef.current) {
-      setCollapsedGroups(prevCollapsedRef.current);
-      prevCollapsedRef.current = null;
-    }
-
-    const pending = pendingGroupMoveRef.current;
-    pendingGroupMoveRef.current = null;
-    if (pending) {
-      // Apply after drag has fully ended to avoid browsers getting stuck.
-      requestAnimationFrame(() => reorderGroupsById(pending.from, pending.to, pending.pos));
-    }
+    // This doesn't always fire reliably across browsers when the DOM reorders,
+    // so we also call finishGroupDrag from onDrop.
+    finishGroupDrag(true);
   };
 
   const onGroupDropZoneDragOver = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
@@ -141,10 +151,21 @@ const TaskManager: React.FC = () => {
   const onGroupDropZoneDrop = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
     e.preventDefault();
     const from = e.dataTransfer.getData("text/plain") || draggingGroupId;
-    if (!from || from === overGroupId) return;
+    if (from && from !== overGroupId) {
+      pendingGroupMoveRef.current = { from, to: overGroupId, pos };
+    }
 
-    pendingGroupMoveRef.current = { from, to: overGroupId, pos };
+    // Important: explicitly finish the drag on drop so we never get stuck in a dragging state.
+    finishGroupDrag(true);
   };
+
+  useEffect(() => {
+    if (!draggingGroupId) return;
+
+    const onWindowDragEnd = () => finishGroupDrag(true);
+    window.addEventListener("dragend", onWindowDragEnd);
+    return () => window.removeEventListener("dragend", onWindowDragEnd);
+  }, [draggingGroupId]);
 
   // Load users for owner dropdown
   const { users } = useAdminUsers();
