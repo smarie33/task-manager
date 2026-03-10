@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Droppable, type DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
+import { Droppable } from 'react-beautiful-dnd';
 import TaskItem from './TaskItem';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ interface TaskGroupProps {
   otherGroups: { id: string; name: string }[];
   owners: string[];
   onSortGroup?: (groupId: string, sortBy: SortKey) => void;
-  dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  groupDragHandleProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
 }
 
 const TaskGroup: React.FC<TaskGroupProps> = ({
@@ -61,7 +61,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   otherGroups,
   owners,
   onSortGroup,
-  dragHandleProps,
+  groupDragHandleProps,
 }) => {
   const [newTaskContent, setNewTaskContent] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -141,14 +141,18 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       <CardHeader className="flex flex-row items-center justify-between py-1 px-3 rounded-t-lg" style={{ backgroundColor: group.color }}>
         <div className="flex items-center gap-2">
           <Button
+            asChild
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/20 cursor-grab active:cursor-grabbing"
-            aria-label="Reorder group"
-            title="Drag to reorder group"
-            {...(dragHandleProps ?? {})}
           >
-            <GripVertical className="h-4 w-4" />
+            <div
+              aria-label="Reorder group"
+              title="Drag to reorder group"
+              {...(groupDragHandleProps ?? {})}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
           </Button>
 
           {isEditingName ? (

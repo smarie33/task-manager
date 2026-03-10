@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DragDropContext, DropResult, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,47 @@ const TaskManager: React.FC = () => {
   }, [groupOrder]);
 
   const orderedGroups = React.useMemo(() => applyGroupOrder(groups, groupOrder), [groups, groupOrder, applyGroupOrder]);
+
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+
+  const reorderGroupsById = (fromGroupId: string, toGroupId: string) => {
+    const current = applyGroupOrder(groups, groupOrder);
+    const fromIndex = current.findIndex((g) => g.id === fromGroupId);
+    const toIndex = current.findIndex((g) => g.id === toGroupId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+    const next = [...current];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    setGroups(next);
+    setGroupOrder(next.map((g) => g.id));
+  };
+
+  const onGroupDragStart = (groupId: string) => (e: React.DragEvent) => {
+    setDraggingGroupId(groupId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", groupId);
+  };
+
+  const onGroupDragEnd = () => {
+    setDraggingGroupId(null);
+  };
+
+  const onGroupDragOver = (overGroupId: string) => (e: React.DragEvent) => {
+    const from = draggingGroupId;
+    if (!from || from === overGroupId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const onGroupDrop = (overGroupId: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const from = e.dataTransfer.getData("text/plain") || draggingGroupId;
+    setDraggingGroupId(null);
+    if (!from || from === overGroupId) return;
+    reorderGroupsById(from, overGroupId);
+  };
 
   // Load users for owner dropdown
   const { users } = useAdminUsers();
@@ -280,25 +321,9 @@ const TaskManager: React.FC = () => {
   };
 
   const onDragEnd = (result: DropResult) => {
-    const { source, destination, draggableId, type } = result;
-    if (!destination) return;
-
-    // Allow group ordering even in readOnly (view preference). Task drag remains disabled in readOnly.
-    if (type === "GROUP") {
-      if (source.index === destination.index) return;
-
-      const currentOrdered = applyGroupOrder(groups, groupOrder);
-      const next = Array.from(currentOrdered);
-      const [moved] = next.splice(source.index, 1);
-      next.splice(destination.index, 0, moved);
-
-      setGroups(next);
-      setGroupOrder(next.map((g) => g.id));
-      return;
-    }
-
     if (readOnly) return;
-
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     const sourceGroupIndex = groups.findIndex((group) => group.id === source.droppableId);
@@ -581,54 +606,54 @@ const TaskManager: React.FC = () => {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="groups" type="GROUP">
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col items-center gap-6 pb-4">
-              {orderedGroups.map((group, index) => {
-                const visibleTasks = group.tasks.filter((t) => {
-                  const ownerOk = !selectedOwner || t.owner === selectedOwner;
-                  const statusOk = !selectedStatus || t.status === selectedStatus;
-                  return ownerOk && statusOk;
-                });
-                const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
+        <div className="flex flex-col items-center gap-6 pb-4">
+          {orderedGroups.map((group) => {
+            const visibleTasks = group.tasks.filter((t) => {
+              const ownerOk = !selectedOwner || t.owner === selectedOwner;
+              const statusOk = !selectedStatus || t.status === selectedStatus;
+              return ownerOk && statusOk;
+            });
+            const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
 
-                return (
-                  <Draggable draggableId={`group-${group.id}`} index={index} key={group.id}>
-                    {(dragProvided) => (
-                      <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="w-full flex justify-center">
-                        <TaskGroup
-                          group={group}
-                          onAddTask={handleAddTask}
-                          onUpdateGroupName={handleUpdateGroupName}
-                          onUpdateGroupColor={handleUpdateGroupColor}
-                          onDeleteGroup={handleDeleteGroup}
-                          onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
-                          onUpdateTaskField={handleUpdateTaskField}
-                          availableStatuses={availableStatuses}
-                          setAvailableStatuses={setAvailableStatuses}
-                          allTags={allTags}
-                          onDeleteGlobalTag={handleDeleteGlobalTag}
-                          readOnly={readOnly}
-                          isCollapsed={collapsedGroups[group.id] ?? false}
-                          onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                          visibleTasks={filterActive ? visibleTasks : undefined}
-                          dragDisabled={filterActive}
-                          filterActive={filterActive}
-                          onArchiveGroup={handleArchiveGroup}
-                          otherGroups={otherGroups}
-                          owners={ownerOptions}
-                          onSortGroup={handleSortGroup}
-                          dragHandleProps={dragProvided.dragHandleProps}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                );
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+            return (
+              <div
+                key={group.id}
+                className={`w-full flex justify-center ${draggingGroupId && draggingGroupId !== group.id ? "" : ""}`}
+                onDragOver={onGroupDragOver(group.id)}
+                onDrop={onGroupDrop(group.id)}
+              >
+                <TaskGroup
+                  group={group}
+                  onAddTask={handleAddTask}
+                  onUpdateGroupName={handleUpdateGroupName}
+                  onUpdateGroupColor={handleUpdateGroupColor}
+                  onDeleteGroup={handleDeleteGroup}
+                  onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
+                  onUpdateTaskField={handleUpdateTaskField}
+                  availableStatuses={availableStatuses}
+                  setAvailableStatuses={setAvailableStatuses}
+                  allTags={allTags}
+                  onDeleteGlobalTag={handleDeleteGlobalTag}
+                  readOnly={readOnly}
+                  isCollapsed={collapsedGroups[group.id] ?? false}
+                  onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                  visibleTasks={filterActive ? visibleTasks : undefined}
+                  dragDisabled={filterActive}
+                  filterActive={filterActive}
+                  onArchiveGroup={handleArchiveGroup}
+                  otherGroups={otherGroups}
+                  owners={ownerOptions}
+                  onSortGroup={handleSortGroup}
+                  groupDragHandleProps={{
+                    draggable: true,
+                    onDragStart: onGroupDragStart(group.id),
+                    onDragEnd: onGroupDragEnd,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </DragDropContext>
     </div>
   );
