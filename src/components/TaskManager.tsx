@@ -595,7 +595,6 @@ const TaskManager: React.FC = () => {
                 onUpdateGroupColor={handleUpdateGroupColor}
                 onDeleteGroup={handleDeleteGroup}
                 onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
-                onDeleteAllTasks={handleDeleteAllTasksInGroup}
                 onUpdateTaskField={handleUpdateTaskField}
                 availableStatuses={availableStatuses}
                 setAvailableStatuses={setAvailableStatuses}

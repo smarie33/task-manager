@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { PlusIcon, PaintbrushIcon, Trash2Icon, ChevronDown, ChevronRight } from 'lucide-react';
 import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Archive } from 'lucide-react';
 import GroupDeleteDialog from '@/components/group/GroupDeleteDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,7 +23,6 @@ interface TaskGroupProps {
   onUpdateGroupColor: (groupId: string, newColor: string) => void;
   onDeleteGroup: (groupId: string, mode: "delete" | "reassign", targetGroupId?: string) => void;
   onDeleteSelectedTasks: (groupId: string, taskIds: string[]) => void;
-  onDeleteAllTasks: (groupId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
   setAvailableStatuses: React.Dispatch<React.SetStateAction<StatusOption[]>>;
@@ -61,7 +59,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onUpdateGroupColor,
   onDeleteGroup,
   onDeleteSelectedTasks,
-  onDeleteAllTasks,
   onUpdateTaskField,
   availableStatuses,
   setAvailableStatuses,
@@ -264,38 +261,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
 
           {!readOnly && (
             <>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:bg-white/20"
-                    aria-label="Delete all tasks in group"
-                    title="Delete all tasks"
-                    disabled={group.tasks.length === 0}
-                  >
-                    <Trash2Icon className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete all tasks in "{group.name}"?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete {group.tasks.length} task{group.tasks.length === 1 ? "" : "s"} in this group.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-600 hover:bg-red-700"
-                      onClick={() => onDeleteAllTasks(group.id)}
-                    >
-                      Delete tasks
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
               <Button
                 variant="ghost"
                 size="icon"
