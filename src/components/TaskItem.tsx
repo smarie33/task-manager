@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Draggable } from "react-beautiful-dnd";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn, lightenHexColor } from "@/lib/utils";
 import { Task, StatusOption, FileMeta } from "@/types/task";
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider";
@@ -20,13 +21,13 @@ import CommentsSection from "./task-item/drawer/CommentsSection";
 import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import OwnerCell from "./task-item/OwnerCell";
-import { Trash2 } from "lucide-react";
 
 interface TaskItemProps {
   task: Task;
   index: number;
   groupColor: string;
-  onDeleteTask: (taskId: string) => void;
+  selected: boolean;
+  onSelectedChange: (selected: boolean) => void;
   onUpdateTaskField: <K extends keyof Task>(
     taskId: string,
     field: K,
@@ -45,7 +46,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
   task,
   index,
   groupColor,
-  onDeleteTask,
+  selected,
+  onSelectedChange,
   onUpdateTaskField,
   availableStatuses,
   setAvailableStatuses,
@@ -108,15 +110,25 @@ const TaskItem: React.FC<TaskItemProps> = ({
         >
           <CardContent className="p-0">
             <div
-              className="grid grid-cols-2 items-center"
+              className="grid grid-cols-[2.5rem_minmax(0,_1fr)_minmax(0,_1fr)] items-center"
               style={
                 editingBackgroundColor
                   ? { backgroundColor: editingBackgroundColor }
                   : {}
               }
             >
+              {/* Sticky Checkbox Column */}
+              <div className="sticky left-0 z-20 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full flex items-center justify-center">
+                <Checkbox
+                  checked={selected}
+                  onCheckedChange={(v) => onSelectedChange(v === true)}
+                  disabled={readOnly}
+                  aria-label="Select task"
+                />
+              </div>
+
               {/* Sticky Item Column */}
-              <div className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+              <div className="sticky left-10 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
                 <span
                   className="text-sm truncate cursor-pointer block px-2 py-2"
                   onClick={() => setIsDrawerOpen(true)}
@@ -131,7 +143,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 ref={scrollItemRef}
                 onScroll={handleItemScroll}
               >
-                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px] items-center">
+                <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)] min-w-[740px] items-center">
                   {/* Owner */}
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                     <OwnerCell
@@ -212,21 +224,6 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       parentTaskContent={task.content}
                       inverted={taskImages.length > 0}
                     />
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-1 w-14 justify-end py-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-gray-500 hover:text-red-500"
-                      onClick={() => onDeleteTask(task.id)}
-                      disabled={readOnly}
-                      aria-label="Delete task"
-                      title="Delete task"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </div>

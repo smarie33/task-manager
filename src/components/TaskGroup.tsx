@@ -23,7 +23,7 @@ interface TaskGroupProps {
   onUpdateGroupName: (groupId: string, newName: string) => void;
   onUpdateGroupColor: (groupId: string, newColor: string) => void;
   onDeleteGroup: (groupId: string, mode: "delete" | "reassign", targetGroupId?: string) => void;
-  onDeleteTask: (groupId: string, taskId: string) => void;
+  onDeleteSelectedTasks: (groupId: string, taskIds: string[]) => void;
   onDeleteAllTasks: (groupId: string) => void;
   onUpdateTaskField: <K extends keyof Task>(groupId: string, taskId: string, field: K, value: Task[K]) => void;
   availableStatuses: StatusOption[];
@@ -60,7 +60,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   onUpdateGroupName,
   onUpdateGroupColor,
   onDeleteGroup,
-  onDeleteTask,
+  onDeleteSelectedTasks,
   onDeleteAllTasks,
   onUpdateTaskField,
   availableStatuses,
@@ -85,6 +85,37 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const { ref: scrollHeaderRef, onScroll: handleHeaderScroll } = useSynchronizedScroll();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(() => new Set());
+
+  React.useEffect(() => {
+    // Prune selections for tasks that no longer exist
+    setSelectedTaskIds((prev) => {
+      const allowed = new Set(group.tasks.map((t) => t.id));
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (allowed.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [group.tasks]);
+
+  const deleteSelectedDisabled = readOnly || selectedTaskIds.size === 0;
+
+  const handleDeleteSelected = () => {
+    if (deleteSelectedDisabled) return;
+    const ids = Array.from(selectedTaskIds);
+    onDeleteSelectedTasks(group.id, ids);
+    setSelectedTaskIds(new Set());
+  };
+
+  const toggleTaskSelected = (taskId: string, selected: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  };
 
   // Admin users list for reassignment
   const [adminUsers, setAdminUsers] = useState<{ id: string; label: string }[]>([]);
@@ -297,15 +328,30 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
       </CardHeader>
 
       {!collapsed && (
-        <div className="grid grid-cols-2 text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
-          {/* Sticky Item Header - First column of the grid */}
-          <div className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
+        <div className="grid grid-cols-[2.5rem_minmax(0,_1fr)_minmax(0,_1fr)] text-xs font-semibold text-gray-600 dark:text-gray-300 border-b bg-gray-50 dark:bg-gray-800">
+          {/* Sticky Checkbox Header */}
+          <div className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-1 flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-600 hover:text-red-600"
+              aria-label="Delete selected tasks"
+              title={selectedTaskIds.size > 0 ? `Delete ${selectedTaskIds.size} selected` : "Select tasks to delete"}
+              onClick={handleDeleteSelected}
+              disabled={deleteSelectedDisabled}
+            >
+              <Trash2Icon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Sticky Item Header */}
+          <div className="sticky left-10 z-10 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-2">
             <SortHeader label="Item" sortKey="content" />
           </div>
 
-          {/* Scrollable Headers - Second column of the grid */}
+          {/* Scrollable Headers */}
           <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
-            <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)_auto] min-w-[800px]">
+            <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)] min-w-[740px]">
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
                 <SortHeader label="Owner" sortKey="owner" />
               </div>
@@ -324,7 +370,6 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               <div className="py-2">
                 <div className="px-2 truncate text-center">Images</div>
               </div>
-              <div className="w-14 py-2"></div>
             </div>
           </div>
         </div>
@@ -349,7 +394,8 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                   task={task}
                   index={index}
                   groupColor={group.color}
-                  onDeleteTask={(taskId) => onDeleteTask(group.id, taskId)}
+                  selected={selectedTaskIds.has(task.id)}
+                  onSelectedChange={(sel) => toggleTaskSelected(task.id, sel)}
                   onUpdateTaskField={(taskId, field, value) => onUpdateTaskField(group.id, taskId, field, value)}
                   availableStatuses={availableStatuses}
                   setAvailableStatuses={setAvailableStatuses}

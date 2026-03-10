@@ -13,7 +13,7 @@ import { useSession } from "@/context/session-context";
 // NEW: shadcn Select for filters
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow, updateTaskGroup } from "@/services/db";
-import { updateTaskPositions, deleteTasksByGroup, reassignTask, reassignGroup } from "@/services/db";
+import { updateTaskPositions, deleteTasksByGroup, deleteTasksByIds, reassignTask, reassignGroup } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
@@ -406,6 +406,29 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  const handleDeleteSelectedTasksInGroup = (groupId: string, taskIds: string[]) => {
+    if (readOnly) return;
+    if (taskIds.length === 0) return;
+
+    let remainingUpdates: { id: string; position: number }[] = [];
+
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const remaining = g.tasks
+          .filter((t) => !taskIds.includes(t.id))
+          .map((t, idx) => ({ ...t, position: idx }));
+        remainingUpdates = remaining.map((t) => ({ id: t.id, position: t.position ?? 0 }));
+        return { ...g, tasks: remaining };
+      })
+    );
+
+    deleteTasksByIds(taskIds)
+      .then(() => updateTaskPositions(remainingUpdates))
+      .then(() => showSuccess(`Deleted ${taskIds.length} task${taskIds.length === 1 ? "" : "s"}`))
+      .catch(() => showError("Failed to delete tasks"));
+  };
+
   const handleDeleteTask = (groupId: string, taskId: string) => {
     if (readOnly) return;
     setGroups((prevGroups) =>
@@ -571,7 +594,7 @@ const TaskManager: React.FC = () => {
                 onUpdateGroupName={handleUpdateGroupName}
                 onUpdateGroupColor={handleUpdateGroupColor}
                 onDeleteGroup={handleDeleteGroup}
-                onDeleteTask={handleDeleteTask}
+                onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
                 onDeleteAllTasks={handleDeleteAllTasksInGroup}
                 onUpdateTaskField={handleUpdateTaskField}
                 availableStatuses={availableStatuses}

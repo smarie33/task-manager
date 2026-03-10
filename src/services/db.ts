@@ -257,6 +257,12 @@ export async function deleteTask(taskId: string) {
   if (error) throw new Error(error.message);
 }
 
+export async function deleteTasksByIds(taskIds: string[]) {
+  if (taskIds.length === 0) return;
+  const { error } = await supabase.from("tasks").delete().in("id", taskIds);
+  if (error) throw new Error(error.message);
+}
+
 export async function insertTimeLog(userId: string, taskId: string, date: string, durationSeconds: number) {
   const { error } = await supabase
     .from("task_time_logs")
