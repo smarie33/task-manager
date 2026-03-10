@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 type SortKey = "owner" | "content" | "status" | "timeline";
 
 const GROUP_ORDER_KEY = "taskGroupOrder";
+
+type DropPos = "above" | "below";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -75,16 +77,22 @@ const TaskManager: React.FC = () => {
   const orderedGroups = React.useMemo(() => applyGroupOrder(groups, groupOrder), [groups, groupOrder, applyGroupOrder]);
 
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [groupDropHover, setGroupDropHover] = useState<{ groupId: string; pos: DropPos } | null>(null);
+  const prevCollapsedRef = useRef<Record<string, boolean> | null>(null);
 
-  const reorderGroupsById = (fromGroupId: string, toGroupId: string) => {
+  const reorderGroupsById = (fromGroupId: string, toGroupId: string, pos: DropPos) => {
     const current = applyGroupOrder(groups, groupOrder);
     const fromIndex = current.findIndex((g) => g.id === fromGroupId);
     const toIndex = current.findIndex((g) => g.id === toGroupId);
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0) return;
+    if (fromGroupId === toGroupId) return;
+
+    let insertIndex = pos === "above" ? toIndex : toIndex + 1;
 
     const next = [...current];
     const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
+    if (fromIndex < insertIndex) insertIndex -= 1;
+    next.splice(insertIndex, 0, moved);
 
     setGroups(next);
     setGroupOrder(next.map((g) => g.id));
@@ -92,27 +100,45 @@ const TaskManager: React.FC = () => {
 
   const onGroupDragStart = (groupId: string) => (e: React.DragEvent) => {
     setDraggingGroupId(groupId);
+    setGroupDropHover(null);
+
+    // Collapse everything while dragging (and restore afterwards)
+    if (!prevCollapsedRef.current) {
+      prevCollapsedRef.current = collapsedGroups;
+    }
+    setCollapsedGroups(Object.fromEntries(groups.map((g) => [g.id, true])));
+
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", groupId);
   };
 
   const onGroupDragEnd = () => {
     setDraggingGroupId(null);
+    setGroupDropHover(null);
+
+    if (prevCollapsedRef.current) {
+      setCollapsedGroups(prevCollapsedRef.current);
+      prevCollapsedRef.current = null;
+    }
   };
 
-  const onGroupDragOver = (overGroupId: string) => (e: React.DragEvent) => {
-    const from = draggingGroupId;
-    if (!from || from === overGroupId) return;
+  const onGroupDropZoneDragOver = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
+    if (!draggingGroupId || draggingGroupId === overGroupId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    setGroupDropHover({ groupId: overGroupId, pos });
   };
 
-  const onGroupDrop = (overGroupId: string) => (e: React.DragEvent) => {
+  const onGroupDropZoneDrop = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
     e.preventDefault();
     const from = e.dataTransfer.getData("text/plain") || draggingGroupId;
-    setDraggingGroupId(null);
-    if (!from || from === overGroupId) return;
-    reorderGroupsById(from, overGroupId);
+    if (!from || from === overGroupId) {
+      onGroupDragEnd();
+      return;
+    }
+
+    reorderGroupsById(from, overGroupId, pos);
+    onGroupDragEnd();
   };
 
   // Load users for owner dropdown
@@ -615,41 +641,71 @@ const TaskManager: React.FC = () => {
             });
             const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
 
+            const isDragging = draggingGroupId === group.id;
+            const showDrop = !!draggingGroupId && draggingGroupId !== group.id;
+            const topActive = showDrop && groupDropHover?.groupId === group.id && groupDropHover?.pos === "above";
+            const bottomActive = showDrop && groupDropHover?.groupId === group.id && groupDropHover?.pos === "below";
+
             return (
-              <div
-                key={group.id}
-                className={`w-full flex justify-center ${draggingGroupId && draggingGroupId !== group.id ? "" : ""}`}
-                onDragOver={onGroupDragOver(group.id)}
-                onDrop={onGroupDrop(group.id)}
-              >
-                <TaskGroup
-                  group={group}
-                  onAddTask={handleAddTask}
-                  onUpdateGroupName={handleUpdateGroupName}
-                  onUpdateGroupColor={handleUpdateGroupColor}
-                  onDeleteGroup={handleDeleteGroup}
-                  onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
-                  onUpdateTaskField={handleUpdateTaskField}
-                  availableStatuses={availableStatuses}
-                  setAvailableStatuses={setAvailableStatuses}
-                  allTags={allTags}
-                  onDeleteGlobalTag={handleDeleteGlobalTag}
-                  readOnly={readOnly}
-                  isCollapsed={collapsedGroups[group.id] ?? false}
-                  onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                  visibleTasks={filterActive ? visibleTasks : undefined}
-                  dragDisabled={filterActive}
-                  filterActive={filterActive}
-                  onArchiveGroup={handleArchiveGroup}
-                  otherGroups={otherGroups}
-                  owners={ownerOptions}
-                  onSortGroup={handleSortGroup}
-                  groupDragHandleProps={{
-                    draggable: true,
-                    onDragStart: onGroupDragStart(group.id),
-                    onDragEnd: onGroupDragEnd,
-                  }}
-                />
+              <div key={group.id} className="w-full flex justify-center">
+                <div className="w-full max-w-[1500px]">
+                  {/* Drop area ABOVE */}
+                  {showDrop ? (
+                    <div
+                      onDragOver={onGroupDropZoneDragOver(group.id, "above")}
+                      onDrop={onGroupDropZoneDrop(group.id, "above")}
+                      className={
+                        "h-4 rounded-md transition-colors " +
+                        (topActive ? "bg-blue-500/25 ring-2 ring-blue-500" : "bg-transparent")
+                      }
+                      aria-hidden
+                    />
+                  ) : null}
+
+                  <div className={isDragging ? "opacity-70" : ""}>
+                    <TaskGroup
+                      group={group}
+                      onAddTask={handleAddTask}
+                      onUpdateGroupName={handleUpdateGroupName}
+                      onUpdateGroupColor={handleUpdateGroupColor}
+                      onDeleteGroup={handleDeleteGroup}
+                      onDeleteSelectedTasks={handleDeleteSelectedTasksInGroup}
+                      onUpdateTaskField={handleUpdateTaskField}
+                      availableStatuses={availableStatuses}
+                      setAvailableStatuses={setAvailableStatuses}
+                      allTags={allTags}
+                      onDeleteGlobalTag={handleDeleteGlobalTag}
+                      readOnly={readOnly}
+                      isCollapsed={collapsedGroups[group.id] ?? false}
+                      onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                      visibleTasks={filterActive ? visibleTasks : undefined}
+                      dragDisabled={filterActive}
+                      filterActive={filterActive}
+                      onArchiveGroup={handleArchiveGroup}
+                      otherGroups={otherGroups}
+                      owners={ownerOptions}
+                      onSortGroup={handleSortGroup}
+                      groupDragHandleProps={{
+                        draggable: true,
+                        onDragStart: onGroupDragStart(group.id),
+                        onDragEnd: onGroupDragEnd,
+                      }}
+                    />
+                  </div>
+
+                  {/* Drop area BELOW */}
+                  {showDrop ? (
+                    <div
+                      onDragOver={onGroupDropZoneDragOver(group.id, "below")}
+                      onDrop={onGroupDropZoneDrop(group.id, "below")}
+                      className={
+                        "h-4 rounded-md transition-colors " +
+                        (bottomActive ? "bg-blue-500/25 ring-2 ring-blue-500" : "bg-transparent")
+                      }
+                      aria-hidden
+                    />
+                  ) : null}
+                </div>
               </div>
             );
           })}
