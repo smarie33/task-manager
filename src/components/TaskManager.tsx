@@ -432,6 +432,15 @@ const TaskManager: React.FC = () => {
     });
   };
 
+  const handleDeleteAllTasksInGroup = (groupId: string) => {
+    if (readOnly) return;
+
+    setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, tasks: [] } : g)));
+    deleteTasksByGroup(groupId)
+      .then(() => showSuccess("Deleted tasks"))
+      .catch(() => showError("Failed to delete tasks"));
+  };
+
   const handleUpdateTaskField = <K extends keyof Task>(
     groupId: string,
     taskId: string,
@@ -563,6 +572,7 @@ const TaskManager: React.FC = () => {
                 onUpdateGroupColor={handleUpdateGroupColor}
                 onDeleteGroup={handleDeleteGroup}
                 onDeleteTask={handleDeleteTask}
+                onDeleteAllTasks={handleDeleteAllTasksInGroup}
                 onUpdateTaskField={handleUpdateTaskField}
                 availableStatuses={availableStatuses}
                 setAvailableStatuses={setAvailableStatuses}

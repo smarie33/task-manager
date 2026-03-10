@@ -20,6 +20,7 @@ import CommentsSection from "./task-item/drawer/CommentsSection";
 import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import OwnerCell from "./task-item/OwnerCell";
+import { Trash2 } from "lucide-react";
 
 interface TaskItemProps {
   task: Task;
@@ -221,9 +222,10 @@ const TaskItem: React.FC<TaskItemProps> = ({
                       className="h-7 w-7 text-gray-500 hover:text-red-500"
                       onClick={() => onDeleteTask(task.id)}
                       disabled={readOnly}
+                      aria-label="Delete task"
+                      title="Delete task"
                     >
-                      {/* Trash icon rendered via CSS in shadcn styles or lucide if needed */}
-                      <span className="sr-only">Delete</span>
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
