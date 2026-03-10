@@ -21,7 +21,7 @@ type SortKey = "owner" | "content" | "status" | "timeline";
 
 const GROUP_ORDER_KEY = "taskGroupOrder";
 
-type DropPos = "above" | "below";
+type DropPos = "below";
 
 const TaskManager: React.FC = () => {
   const { groups, setGroups, availableStatuses, setAvailableStatuses } = useTaskData();
@@ -87,7 +87,7 @@ const TaskManager: React.FC = () => {
     if (fromIndex < 0 || toIndex < 0) return;
     if (fromGroupId === toGroupId) return;
 
-    let insertIndex = pos === "above" ? toIndex : toIndex + 1;
+    let insertIndex = toIndex + 1;
 
     const next = [...current];
     const [moved] = next.splice(fromIndex, 1);
@@ -643,25 +643,11 @@ const TaskManager: React.FC = () => {
 
             const isDragging = draggingGroupId === group.id;
             const showDrop = !!draggingGroupId && draggingGroupId !== group.id;
-            const topActive = showDrop && groupDropHover?.groupId === group.id && groupDropHover?.pos === "above";
             const bottomActive = showDrop && groupDropHover?.groupId === group.id && groupDropHover?.pos === "below";
 
             return (
               <div key={group.id} className="w-full flex justify-center">
                 <div className="w-full max-w-[1500px]">
-                  {/* Drop area ABOVE */}
-                  {showDrop ? (
-                    <div
-                      onDragOver={onGroupDropZoneDragOver(group.id, "above")}
-                      onDrop={onGroupDropZoneDrop(group.id, "above")}
-                      className={
-                        "h-4 rounded-md transition-colors " +
-                        (topActive ? "bg-blue-500/25 ring-2 ring-blue-500" : "bg-transparent")
-                      }
-                      aria-hidden
-                    />
-                  ) : null}
-
                   <div className={isDragging ? "opacity-70" : ""}>
                     <TaskGroup
                       group={group}
