@@ -8,6 +8,7 @@ import { loadAll } from "@/services/db";
 import { useUserProfile } from "@/context/user-profile-context";
 
 const initialStatuses: StatusOption[] = [
+  { name: "No Status", color: "#ffffff" },
   { name: "To Do", color: "#ef4444" },
   { name: "In Progress", color: "#f97316" },
   { name: "Done", color: "#22c55e" },
@@ -132,8 +133,17 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const loaded = await loadAll(session.user.id, { adminReadAll });
         if (cancelled) return;
+
+        const ensureNoStatus = (statuses: StatusOption[]) => {
+          const normalized = statuses.map((s) =>
+            s.name.toLowerCase() === "no status" ? { ...s, name: "No Status", color: "#ffffff" } : s
+          );
+          const has = normalized.some((s) => s.name.toLowerCase() === "no status");
+          return has ? normalized : [{ name: "No Status", color: "#ffffff" }, ...normalized];
+        };
+
         setGroups(loaded.groups);
-        setAvailableStatuses(loaded.statuses);
+        setAvailableStatuses(ensureNoStatus(loaded.statuses));
         setLibraryFiles(loaded.files);
         setLibraryImages(loaded.images);
         setExternalLinks(loaded.links);

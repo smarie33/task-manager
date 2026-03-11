@@ -274,7 +274,7 @@ const TaskManager: React.FC = () => {
     const baseTask = {
       content: trimmed,
       owner: "",
-      status: "",
+      status: "No Status",
       timeline: "",
       timeTracking: 0,
       tags: [],

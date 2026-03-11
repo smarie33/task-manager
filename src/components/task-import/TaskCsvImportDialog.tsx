@@ -93,7 +93,7 @@ const TaskCsvImportDialog: React.FC<Props> = ({
         const name = getCellByHeader(parsed.headers, row, "Name");
         if (!name) return null;
         const owner = getCellByHeader(parsed.headers, row, "Owner");
-        const status = getCellByHeader(parsed.headers, row, "Status") || (availableStatuses[0]?.name ?? "To Do");
+        const status = getCellByHeader(parsed.headers, row, "Status") || "No Status";
         const start = getCellByHeader(parsed.headers, row, "Timeline - Start");
         const end = getCellByHeader(parsed.headers, row, "Timeline - End");
         const tags = splitList(getCellByHeader(parsed.headers, row, "Tags"));

@@ -26,8 +26,10 @@ const StatusCell: React.FC<StatusCellProps> = ({
 }) => {
   const { session } = useSession();
 
-  const currentStatusOption = availableStatuses.find((s) => s.name === status);
-  const statusColor = currentStatusOption ? currentStatusOption.color : "#6b7280";
+  const normalizedStatus = (status ?? "").trim() || "No Status";
+  const currentStatusOption = availableStatuses.find((s) => s.name === normalizedStatus);
+  const statusColor = currentStatusOption ? currentStatusOption.color : "#ffffff";
+  const isNoStatus = normalizedStatus.toLowerCase() === "no status";
 
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [newStatusName, setNewStatusName] = useState("");
@@ -71,81 +73,90 @@ const StatusCell: React.FC<StatusCellProps> = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0 font-bold text-white hover:text-white hover:opacity-90"
-          style={{ backgroundColor: statusColor, color: "#fff" }}
+          className={
+            "w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0 font-bold hover:opacity-90 " +
+            (isNoStatus ? "text-gray-900 hover:text-gray-900 border border-gray-300" : "text-white hover:text-white")
+          }
+          style={isNoStatus ? { backgroundColor: "#ffffff" } : { backgroundColor: statusColor, color: "#fff" }}
           disabled={disabled}
         >
-          <span className="flex items-center gap-2">{status || "Set status"}</span>
+          <span className="flex items-center gap-2">{normalizedStatus}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-          {availableStatuses.map((s) => (
-            <div
-              key={s.name}
-              className="flex items-center gap-2 border rounded-none px-2 py-1"
-              style={{
-                backgroundColor: s.color,
-                borderColor: s.color,
-                color: "#fff",
-              }}
-            >
-              {!disabled ? (
-                <span className="inline-flex items-center gap-1">
-                  {/* Use native input here (more reliable inside clickable containers) */}
-                  <input
-                    type="color"
-                    value={s.color}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
-                      persistStatusColor(s.name, next);
-                    }}
-                    className="h-6 w-6 p-0 border-0 bg-transparent cursor-pointer"
-                    title={`Change color for ${s.name}`}
-                  />
-                  <PaletteIcon className="h-3.5 w-3.5 opacity-70" />
-                </span>
-              ) : null}
-
-              <button
-                type="button"
-                className="flex-1 text-center truncate text-xs font-bold"
-                onClick={() => {
-                  onChange(s.name);
-                  setStatusPopoverOpen(false);
+          {availableStatuses.map((s) => {
+            const optionIsNoStatus = s.name.toLowerCase() === "no status";
+            return (
+              <div
+                key={s.name}
+                className={
+                  "flex items-center gap-2 border rounded-none px-2 py-1 " +
+                  (optionIsNoStatus ? "border-gray-300" : "")
+                }
+                style={{
+                  backgroundColor: optionIsNoStatus ? "#ffffff" : s.color,
+                  borderColor: optionIsNoStatus ? "#d1d5db" : s.color,
+                  color: optionIsNoStatus ? "#111827" : "#fff",
                 }}
-                disabled={disabled}
               >
-                {s.name}
-              </button>
+                {!disabled && !optionIsNoStatus ? (
+                  <span className="inline-flex items-center gap-1">
+                    {/* Use native input here (more reliable inside clickable containers) */}
+                    <input
+                      type="color"
+                      value={s.color}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
+                        persistStatusColor(s.name, next);
+                      }}
+                      className="h-6 w-6 p-0 border-0 bg-transparent cursor-pointer"
+                      title={`Change color for ${s.name}`}
+                    />
+                    <PaletteIcon className="h-3.5 w-3.5 opacity-70" />
+                  </span>
+                ) : null}
 
-              {!["done", "in progress"].includes(s.name.toLowerCase()) && (
                 <button
                   type="button"
-                  aria-label={`Delete status ${s.name}`}
-                  className="ml-1 text-destructive hover:text-destructive/90"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!disabled) handleDeleteStatus(s.name);
+                  className="flex-1 text-center truncate text-xs font-bold"
+                  onClick={() => {
+                    onChange(s.name);
+                    setStatusPopoverOpen(false);
                   }}
                   disabled={disabled}
                 >
-                  <Trash2Icon className="h-4 w-4" />
+                  {s.name}
                 </button>
-              )}
-            </div>
-          ))}
+
+                {!["done", "in progress", "no status"].includes(s.name.toLowerCase()) && (
+                  <button
+                    type="button"
+                    aria-label={`Delete status ${s.name}`}
+                    className="ml-1 text-destructive hover:text-destructive/90"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!disabled) handleDeleteStatus(s.name);
+                    }}
+                    disabled={disabled}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="flex flex-col gap-2 p-2 border-t pt-4">
           <h4 className="text-sm font-semibold">Add New Status</h4>
