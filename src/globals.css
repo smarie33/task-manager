@@ -148,6 +148,15 @@
     list-style-type: square;
   }
 
+  /* Notes editor image sizing */
+  .notes-prose img {
+    max-width: 100%;
+    height: auto;
+    max-height: 240px;
+    object-fit: contain;
+    display: block;
+  }
+
   /* Align checkboxes nicely with text in Notes editor */
   .notes-prose input[type="checkbox"] {
     vertical-align: middle;

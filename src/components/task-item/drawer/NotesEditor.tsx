@@ -262,14 +262,58 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       reader.readAsDataURL(imageFile);
     });
 
-    restoreSelection();
-    editorRef.current?.focus();
+    const editor = editorRef.current;
+    if (!editor) {
+      setImageOpen(false);
+      return;
+    }
 
-    const safeAlt = imageFile.name.replace(/"/g, "");
-    const html = `<img src="${dataUrl}" alt="${safeAlt}" style="max-width: 100%; height: auto; border-radius: 6px;" />`;
-    document.execCommand("insertHTML", false, html);
-    saveSelection();
-    onChange(editorRef.current?.innerHTML || "");
+    restoreSelection();
+
+    const sel = window.getSelection();
+    let range = savedRangeRef.current;
+
+    // If we can't restore a valid range inside the editor (common after dialogs), insert at end.
+    if (!sel || !range || !editor.contains(range.commonAncestorContainer)) {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = imageFile.name.replace(/"/g, "");
+    img.style.maxWidth = "100%";
+    img.style.height = "auto";
+    img.style.maxHeight = "240px";
+    img.style.objectFit = "contain";
+    img.style.display = "block";
+    img.style.margin = "0.5rem 0";
+    img.style.borderRadius = "6px";
+
+    range.insertNode(img);
+
+    // Add a trailing blank line and move caret there so typing stays inside the editor.
+    const spacer = document.createElement("div");
+    spacer.appendChild(document.createElement("br"));
+
+    const afterImgRange = document.createRange();
+    afterImgRange.setStartAfter(img);
+    afterImgRange.collapse(true);
+    afterImgRange.insertNode(spacer);
+
+    const caret = document.createRange();
+    caret.selectNodeContents(spacer);
+    caret.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(caret);
+    savedRangeRef.current = caret;
+
+    editor.focus();
+    onChange(editor.innerHTML || "");
     setImageOpen(false);
   };
 
