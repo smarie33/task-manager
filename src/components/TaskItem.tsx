@@ -21,6 +21,7 @@ import CommentsSection from "./task-item/drawer/CommentsSection";
 import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import OwnerCell from "./task-item/OwnerCell";
+import { MessageSquare, StickyNote } from "lucide-react";
 
 interface TaskItemProps {
   task: Task;
@@ -92,6 +93,17 @@ const TaskItem: React.FC<TaskItemProps> = ({
     );
   }, [task.files]);
 
+  const hasComments = (task.comments ?? []).length > 0;
+  const hasNotes = React.useMemo(() => {
+    const html = String(task.notes ?? "");
+    const text = html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\u200B/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.length > 0;
+  }, [task.notes]);
+
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={readOnly || dragDisabled}>
       {(provided, snapshot) => (
@@ -129,12 +141,27 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
               {/* Sticky Item Column */}
               <div className="sticky left-10 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-                <span
-                  className="text-sm truncate cursor-pointer block px-2 py-2"
+                <div
+                  className="flex items-center gap-2 px-2 py-2 cursor-pointer"
                   onClick={() => setIsDrawerOpen(true)}
+                  title="Open task details"
                 >
-                  {task.content}
-                </span>
+                  <span className="text-sm truncate min-w-0 flex-1">{task.content}</span>
+                  {(hasNotes || hasComments) && (
+                    <span className="flex items-center gap-1 shrink-0 text-muted-foreground">
+                      {hasNotes ? (
+                        <span title="Has notes">
+                          <StickyNote className="h-4 w-4" />
+                        </span>
+                      ) : null}
+                      {hasComments ? (
+                        <span title="Has comments">
+                          <MessageSquare className="h-4 w-4" />
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Scrollable Columns Container */}
