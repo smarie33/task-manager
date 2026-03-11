@@ -6,7 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Trash2Icon, PlusIcon, PaletteIcon } from "lucide-react";
 import { StatusOption } from "@/types/task";
-import { lightenHexColor } from "@/lib/utils";
 import { useSession } from "@/context/session-context";
 import { addStatus, updateStatus } from "@/services/db";
 
@@ -72,8 +71,8 @@ const StatusCell: React.FC<StatusCellProps> = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0"
-          style={{ backgroundColor: lightenHexColor(statusColor, 0.8), color: statusColor }}
+          className="w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0 font-bold text-white hover:text-white hover:opacity-90"
+          style={{ backgroundColor: statusColor, color: "#fff" }}
           disabled={disabled}
         >
           <span className="flex items-center gap-2">{status}</span>
@@ -86,9 +85,9 @@ const StatusCell: React.FC<StatusCellProps> = ({
               key={s.name}
               className="flex items-center gap-2 border rounded-none px-2 py-1"
               style={{
-                backgroundColor: lightenHexColor(s.color, 0.85),
+                backgroundColor: s.color,
                 borderColor: s.color,
-                color: s.color,
+                color: "#fff",
               }}
             >
               {!disabled ? (
@@ -120,7 +119,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
 
               <button
                 type="button"
-                className="flex-1 text-center truncate text-xs font-medium"
+                className="flex-1 text-center truncate text-xs font-bold"
                 onClick={() => {
                   onChange(s.name);
                   setStatusPopoverOpen(false);
