@@ -151,14 +151,24 @@
   /* Notes editor image sizing */
   .notes-prose img {
     max-width: 100%;
-    width: 100%;
     height: auto;
-    max-height: 180px;
-    object-fit: contain;
     display: block;
   }
 
   .notes-prose figure {
+    margin: 0.5rem 0;
+  }
+
+  .notes-prose .notes-inline-image {
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    max-height: 220px;
+    object-fit: contain;
+    display: block;
+  }
+
+  .notes-prose .notes-inline-figure {
     margin: 0.5rem 0;
   }
 

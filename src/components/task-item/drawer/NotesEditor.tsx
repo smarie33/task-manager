@@ -280,28 +280,36 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       range.collapse(false);
     }
 
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
     const safeAlt = imageFile.name.replace(/"/g, "");
 
-    // Insert as HTML so the browser maintains a stable caret position.
-    // Add a trailing paragraph so typing continues inside the editor.
-    const html =
-      `<figure style="margin:0.5rem 0;">` +
-      `<img src="${dataUrl}" alt="${safeAlt}" style="max-width:100%;width:100%;height:auto;max-height:180px;object-fit:contain;display:block;border-radius:6px;" />` +
-      `</figure>` +
-      `<p><br /></p>`;
+    // Build nodes (more reliable than execCommand for keeping typing inside the editor)
+    const figure = document.createElement("figure");
+    figure.className = "notes-inline-figure";
 
-    document.execCommand("insertHTML", false, html);
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = safeAlt;
+    img.className = "notes-inline-image";
 
-    // Force caret to a valid position INSIDE the editor (prevents typing outside the box).
+    figure.appendChild(img);
+
+    const p = document.createElement("p");
+    p.appendChild(document.createElement("br"));
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(figure);
+    frag.appendChild(p);
+
+    range.deleteContents();
+    range.insertNode(frag);
+
+    // Place caret inside the trailing paragraph so typing stays inside the editor.
     editor.focus();
     const nextSel = window.getSelection();
     if (nextSel) {
       const caret = document.createRange();
-      caret.selectNodeContents(editor);
-      caret.collapse(false);
+      caret.setStart(p, 0);
+      caret.collapse(true);
       nextSel.removeAllRanges();
       nextSel.addRange(caret);
       savedRangeRef.current = caret;
