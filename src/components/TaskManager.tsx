@@ -79,7 +79,6 @@ const TaskManager: React.FC = () => {
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [groupDropHover, setGroupDropHover] = useState<{ groupId: string; pos: DropPos } | null>(null);
   const prevCollapsedRef = useRef<Record<string, boolean> | null>(null);
-  const pendingGroupMoveRef = useRef<{ from: string; to: string; pos: DropPos } | null>(null);
 
   const reorderGroupsById = (fromGroupId: string, toGroupId: string, pos: DropPos) => {
     const current = applyGroupOrder(groups, groupOrder);
@@ -88,83 +87,64 @@ const TaskManager: React.FC = () => {
     if (fromIndex < 0 || toIndex < 0) return;
     if (fromGroupId === toGroupId) return;
 
-    let insertIndex = toIndex + 1;
+    const insertIndexBase = toIndex + 1;
 
     const next = [...current];
     const [moved] = next.splice(fromIndex, 1);
-    if (fromIndex < insertIndex) insertIndex -= 1;
+    const insertIndex = fromIndex < insertIndexBase ? insertIndexBase - 1 : insertIndexBase;
     next.splice(insertIndex, 0, moved);
 
     setGroups(next);
     setGroupOrder(next.map((g) => g.id));
   };
 
-  const finishGroupDrag = (applyPending: boolean) => {
+  const finishGroupDrag = () => {
     setDraggingGroupId(null);
     setGroupDropHover(null);
+    document.body.style.userSelect = "";
+    document.body.style.cursor = "";
 
     if (prevCollapsedRef.current) {
       setCollapsedGroups(prevCollapsedRef.current);
       prevCollapsedRef.current = null;
     }
-
-    if (applyPending) {
-      const pending = pendingGroupMoveRef.current;
-      pendingGroupMoveRef.current = null;
-      if (pending) {
-        // Run after React state clears to avoid browser drag state glitches.
-        setTimeout(() => reorderGroupsById(pending.from, pending.to, pending.pos), 0);
-      }
-    } else {
-      pendingGroupMoveRef.current = null;
-    }
   };
 
-  const onGroupDragStart = (groupId: string) => (e: React.DragEvent) => {
+  const onGroupPointerDown = (groupId: string) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
     setDraggingGroupId(groupId);
     setGroupDropHover(null);
-    pendingGroupMoveRef.current = null;
 
-    // Collapse everything while dragging (and restore afterwards)
     if (!prevCollapsedRef.current) {
       prevCollapsedRef.current = collapsedGroups;
     }
     setCollapsedGroups(Object.fromEntries(groups.map((g) => [g.id, true])));
 
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", groupId);
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "grabbing";
   };
 
-  const onGroupDragEnd = () => {
-    // This doesn't always fire reliably across browsers when the DOM reorders,
-    // so we also call finishGroupDrag from onDrop.
-    finishGroupDrag(true);
-  };
-
-  const onGroupDropZoneDragOver = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
+  const onGroupDropZonePointerEnter = (overGroupId: string, pos: DropPos) => () => {
     if (!draggingGroupId || draggingGroupId === overGroupId) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
     setGroupDropHover({ groupId: overGroupId, pos });
   };
 
-  const onGroupDropZoneDrop = (overGroupId: string, pos: DropPos) => (e: React.DragEvent) => {
-    e.preventDefault();
-    const from = e.dataTransfer.getData("text/plain") || draggingGroupId;
-    if (from && from !== overGroupId) {
-      pendingGroupMoveRef.current = { from, to: overGroupId, pos };
+  const onGroupDropZonePointerUp = (overGroupId: string, pos: DropPos) => () => {
+    if (!draggingGroupId) return;
+    if (draggingGroupId !== overGroupId) {
+      reorderGroupsById(draggingGroupId, overGroupId, pos);
     }
-
-    // Important: explicitly finish the drag on drop so we never get stuck in a dragging state.
-    finishGroupDrag(true);
+    finishGroupDrag();
   };
 
   useEffect(() => {
     if (!draggingGroupId) return;
 
-    const onWindowDragEnd = () => finishGroupDrag(true);
-    window.addEventListener("dragend", onWindowDragEnd);
-    return () => window.removeEventListener("dragend", onWindowDragEnd);
+    const onWindowPointerUp = () => finishGroupDrag();
+    window.addEventListener("pointerup", onWindowPointerUp);
+    return () => window.removeEventListener("pointerup", onWindowPointerUp);
   }, [draggingGroupId]);
 
   // Load users for owner dropdown
@@ -698,9 +678,7 @@ const TaskManager: React.FC = () => {
                       owners={ownerOptions}
                       onSortGroup={handleSortGroup}
                       groupDragHandleProps={{
-                        draggable: true,
-                        onDragStart: onGroupDragStart(group.id),
-                        onDragEnd: onGroupDragEnd,
+                        onPointerDown: onGroupPointerDown(group.id),
                       }}
                     />
                   </div>
@@ -708,8 +686,8 @@ const TaskManager: React.FC = () => {
                   {/* Drop area BELOW */}
                   {showDrop ? (
                     <div
-                      onDragOver={onGroupDropZoneDragOver(group.id, "below")}
-                      onDrop={onGroupDropZoneDrop(group.id, "below")}
+                      onPointerEnter={onGroupDropZonePointerEnter(group.id, "below")}
+                      onPointerUp={onGroupDropZonePointerUp(group.id, "below")}
                       className={
                         "h-4 rounded-md transition-colors " +
                         (bottomActive ? "bg-blue-500/25 ring-2 ring-blue-500" : "bg-transparent")
