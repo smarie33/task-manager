@@ -88,9 +88,15 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   };
 
   React.useEffect(() => {
-    // Keep editor content in sync when value changes from above
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || "";
+    // Keep editor content in sync when value changes from above.
+    // IMPORTANT: don't overwrite while the user is actively editing (prevents wiping/cursor jumps,
+    // especially for newly-created tasks with empty notes).
+    if (!editorRef.current) return;
+    if (document.activeElement === editorRef.current) return;
+
+    const next = value || "";
+    if (editorRef.current.innerHTML !== next) {
+      editorRef.current.innerHTML = next;
     }
   }, [value]);
 
