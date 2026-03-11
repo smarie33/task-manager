@@ -75,7 +75,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
           variant="ghost"
           className={
             "w-full text-sm px-2 py-2 justify-center rounded-none h-auto min-h-0 font-bold hover:opacity-90 " +
-            (isNoStatus ? "text-gray-900 hover:text-gray-900 border border-gray-300" : "text-white hover:text-white")
+            (isNoStatus ? "text-white hover:text-white border border-white" : "text-white hover:text-white")
           }
           style={isNoStatus ? { backgroundColor: "#ffffff" } : { backgroundColor: statusColor, color: "#fff" }}
           disabled={disabled}
@@ -87,23 +87,24 @@ const StatusCell: React.FC<StatusCellProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
           {availableStatuses.map((s) => {
             const optionIsNoStatus = s.name.toLowerCase() === "no status";
+            const colorInputId = `status-color-${s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
             return (
               <div
                 key={s.name}
                 className={
                   "flex items-center gap-2 border rounded-none px-2 py-1 " +
-                  (optionIsNoStatus ? "border-gray-300" : "")
+                  (optionIsNoStatus ? "border-white" : "")
                 }
                 style={{
                   backgroundColor: optionIsNoStatus ? "#ffffff" : s.color,
-                  borderColor: optionIsNoStatus ? "#d1d5db" : s.color,
-                  color: optionIsNoStatus ? "#111827" : "#fff",
+                  borderColor: optionIsNoStatus ? "#ffffff" : s.color,
+                  color: optionIsNoStatus ? "#ffffff" : "#fff",
                 }}
               >
                 {!disabled && !optionIsNoStatus ? (
-                  <span className="inline-flex items-center gap-1">
-                    {/* Use native input here (more reliable inside clickable containers) */}
+                  <span className="inline-flex items-center">
                     <input
+                      id={colorInputId}
                       type="color"
                       value={s.color}
                       onPointerDown={(e) => {
@@ -120,10 +121,19 @@ const StatusCell: React.FC<StatusCellProps> = ({
                         setAvailableStatuses((prev) => prev.map((x) => (x.name === s.name ? { ...x, color: next } : x)));
                         persistStatusColor(s.name, next);
                       }}
-                      className="h-6 w-6 p-0 border-0 bg-transparent cursor-pointer"
+                      className="sr-only"
                       title={`Change color for ${s.name}`}
                     />
-                    <PaletteIcon className="h-3.5 w-3.5 opacity-70" />
+                    <label
+                      htmlFor={colorInputId}
+                      className="cursor-pointer inline-flex items-center"
+                      title={`Change color for ${s.name}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <PaletteIcon className="h-3.5 w-3.5 opacity-80" />
+                    </label>
                   </span>
                 ) : null}
 
