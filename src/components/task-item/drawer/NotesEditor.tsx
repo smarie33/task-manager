@@ -34,6 +34,14 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const [imageOpen, setImageOpen] = React.useState(false);
   const [imageFile, setImageFile] = React.useState<File | null>(null);
 
+  const autoResize = React.useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    // Reset then set to scrollHeight so the editor grows with content.
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 160)}px`;
+  }, []);
+
   const saveSelection = () => {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
@@ -101,7 +109,8 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
     if (editorRef.current.innerHTML !== next) {
       editorRef.current.innerHTML = next;
     }
-  }, [value]);
+    autoResize();
+  }, [value, autoResize]);
 
   const exec = (command: string, valueArg?: string) => {
     if (disabled) return;
@@ -315,6 +324,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
         savedRangeRef.current = caret;
       }
 
+      autoResize();
       onChange(editor.innerHTML || "");
     }, 0);
   };
@@ -453,12 +463,21 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
         ref={editorRef}
         contentEditable={!disabled}
         suppressContentEditableWarning
-        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose ${disabled ? "pointer-events-none opacity-70" : ""}`}
-        onInput={() => onChange(editorRef.current?.innerHTML || "")}
-        onBlur={() => onChange(editorRef.current?.innerHTML || "")}
+        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose overflow-hidden ${disabled ? "pointer-events-none opacity-70" : ""}`}
+        onInput={() => {
+          onChange(editorRef.current?.innerHTML || "");
+          autoResize();
+        }}
+        onBlur={() => {
+          onChange(editorRef.current?.innerHTML || "");
+          autoResize();
+        }}
         onMouseUp={saveSelection}
         onKeyUp={saveSelection}
-        onFocus={saveSelection}
+        onFocus={() => {
+          saveSelection();
+          autoResize();
+        }}
       />
     </div>
   );
