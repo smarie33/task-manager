@@ -42,6 +42,7 @@ export async function loadAll(
     .from("task_groups")
     .select("*")
     .eq("archived", false)
+    .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true });
   if (!adminReadAll) groupQuery = groupQuery.eq("user_id", userId);
   const { data: groupRows, error: gErr } = await groupQuery;
@@ -106,7 +107,14 @@ export async function loadAll(
   // Map groups
   const groupsMap = new Map<string, TaskGroupData>();
   for (const g of groupRows || []) {
-    groupsMap.set(g.id, { id: g.id, name: g.name, color: g.color, tasks: [], userId: g.user_id ?? undefined });
+    groupsMap.set(g.id, {
+      id: g.id,
+      name: g.name,
+      color: g.color,
+      tasks: [],
+      position: typeof g.position === "number" ? g.position : undefined,
+      userId: g.user_id ?? undefined,
+    });
   }
 
   // Map tasks into groups
@@ -167,7 +175,12 @@ export async function loadAll(
     else files.push(fm);
   }
 
-  const groups = Array.from(groupsMap.values());
+  const groups = Array.from(groupsMap.values()).sort((a, b) => {
+    const ap = typeof a.position === "number" ? a.position : Number.MAX_SAFE_INTEGER;
+    const bp = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER;
+    if (ap !== bp) return ap - bp;
+    return a.name.localeCompare(b.name);
+  });
 
   const statuses: StatusOption[] = (statusRows || []).map((s) => ({
     name: s.name,
@@ -187,9 +200,20 @@ export async function loadAll(
 // Persist helpers
 
 export async function createGroup(userId: string, name: string, color: string) {
+  const { data: currentGroups, error: currentGroupsError } = await supabase
+    .from("task_groups")
+    .select("position")
+    .eq("user_id", userId);
+  if (currentGroupsError) throw new Error(currentGroupsError.message);
+
+  const nextPosition = (currentGroups || []).reduce((max, row: any) => {
+    const value = typeof row.position === "number" ? row.position : -1;
+    return Math.max(max, value);
+  }, -1) + 1;
+
   const { data, error } = await supabase
     .from("task_groups")
-    .insert([{ user_id: userId, name, color }])
+    .insert([{ user_id: userId, name, color, position: nextPosition }])
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -205,6 +229,21 @@ export async function updateGroup(groupId: string, fields: Partial<{ name: strin
   if (Object.keys(payload).length === 0) return;
   const { error } = await supabase.from("task_groups").update(payload).eq("id", groupId);
   if (error) throw new Error(error.message);
+}
+
+export async function updateGroupPositions(updates: { id: string; position: number }[]) {
+  if (updates.length === 0) return;
+  await Promise.all(
+    updates.map((u) =>
+      supabase
+        .from("task_groups")
+        .update({ position: u.position })
+        .eq("id", u.id)
+    )
+  ).then((results) => {
+    const err = results.find((r: any) => r.error);
+    if (err && (err as any).error) throw new Error((err as any).error.message);
+  });
 }
 
 export async function deleteGroup(groupId: string) {

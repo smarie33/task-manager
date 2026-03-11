@@ -50,6 +50,7 @@ export interface TaskGroupData {
   name: string;
   color: string;
   tasks: Task[];
+  position?: number;
   // ADDED: ownership (maps to task_groups.user_id)
   userId?: string;
 }

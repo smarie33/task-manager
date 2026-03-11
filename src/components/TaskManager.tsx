@@ -12,14 +12,12 @@ import { useAuth } from "@/context/auth-context";
 import { useSession } from "@/context/session-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow } from "@/services/db";
-import { updateTaskPositions, deleteTasksByGroup, deleteTasksByIds } from "@/services/db";
+import { updateGroupPositions, updateTaskPositions, deleteTasksByGroup, deleteTasksByIds } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
 
 type SortKey = "owner" | "content" | "status" | "timeline";
-
-const GROUP_ORDER_KEY = "taskGroupOrder";
 
 type DropPos = "below";
 
@@ -30,58 +28,50 @@ const TaskManager: React.FC = () => {
   const { session } = useSession();
   const readOnly = role === "Viewer";
 
-  const [groupOrder, setGroupOrder] = useState<string[]>(() => {
-    const raw = typeof window !== "undefined" ? window.localStorage.getItem(GROUP_ORDER_KEY) : null;
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed.filter((v) => typeof v === "string") as string[]) : [];
-    } catch {
-      return [];
+  // Load users for owner dropdown
+  const { users } = useAdminUsers();
+  const ownerOptions = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
+    const labels = users
+      .filter((u) => u.status === "active")
+      .map((u) => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
+      .filter((v) => !!v);
+    return Array.from(new Set(labels)).sort();
+  }, [users]);
+
+  // NEW: global filters
+  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+
+  // NEW: sentinel values (Radix Select items cannot use empty strings)
+  const ALL_USERS = "__all_users__";
+  const ALL_STATUSES = "__all_statuses__";
+
+  // NEW: collapsed state per group with localStorage persistence
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem("collapsedGroups") : null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Record<string, boolean>;
+        return parsed;
+      } catch {
+        // fall through to default
+      }
     }
+    return Object.fromEntries(groups.map((g) => [g.id, false]));
   });
 
-  const applyGroupOrder = React.useCallback(
-    (list: typeof groups, order: string[]) => {
-      if (!order || order.length === 0) return list;
-      const byId = new Map(list.map((g) => [g.id, g]));
-      const ordered: typeof groups = [];
-      for (const id of order) {
-        const g = byId.get(id);
-        if (g) ordered.push(g);
-      }
-      for (const g of list) {
-        if (!order.includes(g.id)) ordered.push(g);
-      }
-      return ordered;
-    },
-    []
-  );
-
-  useEffect(() => {
-    // Keep groupOrder in sync with actual groups (remove stale, append new)
-    setGroupOrder((prev) => {
-      const existing = new Set(groups.map((g) => g.id));
-      const next = prev.filter((id) => existing.has(id));
-      for (const g of groups) {
-        if (!next.includes(g.id)) next.push(g.id);
-      }
-      return next;
-    });
-  }, [groups]);
-
-  useEffect(() => {
-    window.localStorage.setItem(GROUP_ORDER_KEY, JSON.stringify(groupOrder));
-  }, [groupOrder]);
-
-  const orderedGroups = React.useMemo(() => applyGroupOrder(groups, groupOrder), [groups, groupOrder, applyGroupOrder]);
+  const orderedGroups = groups;
 
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [groupDropHover, setGroupDropHover] = useState<{ groupId: string; pos: DropPos } | null>(null);
   const prevCollapsedRef = useRef<Record<string, boolean> | null>(null);
 
   const reorderGroupsById = (fromGroupId: string, toGroupId: string, pos: DropPos) => {
-    const current = applyGroupOrder(groups, groupOrder);
+    const current = groups;
     const fromIndex = current.findIndex((g) => g.id === fromGroupId);
     const toIndex = current.findIndex((g) => g.id === toGroupId);
     if (fromIndex < 0 || toIndex < 0) return;
@@ -94,8 +84,11 @@ const TaskManager: React.FC = () => {
     const insertIndex = fromIndex < insertIndexBase ? insertIndexBase - 1 : insertIndexBase;
     next.splice(insertIndex, 0, moved);
 
-    setGroups(next);
-    setGroupOrder(next.map((g) => g.id));
+    const reindexed = next.map((group, index) => ({ ...group, position: index }));
+    setGroups(reindexed);
+    updateGroupPositions(reindexed.map((group) => ({ id: group.id, position: group.position ?? 0 }))).catch(() => {
+      showError("Failed to save group order");
+    });
   };
 
   const finishGroupDrag = () => {
@@ -146,42 +139,6 @@ const TaskManager: React.FC = () => {
     window.addEventListener("pointerup", onWindowPointerUp);
     return () => window.removeEventListener("pointerup", onWindowPointerUp);
   }, [draggingGroupId]);
-
-  // Load users for owner dropdown
-  const { users } = useAdminUsers();
-  const ownerOptions = React.useMemo(() => {
-    const emailToUsername = (email?: string | null) => {
-      if (!email) return "";
-      return String(email).split("@")[0] ?? "";
-    };
-    const labels = users
-      .filter((u) => u.status === "active")
-      .map((u) => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
-      .filter((v) => !!v);
-    return Array.from(new Set(labels)).sort();
-  }, [users]);
-
-  // NEW: global filters
-  const [selectedOwner, setSelectedOwner] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-
-  // NEW: sentinel values (Radix Select items cannot use empty strings)
-  const ALL_USERS = "__all_users__";
-  const ALL_STATUSES = "__all_statuses__";
-
-  // NEW: collapsed state per group with localStorage persistence
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
-    const raw = typeof window !== "undefined" ? window.localStorage.getItem("collapsedGroups") : null;
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as Record<string, boolean>;
-        return parsed;
-      } catch {
-        // fall through to default
-      }
-    }
-    return Object.fromEntries(groups.map((g) => [g.id, false]));
-  });
 
   useEffect(() => {
     // ensure keys exist for all groups and remove stale ones
