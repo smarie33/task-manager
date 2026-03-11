@@ -255,6 +255,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       return;
     }
 
+    const safeAlt = imageFile.name.replace(/"/g, "");
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(new Error("Failed to read file"));
@@ -262,61 +263,60 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       reader.readAsDataURL(imageFile);
     });
 
-    const editor = editorRef.current;
-    if (!editor) {
-      setImageOpen(false);
-      return;
-    }
-
-    restoreSelection();
-
-    const sel = window.getSelection();
-    let range = savedRangeRef.current;
-
-    // If we can't restore a valid range inside the editor (common after dialogs), insert at end.
-    if (!sel || !range || !editor.contains(range.commonAncestorContainer)) {
-      range = document.createRange();
-      range.selectNodeContents(editor);
-      range.collapse(false);
-    }
-
-    const safeAlt = imageFile.name.replace(/"/g, "");
-
-    // Build nodes (more reliable than execCommand for keeping typing inside the editor)
-    const figure = document.createElement("figure");
-    figure.className = "notes-inline-figure";
-
-    const img = document.createElement("img");
-    img.src = dataUrl;
-    img.alt = safeAlt;
-    img.className = "notes-inline-image";
-
-    figure.appendChild(img);
-
-    const p = document.createElement("p");
-    p.appendChild(document.createElement("br"));
-
-    const frag = document.createDocumentFragment();
-    frag.appendChild(figure);
-    frag.appendChild(p);
-
-    range.deleteContents();
-    range.insertNode(frag);
-
-    // Place caret inside the trailing paragraph so typing stays inside the editor.
-    editor.focus();
-    const nextSel = window.getSelection();
-    if (nextSel) {
-      const caret = document.createRange();
-      caret.setStart(p, 0);
-      caret.collapse(true);
-      nextSel.removeAllRanges();
-      nextSel.addRange(caret);
-      savedRangeRef.current = caret;
-    }
-
-    onChange(editor.innerHTML || "");
+    // Close the dialog first so focus trapping doesn't interfere with selection/caret.
     setImageOpen(false);
+
+    window.setTimeout(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      restoreSelection();
+
+      const sel = window.getSelection();
+      let range = savedRangeRef.current;
+
+      // If we can't restore a valid range inside the editor, insert at end.
+      if (!sel || !range || !editor.contains(range.commonAncestorContainer)) {
+        range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+      }
+
+      // Build nodes (reliable and lets CSS control sizing)
+      const figure = document.createElement("figure");
+      figure.className = "notes-inline-figure";
+
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.alt = safeAlt;
+      img.className = "notes-inline-image";
+
+      figure.appendChild(img);
+
+      const p = document.createElement("p");
+      p.appendChild(document.createElement("br"));
+
+      const frag = document.createDocumentFragment();
+      frag.appendChild(figure);
+      frag.appendChild(p);
+
+      range.deleteContents();
+      range.insertNode(frag);
+
+      // Place caret inside the trailing paragraph so typing stays inside the editor.
+      editor.focus();
+      const nextSel = window.getSelection();
+      if (nextSel) {
+        const caret = document.createRange();
+        caret.setStart(p, 0);
+        caret.collapse(true);
+        nextSel.removeAllRanges();
+        nextSel.addRange(caret);
+        savedRangeRef.current = caret;
+      }
+
+      onChange(editor.innerHTML || "");
+    }, 0);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
