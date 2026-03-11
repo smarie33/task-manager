@@ -28,6 +28,7 @@ import WikiEdit from "./pages/WikiEdit";
 import WikiDrafts from "./pages/WikiDrafts";
 import WikiImporting from "./pages/WikiImporting";
 import WikiBulkDelete from "./pages/WikiBulkDelete";
+import ArchivedGroups from "./pages/ArchivedGroups";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                    <Route path="/archived-groups" element={<ProtectedRoute><ArchivedGroups /></ProtectedRoute>} />
                     <Route path="/time-tracking" element={<ProtectedRoute><TimeTracking /></ProtectedRoute>} />
                     <Route path="/files" element={<ProtectedRoute><Files /></ProtectedRoute>} />
                     <Route path="/images" element={<ProtectedRoute><Images /></ProtectedRoute>} />

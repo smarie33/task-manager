@@ -197,6 +197,66 @@ export async function loadAll(
   return { groups, statuses, files, images, links };
 }
 
+export async function loadArchivedGroups(
+  userId: string,
+  opts?: {
+    /** When true, do not apply user_id filtering (requires RLS policy granting admin read access). */
+    adminReadAll?: boolean;
+  }
+): Promise<TaskGroupData[]> {
+  const adminReadAll = !!opts?.adminReadAll;
+
+  // Load archived groups
+  let groupQuery = supabase
+    .from("task_groups")
+    .select("*")
+    .eq("archived", true)
+    .order("position", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true });
+  if (!adminReadAll) groupQuery = groupQuery.eq("user_id", userId);
+  const { data: groupRows, error: gErr } = await groupQuery;
+  if (gErr) throw new Error(gErr.message);
+
+  const groupsMap = new Map<string, TaskGroupData>();
+  for (const g of groupRows || []) {
+    groupsMap.set(g.id, {
+      id: g.id,
+      name: g.name,
+      color: g.color,
+      tasks: [],
+      position: typeof g.position === "number" ? g.position : undefined,
+      userId: g.user_id ?? undefined,
+    });
+  }
+
+  const groupIds = (groupRows || []).map((g) => g.id);
+  if (groupIds.length > 0) {
+    let taskQuery = supabase
+      .from("tasks")
+      .select("*")
+      .in("group_id", groupIds)
+      .order("group_id", { ascending: true })
+      .order("position", { ascending: true, nullsFirst: true })
+      .order("created_at", { ascending: true });
+    if (!adminReadAll) taskQuery = taskQuery.eq("user_id", userId);
+    const { data: taskRows, error: tErr } = await taskQuery;
+    if (tErr) throw new Error(tErr.message);
+
+    for (const tr of taskRows || []) {
+      const group = groupsMap.get(tr.group_id);
+      if (!group) continue;
+      group.tasks.push(toTask(tr));
+    }
+  }
+
+  return Array.from(groupsMap.values()).sort((a, b) => {
+    const ap = typeof a.position === "number" ? a.position : Number.MAX_SAFE_INTEGER;
+    const bp = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER;
+    if (ap !== bp) return ap - bp;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 // Persist helpers
 
 export async function createGroup(userId: string, name: string, color: string) {

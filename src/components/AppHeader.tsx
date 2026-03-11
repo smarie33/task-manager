@@ -42,6 +42,9 @@ const AppHeader: React.FC = () => {
               <Link to="/">Task Manager</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link to="/archived-groups">Archived Groups</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link to="/time-tracking">Time Tracking</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
