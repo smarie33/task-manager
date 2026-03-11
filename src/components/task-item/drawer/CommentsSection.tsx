@@ -5,9 +5,9 @@ import { Task } from "@/types/task";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
-import { loadProfile } from "@/utils/profile-storage";
 import { insertComment } from "@/services/db";
 import { useSession } from "@/context/session-context";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type CommentsSectionProps = {
   taskId: string;
@@ -23,8 +23,17 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   readOnly = false,
 }) => {
   const [newCommentText, setNewCommentText] = React.useState("");
-  const profile = loadProfile();
   const { session } = useSession();
+  const { profile } = useUserProfile();
+
+  const authorName = React.useMemo(() => {
+    const fromProfile = String(profile?.name ?? "").trim();
+    if (fromProfile) return fromProfile;
+
+    const email = String(session?.user?.email ?? "").trim();
+    if (!email) return "Anonymous";
+    return email.split("@")[0] || email;
+  }, [profile?.name, session?.user?.email]);
 
   return (
     <div className="space-y-3">
@@ -64,18 +73,19 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
             onClick={() => {
               const text = newCommentText.trim();
               if (!text) return;
-              const author = (profile?.name || "").trim() || "Anonymous";
+
               const newComment = {
                 id: uuidv4(),
                 text,
                 createdAt: new Date().toISOString(),
-                author,
+                author: authorName,
               };
               const updated = [...(comments ?? []), newComment];
               onUpdateTaskField(taskId, "comments", updated as Task["comments"]);
               setNewCommentText("");
+
               if (session?.user) {
-                insertComment(session.user.id, taskId, text, author).catch(() => {});
+                insertComment(session.user.id, taskId, text, authorName).catch(() => {});
               }
             }}
             disabled={readOnly}
