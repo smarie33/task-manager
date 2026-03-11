@@ -151,8 +151,9 @@
   /* Notes editor image sizing */
   .notes-prose img {
     max-width: 100%;
+    width: 100%;
     height: auto;
-    max-height: 240px;
+    max-height: 180px;
     object-fit: contain;
     display: block;
   }

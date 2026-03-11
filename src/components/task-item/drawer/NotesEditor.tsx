@@ -289,14 +289,25 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
     // Add a trailing paragraph so typing continues inside the editor.
     const html =
       `<figure style="margin:0.5rem 0;">` +
-      `<img src="${dataUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;max-height:240px;object-fit:contain;display:block;border-radius:6px;" />` +
+      `<img src="${dataUrl}" alt="${safeAlt}" style="max-width:100%;width:100%;height:auto;max-height:180px;object-fit:contain;display:block;border-radius:6px;" />` +
       `</figure>` +
       `<p><br /></p>`;
 
     document.execCommand("insertHTML", false, html);
-    saveSelection();
-    onChange(editor.innerHTML || "");
+
+    // Force caret to a valid position INSIDE the editor (prevents typing outside the box).
     editor.focus();
+    const nextSel = window.getSelection();
+    if (nextSel) {
+      const caret = document.createRange();
+      caret.selectNodeContents(editor);
+      caret.collapse(false);
+      nextSel.removeAllRanges();
+      nextSel.addRange(caret);
+      savedRangeRef.current = caret;
+    }
+
+    onChange(editor.innerHTML || "");
     setImageOpen(false);
   };
 
