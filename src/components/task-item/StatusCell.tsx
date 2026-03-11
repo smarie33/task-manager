@@ -75,7 +75,7 @@ const StatusCell: React.FC<StatusCellProps> = ({
           style={{ backgroundColor: statusColor, color: "#fff" }}
           disabled={disabled}
         >
-          <span className="flex items-center gap-2">{status}</span>
+          <span className="flex items-center gap-2">{status || "Set status"}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2">
