@@ -148,6 +148,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/20 cursor-grab active:cursor-grabbing"
+            title="Drag to reorder group"
           >
             <div
               aria-label="Reorder group"
@@ -169,6 +170,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               className="text-base font-semibold bg-transparent border-none focus:ring-0 focus:outline-none text-white"
               autoFocus
               disabled={readOnly}
+              title="Edit group name"
             />
           ) : (
             <CardTitle
@@ -176,6 +178,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               onClick={() => {
                 if (!readOnly) setIsEditingName(true);
               }}
+              title={readOnly ? undefined : "Click to edit group name"}
             >
               {group.name}
             </CardTitle>
@@ -187,6 +190,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
             className="text-white hover:bg-white/20"
             aria-label={collapsed ? "Expand group" : "Collapse group"}
             onClick={toggleCollapsed}
+            title={collapsed ? "Expand group" : "Collapse group"}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -201,8 +205,15 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
               className={`absolute inset-0 opacity-0 w-full h-full ${readOnly ? "pointer-events-none" : "cursor-pointer"}`}
               aria-label="Change group color"
               disabled={readOnly}
+              title="Change group color"
             />
-            <Button variant="ghost" size="icon" className={`text-white ${readOnly ? "" : "hover:bg-white/20"}`} disabled={readOnly}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`text-white ${readOnly ? "" : "hover:bg-white/20"}`}
+              disabled={readOnly}
+              title="Change group color"
+            >
               <PaintbrushIcon className="h-4 w-4" />
             </Button>
           </div>
@@ -215,6 +226,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                 className="text-white hover:bg-white/20"
                 aria-label="Archive group"
                 onClick={() => onArchiveGroup(group.id)}
+                title="Archive group"
               >
                 <Archive className="h-4 w-4" />
               </Button>
@@ -226,6 +238,7 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
                     size="icon"
                     className="text-white hover:bg-white/20"
                     aria-label="Delete group"
+                    title="Delete group"
                   >
                     <Trash2Icon className="h-4 w-4" />
                   </Button>
