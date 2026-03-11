@@ -137,7 +137,10 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
   };
 
   return (
-    <Card className="w-[90vw] max-w-[1500px] flex flex-col shadow-lg">
+    <Card
+      className="w-[90vw] max-w-[1500px] flex flex-col shadow-lg"
+      style={{ borderLeftWidth: 3, borderLeftColor: group.color }}
+    >
       <CardHeader className="flex flex-row items-center justify-between py-1 px-3 rounded-t-lg" style={{ backgroundColor: group.color }}>
         <div className="flex items-center gap-2">
           <Button
