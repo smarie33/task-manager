@@ -96,6 +96,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const hasComments = (task.comments ?? []).length > 0;
   const hasNotes = React.useMemo(() => {
     const html = String(task.notes ?? "");
+    if (/<img\b/i.test(html)) return true;
     const text = html
       .replace(/<[^>]*>/g, " ")
       .replace(/\u200B/g, " ")

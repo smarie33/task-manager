@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
   Palette,
   Type as TypeIcon,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -30,6 +31,8 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const savedRangeRef = React.useRef<Range | null>(null);
   const [linkOpen, setLinkOpen] = React.useState(false);
   const [linkUrl, setLinkUrl] = React.useState("");
+  const [imageOpen, setImageOpen] = React.useState(false);
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
 
   const saveSelection = () => {
     const sel = window.getSelection();
@@ -194,16 +197,18 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       setLinkOpen(false);
       return;
     }
-    let range = sel.getRangeAt(0);
+    const range = sel.getRangeAt(0);
     if (!editorRef.current || !editorRef.current.contains(range.commonAncestorContainer)) {
       setLinkOpen(false);
       return;
     }
+
     const a = document.createElement("a");
     a.href = url;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.className = "underline text-blue-600";
+
     if (sel.isCollapsed) {
       a.textContent = url;
       range.insertNode(a);
@@ -223,9 +228,49 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
       sel.addRange(newRange);
       savedRangeRef.current = newRange;
     }
+
     onChange(editorRef.current?.innerHTML || "");
     editorRef.current?.focus();
     setLinkOpen(false);
+  };
+
+  const openImageDialog = () => {
+    if (disabled) return;
+    saveSelection();
+    setImageFile(null);
+    setImageOpen(true);
+  };
+
+  const applyImage = async () => {
+    if (disabled) return;
+    if (!imageFile) {
+      setImageOpen(false);
+      return;
+    }
+
+    // Keep inserts reasonable; images are embedded as data URLs into notes HTML.
+    if (imageFile.size > 2 * 1024 * 1024) {
+      // eslint-disable-next-line no-alert
+      alert("Please choose an image smaller than 2MB.");
+      return;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.readAsDataURL(imageFile);
+    });
+
+    restoreSelection();
+    editorRef.current?.focus();
+
+    const safeAlt = imageFile.name.replace(/"/g, "");
+    const html = `<img src="${dataUrl}" alt="${safeAlt}" style="max-width: 100%; height: auto; border-radius: 6px;" />`;
+    document.execCommand("insertHTML", false, html);
+    saveSelection();
+    onChange(editorRef.current?.innerHTML || "");
+    setImageOpen(false);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -303,6 +348,9 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
           <Button variant="ghost" size="icon" onMouseDown={saveSelection} onClick={openLinkDialog} disabled={disabled} aria-label="Add link">
             <LinkIcon className="h-4 w-4" />
           </Button>
+          <Button variant="ghost" size="icon" onMouseDown={saveSelection} onClick={openImageDialog} disabled={disabled} aria-label="Insert image">
+            <ImageIcon className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -324,6 +372,33 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
           <DialogFooter className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setLinkOpen(false)}>Cancel</Button>
             <Button onClick={applyLink}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image dialog */}
+      <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Insert image</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            />
+            {imageFile ? (
+              <p className="text-xs text-muted-foreground">
+                Selected: {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setImageOpen(false)}>Cancel</Button>
+            <Button onClick={applyImage} disabled={!imageFile}>
+              Insert
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
