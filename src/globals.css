@@ -157,6 +157,10 @@
     display: block;
   }
 
+  .notes-prose figure {
+    margin: 0.5rem 0;
+  }
+
   /* Align checkboxes nicely with text in Notes editor */
   .notes-prose input[type="checkbox"] {
     vertical-align: middle;

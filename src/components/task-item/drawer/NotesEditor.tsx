@@ -283,37 +283,20 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
     sel?.removeAllRanges();
     sel?.addRange(range);
 
-    const img = document.createElement("img");
-    img.src = dataUrl;
-    img.alt = imageFile.name.replace(/"/g, "");
-    img.style.maxWidth = "100%";
-    img.style.height = "auto";
-    img.style.maxHeight = "240px";
-    img.style.objectFit = "contain";
-    img.style.display = "block";
-    img.style.margin = "0.5rem 0";
-    img.style.borderRadius = "6px";
+    const safeAlt = imageFile.name.replace(/"/g, "");
 
-    range.insertNode(img);
+    // Insert as HTML so the browser maintains a stable caret position.
+    // Add a trailing paragraph so typing continues inside the editor.
+    const html =
+      `<figure style="margin:0.5rem 0;">` +
+      `<img src="${dataUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;max-height:240px;object-fit:contain;display:block;border-radius:6px;" />` +
+      `</figure>` +
+      `<p><br /></p>`;
 
-    // Add a trailing blank line and move caret there so typing stays inside the editor.
-    const spacer = document.createElement("div");
-    spacer.appendChild(document.createElement("br"));
-
-    const afterImgRange = document.createRange();
-    afterImgRange.setStartAfter(img);
-    afterImgRange.collapse(true);
-    afterImgRange.insertNode(spacer);
-
-    const caret = document.createRange();
-    caret.selectNodeContents(spacer);
-    caret.collapse(true);
-    sel?.removeAllRanges();
-    sel?.addRange(caret);
-    savedRangeRef.current = caret;
-
-    editor.focus();
+    document.execCommand("insertHTML", false, html);
+    saveSelection();
     onChange(editor.innerHTML || "");
+    editor.focus();
     setImageOpen(false);
   };
 
