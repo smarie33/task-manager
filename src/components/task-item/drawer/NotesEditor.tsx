@@ -37,9 +37,38 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
   const autoResize = React.useCallback(() => {
     const el = editorRef.current;
     if (!el) return;
-    // Reset then set to scrollHeight so the editor grows with content.
     el.style.height = "auto";
     el.style.height = `${Math.max(el.scrollHeight, 160)}px`;
+  }, []);
+
+  const scheduleAutoResize = React.useCallback(() => {
+    window.requestAnimationFrame(() => autoResize());
+  }, [autoResize]);
+
+  const ensureTrailingParagraph = React.useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+
+    const last = el.lastElementChild;
+    if (!last || last.tagName !== "P") {
+      const p = document.createElement("p");
+      p.appendChild(document.createElement("br"));
+      el.appendChild(p);
+    }
+  }, []);
+
+  const focusCaretToEnd = React.useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedRangeRef.current = range;
   }, []);
 
   const saveSelection = () => {
@@ -100,8 +129,7 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
 
   React.useEffect(() => {
     // Keep editor content in sync when value changes from above.
-    // IMPORTANT: don't overwrite while the user is actively editing (prevents wiping/cursor jumps,
-    // especially for newly-created tasks with empty notes).
+    // IMPORTANT: don't overwrite while the user is actively editing.
     if (!editorRef.current) return;
     if (document.activeElement === editorRef.current) return;
 
@@ -109,8 +137,10 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
     if (editorRef.current.innerHTML !== next) {
       editorRef.current.innerHTML = next;
     }
-    autoResize();
-  }, [value, autoResize]);
+
+    ensureTrailingParagraph();
+    scheduleAutoResize();
+  }, [value, ensureTrailingParagraph, scheduleAutoResize]);
 
   const exec = (command: string, valueArg?: string) => {
     if (disabled) return;
@@ -463,20 +493,30 @@ const NotesEditor: React.FC<NotesEditorProps> = ({ value, onChange, disabled = f
         ref={editorRef}
         contentEditable={!disabled}
         suppressContentEditableWarning
-        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose overflow-hidden ${disabled ? "pointer-events-none opacity-70" : ""}`}
+        className={`min-h-[160px] p-3 prose dark:prose-invert max-w-none outline-none notes-prose overflow-y-auto ${disabled ? "pointer-events-none opacity-70" : ""}`}
         onInput={() => {
           onChange(editorRef.current?.innerHTML || "");
-          autoResize();
+          ensureTrailingParagraph();
+          scheduleAutoResize();
         }}
         onBlur={() => {
           onChange(editorRef.current?.innerHTML || "");
-          autoResize();
+          ensureTrailingParagraph();
+          scheduleAutoResize();
         }}
+        onMouseDown={saveSelection}
         onMouseUp={saveSelection}
+        onKeyDown={saveSelection}
         onKeyUp={saveSelection}
         onFocus={() => {
+          if (!editorRef.current) return;
+          if (!editorRef.current.innerHTML || editorRef.current.innerHTML.trim() === "") {
+            editorRef.current.innerHTML = "<p><br /></p>";
+            focusCaretToEnd();
+          }
+          ensureTrailingParagraph();
           saveSelection();
-          autoResize();
+          scheduleAutoResize();
         }}
       />
     </div>
