@@ -101,17 +101,6 @@ const AppHeader: React.FC = () => {
               <DropdownMenuItem asChild>
                 <Link to="/guides">Guides</Link>
               </DropdownMenuItem>
-              {canManageDrafts && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/wiki/admin">Create Wiki Page</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/guides/admin">Create Guide Page</Link>
-                  </DropdownMenuItem>
-                </>
-              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
@@ -133,6 +122,13 @@ const AppHeader: React.FC = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
+              <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                <Link to="/wiki/admin">Create Wiki Page</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                <Link to="/guides/admin">Create Guide Page</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild disabled={!canManageDrafts}>
                 <Link to="/wiki/admin/drafts">Drafts</Link>
               </DropdownMenuItem>
