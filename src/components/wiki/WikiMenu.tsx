@@ -26,7 +26,7 @@ const WikiMenu: React.FC = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <Link to="/wiki#guides">Guides</Link>
+          <Link to="/guides">Guides</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a

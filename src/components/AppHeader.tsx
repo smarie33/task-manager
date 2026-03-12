@@ -99,7 +99,7 @@ const AppHeader: React.FC = () => {
                 <Link to="/wiki">Wiki</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/wiki#guides">Guides</Link>
+                <Link to="/guides">Guides</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a

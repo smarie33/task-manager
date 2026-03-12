@@ -29,6 +29,10 @@ import WikiDrafts from "./pages/WikiDrafts";
 import WikiImporting from "./pages/WikiImporting";
 import WikiBulkDelete from "./pages/WikiBulkDelete";
 import ArchivedGroups from "./pages/ArchivedGroups";
+import Guides from "./pages/Guides";
+import GuidesEntry from "./pages/GuidesEntry";
+import GuidesTag from "./pages/GuidesTag";
+import GuidesCategory from "./pages/GuidesCategory";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +69,11 @@ const App = () => (
                     <Route path="/wiki/:slug/edit" element={<ProtectedRoute><WikiEdit /></ProtectedRoute>} />
                     <Route path="/wiki/:slug" element={<ProtectedRoute><WikiEntry /></ProtectedRoute>} />
                     <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
+                    {/* ADD: guides routes */}
+                    <Route path="/guides/categories/:categoryName" element={<ProtectedRoute><GuidesCategory /></ProtectedRoute>} />
+                    <Route path="/guides/tags/:tagName" element={<ProtectedRoute><GuidesTag /></ProtectedRoute>} />
+                    <Route path="/guides/:slug" element={<ProtectedRoute><GuidesEntry /></ProtectedRoute>} />
+                    <Route path="/guides" element={<ProtectedRoute><Guides /></ProtectedRoute>} />
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
                   </Routes>
                 </BrowserRouter>
