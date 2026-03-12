@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { FileIcon, LinkIcon, UploadIcon } from "lucide-react";
+import { FileIcon, LinkIcon, UploadIcon, Trash2 } from "lucide-react";
 import { FileMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
 import { showSuccess, showError } from "@/utils/toast";
-import { addManyFiles, addExternalLink } from "@/services/db";
+import { addManyFiles, addExternalLink, deleteExternalLink } from "@/services/db";
 import { useSession } from "@/context/session-context";
 
 const Files: React.FC = () => {
@@ -87,7 +87,7 @@ const Files: React.FC = () => {
     e.target.value = "";
   };
 
-  const handleAddLink = () => {
+  const handleAddLink = async () => {
     const url = newLinkUrl.trim();
     const label = newLinkLabel.trim();
     if (!url) {
@@ -99,13 +99,28 @@ const Files: React.FC = () => {
       showError("Please enter a valid http(s) URL");
       return;
     }
-    setExternalLinks((prev) => [...prev, { id: uuidv4(), url, label }]);
-    if (session?.user) {
-      addExternalLink(session.user.id, { id: "", url, label }).catch(() => {});
+
+    try {
+      if (session?.user) {
+        const saved = await addExternalLink(session.user.id, { id: "", url, label });
+        setExternalLinks((prev) => [...prev, saved]);
+      } else {
+        setExternalLinks((prev) => [...prev, { id: uuidv4(), url, label }]);
+      }
+      setNewLinkUrl("");
+      setNewLinkLabel("");
+      showSuccess("Link added");
+    } catch {
+      showError("Failed to add link");
     }
-    setNewLinkUrl("");
-    setNewLinkLabel("");
-    showSuccess("Link added");
+  };
+
+  const handleDeleteLink = (id: string) => {
+    setExternalLinks((prev) => prev.filter((l) => l.id !== id));
+    if (session?.user) {
+      deleteExternalLink(id).catch(() => {});
+    }
+    showSuccess("Link deleted");
   };
 
   // Existing tasks with hasFiles for legacy display
@@ -235,9 +250,7 @@ const Files: React.FC = () => {
               {externalLinks.map((l) => (
                 <div key={l.id} className="flex items-center justify-between rounded-md border p-3 bg-white dark:bg-gray-800">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {l.label || l.url}
-                    </p>
+                    <p className="text-sm font-medium truncate">{l.label || l.url}</p>
                     <a
                       href={l.url}
                       target="_blank"
@@ -247,7 +260,19 @@ const Files: React.FC = () => {
                       {l.url}
                     </a>
                   </div>
-                  <LinkIcon className="h-4 w-4 text-gray-500 ml-3 flex-shrink-0" />
+
+                  <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteLink(l.id)}
+                      aria-label="Delete external link"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <LinkIcon className="h-4 w-4 text-gray-500" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -260,36 +285,17 @@ const Files: React.FC = () => {
           <p className="text-sm text-gray-600 dark:text-gray-400">No tasks with files yet.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {tasksWithFiles.map(({ task, groupName }, idx) => (
-              <Card
-                key={`${task.id}-${idx}`}
-                className={`shadow-sm cursor-pointer ${selectedTaskId === task.id ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
-                onClick={() => setSelectedTaskId(task.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setSelectedTaskId(task.id);
-                }}
-                title="Click to filter files by this task"
-              >
+            {tasksWithFiles.map(({ task, groupName, groupColor }) => (
+              <Card key={task.id} className="shadow-sm">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-base">{task.content}</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileIcon className="h-4 w-4" style={{ color: groupColor }} />
+                    <span className="truncate">{task.content}</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 text-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-muted-foreground">Owner</p>
-                      <p>{task.owner || "N/A"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Group</p>
-                      <p>{groupName}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">Tags</p>
-                      <p>{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
-                    </div>
-                  </div>
+                  <p className="text-muted-foreground">Group</p>
+                  <p>{groupName}</p>
                 </CardContent>
               </Card>
             ))}

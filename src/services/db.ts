@@ -445,12 +445,30 @@ export async function addManyFiles(userId: string, metas: FileMeta[]) {
   if (error) throw new Error(error.message);
 }
 
-export async function addExternalLink(userId: string, link: LinkMeta) {
-  const { error } = await supabase.from("external_links").insert([{
-    user_id: userId,
-    url: link.url,
-    label: link.label ?? null,
-  }]);
+export async function addExternalLink(userId: string, link: LinkMeta): Promise<LinkMeta> {
+  const { data, error } = await supabase
+    .from("external_links")
+    .insert([
+      {
+        user_id: userId,
+        url: link.url,
+        label: link.label ?? null,
+      },
+    ])
+    .select("id, user_id, url, label")
+    .single();
+  if (error) throw new Error(error.message);
+
+  return {
+    id: data.id,
+    url: data.url,
+    label: data.label ?? undefined,
+    userId: data.user_id ?? undefined,
+  };
+}
+
+export async function deleteExternalLink(id: string) {
+  const { error } = await supabase.from("external_links").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
 
