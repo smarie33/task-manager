@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2, StickyNote } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
-import { addManyFilesWithIds, deleteFileMeta, updateTaskRow } from "@/services/db";
+import { addManyFilesWithIds, deleteFileMeta, updateFileMeta, updateTaskRow } from "@/services/db";
 import { useSession } from "@/context/session-context";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -199,6 +199,21 @@ const Images: React.FC = () => {
 
     const nextNotes = appendImageToNotesHtml(String(task.notes ?? ""), addToNotesImage);
 
+    // If the image is in the Images library (i.e., stored in the files table), update its assignment
+    // so the card shows "From Task" and it appears in the Filter By Task list.
+    const shouldAssignLibraryMeta = libraryImageIdSet.has(addToNotesImage.id);
+
+    if (shouldAssignLibraryMeta) {
+      const updatedMeta: FileMeta = {
+        ...addToNotesImage,
+        sourceTaskId: addToNotesTaskId,
+        sourceTaskContent: task.content,
+      };
+
+      setLibraryImages((prev) => prev.map((img) => (img.id === addToNotesImage.id ? updatedMeta : img)));
+      setSelected((prev) => (prev && prev.id === addToNotesImage.id ? updatedMeta : prev));
+    }
+
     setGroups((prev) =>
       prev.map((g) => ({
         ...g,
@@ -208,6 +223,12 @@ const Images: React.FC = () => {
 
     try {
       await updateTaskRow(addToNotesTaskId, { notes: nextNotes });
+      if (shouldAssignLibraryMeta) {
+        await updateFileMeta(addToNotesImage.id, {
+          sourceTaskId: addToNotesTaskId,
+          sourceTaskContent: task.content,
+        });
+      }
       toast({ title: "Added to notes" });
     } catch {
       toast({ title: "Failed to update notes" });
@@ -216,7 +237,7 @@ const Images: React.FC = () => {
       setAddToNotesImage(null);
       setAddToNotesTaskId(undefined);
     }
-  }, [addToNotesImage, addToNotesTaskId, appendImageToNotesHtml, groups, setGroups, toast]);
+  }, [addToNotesImage, addToNotesTaskId, appendImageToNotesHtml, groups, libraryImageIdSet, setGroups, setLibraryImages, toast]);
 
   // Upload form state
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);

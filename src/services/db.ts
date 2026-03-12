@@ -466,6 +466,22 @@ export async function deleteFileMeta(id: string) {
   if (error) throw new Error(error.message);
 }
 
+export async function updateFileMeta(
+  id: string,
+  fields: {
+    sourceTaskId?: string | null;
+    sourceTaskContent?: string | null;
+  }
+) {
+  const payload: any = {};
+  if (fields.sourceTaskId !== undefined) payload.source_task_id = fields.sourceTaskId;
+  if (fields.sourceTaskContent !== undefined) payload.source_task_content = fields.sourceTaskContent;
+  if (Object.keys(payload).length === 0) return;
+
+  const { error } = await supabase.from("files").update(payload).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function addExternalLink(userId: string, link: LinkMeta): Promise<LinkMeta> {
   const { data, error } = await supabase
     .from("external_links")
