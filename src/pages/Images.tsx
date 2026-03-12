@@ -150,18 +150,12 @@ const Images: React.FC = () => {
 
   // Upload form state
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [assignTaskId, setAssignTaskId] = React.useState<string | null>(null);
 
   const handlePickFiles = () => fileInputRef.current?.click();
 
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list || list.length === 0) return;
-
-    const chosenTaskId = assignTaskId && assignTaskId !== UNASSIGNED ? assignTaskId : undefined;
-    const chosenTaskContent = chosenTaskId
-      ? allTasks.find((t) => t.id === chosenTaskId)?.content
-      : undefined;
 
     const files = Array.from(list).filter((f) => f.type.startsWith("image/"));
     const tooLarge = files.filter((f) => f.size > MAX_IMAGE_BYTES);
@@ -181,6 +175,7 @@ const Images: React.FC = () => {
 
     const dataUrls = await Promise.all(ok.map((f) => fileToDataUrl(f)));
 
+    // Images uploaded here are always unassigned
     const newFiles: FileMeta[] = ok.map((f, idx) => ({
       id: uuidv4(),
       name: f.name,
@@ -188,8 +183,8 @@ const Images: React.FC = () => {
       mimeType: f.type,
       size: f.size,
       createdAt: new Date(f.lastModified || Date.now()).toISOString(),
-      sourceTaskId: chosenTaskId,
-      sourceTaskContent: chosenTaskContent,
+      sourceTaskId: undefined,
+      sourceTaskContent: undefined,
     }));
 
     setLibraryImages((prev) => [...prev, ...newFiles]);
@@ -200,10 +195,8 @@ const Images: React.FC = () => {
 
     toast({
       title: "Upload complete",
-      description: `${newFiles.length} image${newFiles.length > 1 ? "s" : ""} added${chosenTaskId ? " to task" : ""}.`,
+      description: `${newFiles.length} image${newFiles.length > 1 ? "s" : ""} added.`,
     });
-
-    if (chosenTaskId) setSelectedTaskFilter(chosenTaskId);
 
     e.target.value = "";
   };
@@ -292,36 +285,17 @@ const Images: React.FC = () => {
             </div>
 
             {/* Upload controls */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <Select
-                value={assignTaskId ?? UNASSIGNED}
-                onValueChange={(v) => setAssignTaskId(v === UNASSIGNED ? null : v)}
-              >
-                <SelectTrigger className="w-full sm:w-56">
-                  <SelectValue placeholder="Assign to task (optional)" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {tasksWithImages.map((t) => (
-                    <SelectItem key={t.taskId} value={t.taskId}>
-                      {t.name} ({t.count})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center gap-2">
-                <Button onClick={handlePickFiles}>
-                  <UploadIcon className="h-4 w-4 mr-2" />
-                  Upload Images
+            <div className="flex items-center gap-2">
+              <Button onClick={handlePickFiles}>
+                <UploadIcon className="h-4 w-4 mr-2" />
+                Upload Images
+              </Button>
+              {selectedTaskFilter && (
+                <Button variant="outline" onClick={clearFilter} title="Clear task filter">
+                  <XIcon className="h-4 w-4 mr-2" />
+                  Clear Filter
                 </Button>
-                {selectedTaskFilter && (
-                  <Button variant="outline" onClick={clearFilter} title="Clear task filter">
-                    <XIcon className="h-4 w-4 mr-2" />
-                    Clear Filter
-                  </Button>
-                )}
-              </div>
+              )}
 
               <input
                 ref={fileInputRef}
