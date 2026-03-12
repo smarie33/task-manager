@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2, StickyNote } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
-import { addManyFilesWithIds, deleteFileMeta, updateFileMeta, updateTaskRow } from "@/services/db";
+import { addManyFilesWithIds, deleteFileMeta, addFileTaskLink, updateTaskRow } from "@/services/db";
 import { useSession } from "@/context/session-context";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,6 +85,7 @@ const extractNoteImages = (groups: TaskGroupData[]): FileMeta[] => {
           mimeType: mimeFromSrc(src),
           sourceTaskId: t.id,
           sourceTaskContent: t.content,
+          sourceTasks: [{ id: t.id, content: t.content }],
         });
       });
     }
@@ -103,6 +104,12 @@ const Images: React.FC = () => {
   // All tasks for assignment/filtering
   const allTasks = React.useMemo(() => flattenTasks(groups), [groups]);
 
+  // Helper for task content lookup
+  const taskNameById = React.useCallback(
+    (id?: string) => (id ? allTasks.find((t) => t.id === id)?.content : undefined),
+    [allTasks]
+  );
+
   // Images embedded inside task notes (WYSIWYG)
   const noteImages = React.useMemo(() => extractNoteImages(groups), [groups]);
 
@@ -119,7 +126,7 @@ const Images: React.FC = () => {
     const seen = new Set<string>();
     const deduped: FileMeta[] = [];
     for (const f of all) {
-      const key = `${f.sourceTaskId ?? ""}|${f.url}`;
+      const key = f.id;
       if (seen.has(key)) continue;
       seen.add(key);
       deduped.push(f);
@@ -127,19 +134,42 @@ const Images: React.FC = () => {
     return deduped;
   }, [libraryImages, noteImages]);
 
+  const getImageTaskIds = React.useCallback((img: FileMeta) => {
+    const ids = (img.sourceTasks ?? []).map((t) => t.id).filter(Boolean);
+    if (ids.length > 0) return Array.from(new Set(ids));
+    return img.sourceTaskId ? [img.sourceTaskId] : [];
+  }, []);
+
+  const getImageTasks = React.useCallback(
+    (img: FileMeta) => {
+      const ids = getImageTaskIds(img);
+      return ids.map((id) => {
+        const fromList = img.sourceTasks?.find((t) => t.id === id);
+        return {
+          id,
+          content: fromList?.content ?? taskNameById(id) ?? "Unknown task",
+        };
+      });
+    },
+    [getImageTaskIds, taskNameById]
+  );
+
   // Counts per task for chips
   const taskCounts = React.useMemo(() => {
     const map = new Map<string, number>();
     let unassigned = 0;
     for (const f of images) {
-      if (f.sourceTaskId) {
-        map.set(f.sourceTaskId, (map.get(f.sourceTaskId) ?? 0) + 1);
+      const ids = getImageTaskIds(f);
+      if (ids.length > 0) {
+        ids.forEach((taskId) => {
+          map.set(taskId, (map.get(taskId) ?? 0) + 1);
+        });
       } else {
         unassigned += 1;
       }
     }
     return { map, unassigned };
-  }, [images]);
+  }, [getImageTaskIds, images]);
 
   const [query, setQuery] = React.useState("");
   const [sortKey, setSortKey] = React.useState<SortKey>("date");
@@ -180,7 +210,7 @@ const Images: React.FC = () => {
 
   const openAddToNotes = React.useCallback((img: FileMeta) => {
     setAddToNotesImage(img);
-    setAddToNotesTaskId(img.sourceTaskId ?? undefined);
+    setAddToNotesTaskId(img.sourceTasks?.[0]?.id ?? img.sourceTaskId ?? undefined);
     setAddToNotesOpen(true);
   }, []);
 
@@ -199,19 +229,38 @@ const Images: React.FC = () => {
 
     const nextNotes = appendImageToNotesHtml(String(task.notes ?? ""), addToNotesImage);
 
-    // If the image is in the Images library (i.e., stored in the files table), update its assignment
-    // so the card shows "From Task" and it appears in the Filter By Task list.
     const shouldAssignLibraryMeta = libraryImageIdSet.has(addToNotesImage.id);
 
     if (shouldAssignLibraryMeta) {
-      const updatedMeta: FileMeta = {
-        ...addToNotesImage,
-        sourceTaskId: addToNotesTaskId,
-        sourceTaskContent: task.content,
-      };
+      setLibraryImages((prev) =>
+        prev.map((img) => {
+          if (img.id !== addToNotesImage.id) return img;
+          const nextTasks = [...(img.sourceTasks ?? [])];
+          if (!nextTasks.some((t) => t.id === addToNotesTaskId)) {
+            nextTasks.push({ id: addToNotesTaskId, content: task.content });
+          }
+          return {
+            ...img,
+            sourceTasks: nextTasks,
+            sourceTaskId: nextTasks[0]?.id,
+            sourceTaskContent: nextTasks[0]?.content,
+          };
+        })
+      );
 
-      setLibraryImages((prev) => prev.map((img) => (img.id === addToNotesImage.id ? updatedMeta : img)));
-      setSelected((prev) => (prev && prev.id === addToNotesImage.id ? updatedMeta : prev));
+      setSelected((prev) => {
+        if (!prev || prev.id !== addToNotesImage.id) return prev;
+        const nextTasks = [...(prev.sourceTasks ?? [])];
+        if (!nextTasks.some((t) => t.id === addToNotesTaskId)) {
+          nextTasks.push({ id: addToNotesTaskId, content: task.content });
+        }
+        return {
+          ...prev,
+          sourceTasks: nextTasks,
+          sourceTaskId: nextTasks[0]?.id,
+          sourceTaskContent: nextTasks[0]?.content,
+        };
+      });
     }
 
     setGroups((prev) =>
@@ -223,11 +272,8 @@ const Images: React.FC = () => {
 
     try {
       await updateTaskRow(addToNotesTaskId, { notes: nextNotes });
-      if (shouldAssignLibraryMeta) {
-        await updateFileMeta(addToNotesImage.id, {
-          sourceTaskId: addToNotesTaskId,
-          sourceTaskContent: task.content,
-        });
+      if (shouldAssignLibraryMeta && session?.user) {
+        await addFileTaskLink(session.user.id, addToNotesImage.id, addToNotesTaskId);
       }
       toast({ title: "Added to notes" });
     } catch {
@@ -237,7 +283,7 @@ const Images: React.FC = () => {
       setAddToNotesImage(null);
       setAddToNotesTaskId(undefined);
     }
-  }, [addToNotesImage, addToNotesTaskId, appendImageToNotesHtml, groups, libraryImageIdSet, setGroups, setLibraryImages, toast]);
+  }, [addToNotesImage, addToNotesTaskId, appendImageToNotesHtml, groups, libraryImageIdSet, session?.user, setGroups, setLibraryImages, toast]);
 
   // Upload form state
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -315,9 +361,9 @@ const Images: React.FC = () => {
 
     if (selectedTaskFilter) {
       if (selectedTaskFilter === UNASSIGNED) {
-        list = list.filter((f) => !f.sourceTaskId);
+        list = list.filter((f) => getImageTaskIds(f).length === 0);
       } else {
-        list = list.filter((f) => f.sourceTaskId === selectedTaskFilter);
+        list = list.filter((f) => getImageTaskIds(f).includes(selectedTaskFilter));
       }
     }
 
@@ -341,15 +387,9 @@ const Images: React.FC = () => {
     });
 
     return list;
-  }, [images, query, sortKey, sortOrder, selectedTaskFilter]);
+  }, [getImageTaskIds, images, query, sortKey, sortOrder, selectedTaskFilter]);
 
   const clearFilter = () => setSelectedTaskFilter(null);
-
-  // Helper for task content lookup
-  const taskNameById = React.useCallback(
-    (id?: string) => (id ? allTasks.find((t) => t.id === id)?.content : undefined),
-    [allTasks]
-  );
 
   const tasksWithImages = React.useMemo(() => {
     return Array.from(taskCounts.map.entries())
@@ -520,14 +560,19 @@ const Images: React.FC = () => {
                       </div>
                       <div className="col-span-2">
                         <p className="text-muted-foreground">From Task</p>
-                        {file.sourceTaskId ? (
-                          <button
-                            className="truncate text-blue-600 hover:underline dark:text-blue-400"
-                            onClick={() => setSelectedTaskFilter(file.sourceTaskId!)}
-                            title="Filter by this task"
-                          >
-                            {file.sourceTaskContent ?? "Unknown"}
-                          </button>
+                        {getImageTasks(file).length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {getImageTasks(file).map((t) => (
+                              <button
+                                key={t.id}
+                                className="truncate rounded border px-2 py-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                                onClick={() => setSelectedTaskFilter(t.id)}
+                                title="Filter by this task"
+                              >
+                                {t.content}
+                              </button>
+                            ))}
+                          </div>
                         ) : (
                           <span className="truncate">Unassigned</span>
                         )}
@@ -594,14 +639,19 @@ const Images: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Task</p>
-                  {selected.sourceTaskId ? (
-                    <button
-                      className="truncate text-blue-600 hover:underline dark:text-blue-400"
-                      onClick={() => setSelectedTaskFilter(selected.sourceTaskId!)}
-                      title="Filter by this task"
-                    >
-                      {selected.sourceTaskContent ?? "Unknown"}
-                    </button>
+                  {getImageTasks(selected).length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {getImageTasks(selected).map((t) => (
+                        <button
+                          key={t.id}
+                          className="truncate rounded border px-2 py-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                          onClick={() => setSelectedTaskFilter(t.id)}
+                          title="Filter by this task"
+                        >
+                          {t.content}
+                        </button>
+                      ))}
+                    </div>
                   ) : (
                     <span className="truncate">Unassigned</span>
                   )}

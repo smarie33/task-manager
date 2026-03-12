@@ -12,9 +12,11 @@ export interface FileMeta {
   mimeType?: string;
   size?: number;
   createdAt?: string;
-  // ADDED: source task info for Images library
+  // ADDED: source task info for Images library (legacy single-task fields)
   sourceTaskId?: string;
   sourceTaskContent?: string;
+  // NEW: allow linking one image to multiple tasks
+  sourceTasks?: { id: string; content?: string }[];
   // ADDED: ownership
   userId?: string;
 }

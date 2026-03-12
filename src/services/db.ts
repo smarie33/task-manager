@@ -86,6 +86,15 @@ export async function loadAll(
   const { data: fileRows, error: fErr } = await fileQuery;
   if (fErr) throw new Error(fErr.message);
 
+  // Load file-task links (for images belonging to multiple tasks)
+  let fileTaskQuery = supabase
+    .from("file_task_links")
+    .select("file_id, task_id")
+    .order("created_at", { ascending: true });
+  if (!adminReadAll) fileTaskQuery = fileTaskQuery.eq("user_id", userId);
+  const { data: fileTaskRows, error: ftErr } = await fileTaskQuery;
+  if (ftErr) throw new Error(ftErr.message);
+
   // Load external links
   let linkQuery = supabase
     .from("external_links")
@@ -156,10 +165,31 @@ export async function loadAll(
     task.comments = arr;
   }
 
+  const fileIdToTaskIds = new Map<string, string[]>();
+  for (const r of fileTaskRows || []) {
+    const fileId = (r as any).file_id as string;
+    const taskId = (r as any).task_id as string;
+    if (!fileId || !taskId) continue;
+    const arr = fileIdToTaskIds.get(fileId) ?? [];
+    if (!arr.includes(taskId)) arr.push(taskId);
+    fileIdToTaskIds.set(fileId, arr);
+  }
+
   // Files: split into images and non-images for libraries
   const files: FileMeta[] = [];
   const images: FileMeta[] = [];
   for (const fr of fileRows || []) {
+    const legacyTaskId = fr.source_task_id ?? undefined;
+    const legacyTaskContent = fr.source_task_content ?? undefined;
+
+    const linkedTaskIds = fileIdToTaskIds.get(fr.id) ?? [];
+    const allTaskIds = Array.from(new Set([...(legacyTaskId ? [legacyTaskId] : []), ...linkedTaskIds]));
+
+    const sourceTasks = allTaskIds.map((tid) => ({
+      id: tid,
+      content: tasksMap.get(tid)?.content ?? (tid === legacyTaskId ? legacyTaskContent : undefined),
+    }));
+
     const fm: FileMeta = {
       id: fr.id,
       name: fr.name,
@@ -167,10 +197,12 @@ export async function loadAll(
       mimeType: fr.mime_type ?? undefined,
       size: typeof fr.size === "number" ? fr.size : fr.size ? Number(fr.size) : undefined,
       createdAt: fr.created_at,
-      sourceTaskId: fr.source_task_id ?? undefined,
-      sourceTaskContent: fr.source_task_content ?? undefined,
+      sourceTaskId: sourceTasks[0]?.id,
+      sourceTaskContent: sourceTasks[0]?.content,
+      sourceTasks: sourceTasks.length > 0 ? sourceTasks : undefined,
       userId: fr.user_id ?? undefined,
     };
+
     if ((fm.mimeType ?? "").startsWith("image/")) images.push(fm);
     else files.push(fm);
   }
@@ -479,6 +511,16 @@ export async function updateFileMeta(
   if (Object.keys(payload).length === 0) return;
 
   const { error } = await supabase.from("files").update(payload).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function addFileTaskLink(userId: string, fileId: string, taskId: string) {
+  const { error } = await supabase
+    .from("file_task_links")
+    .upsert([{ user_id: userId, file_id: fileId, task_id: taskId }], {
+      onConflict: "file_id,task_id",
+      ignoreDuplicates: true,
+    });
   if (error) throw new Error(error.message);
 }
 
