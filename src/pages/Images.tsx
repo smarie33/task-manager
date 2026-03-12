@@ -8,7 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2, StickyNote } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  ImageIcon,
+  ExternalLinkIcon,
+  UploadIcon,
+  XIcon,
+  Trash2,
+  StickyNote,
+  LayoutGrid,
+  Grid3X3,
+} from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
 import { addManyFilesWithIds, deleteFileMeta, addFileTaskLink, updateTaskRow } from "@/services/db";
@@ -177,6 +187,8 @@ const Images: React.FC = () => {
   const [selected, setSelected] = React.useState<FileMeta | null>(null);
   const [selectedTaskFilter, setSelectedTaskFilter] = React.useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+  const [viewMode, setViewMode] = React.useState<"cards" | "masonry">("cards");
 
   const [addToNotesOpen, setAddToNotesOpen] = React.useState(false);
   const [addToNotesImage, setAddToNotesImage] = React.useState<FileMeta | null>(null);
@@ -423,6 +435,21 @@ const Images: React.FC = () => {
 
             {/* Upload controls */}
             <div className="flex items-center gap-2">
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(v) => {
+                  if (v === "cards" || v === "masonry") setViewMode(v);
+                }}
+              >
+                <ToggleGroupItem value="cards" aria-label="Card view" title="Card view">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="masonry" aria-label="Thumbnail view" title="Thumbnail view">
+                  <Grid3X3 className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+
               <Button onClick={handlePickFiles}>
                 <UploadIcon className="h-4 w-4 mr-2" />
                 Upload Images
@@ -503,6 +530,60 @@ const Images: React.FC = () => {
               : ""}.
             You can upload images using the button above.
           </p>
+        ) : viewMode === "masonry" ? (
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4">
+            {filteredSorted.map((file) => {
+              const deletable = libraryImageIdSet.has(file.id);
+              return (
+                <div key={file.id} className="mb-4 break-inside-avoid">
+                  <div
+                    className="relative rounded-md border overflow-hidden bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelected(file)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") setSelected(file);
+                    }}
+                    aria-label={`Open details for ${file.name}`}
+                  >
+                    {/* Full image thumbnail (uncropped), shown in a 3-column masonry layout */}
+                    <img src={file.url} alt={file.name} className="w-full h-auto" loading="lazy" />
+
+                    {deletable ? (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 bg-white/90 hover:bg-white dark:bg-gray-900/80"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelected(file);
+                          setDeleteOpen(true);
+                        }}
+                        aria-label={`Delete ${file.name}`}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="flex justify-end mt-2 gap-2">
+                    <Button variant="secondary" onClick={() => openAddToNotes(file)} title="Add this image to a task's notes">
+                      <StickyNote className="h-4 w-4 mr-2" />
+                      Add to Notes
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={file.url} target="_blank" rel="noreferrer">
+                        <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                        Open
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSorted.map((file) => {
@@ -542,12 +623,7 @@ const Images: React.FC = () => {
                       }}
                       aria-label={`Open details for ${file.name}`}
                     >
-                      <img
-                        src={file.url}
-                        alt={file.name}
-                        className="w-full h-48 object-cover"
-                        loading="lazy"
-                      />
+                      <img src={file.url} alt={file.name} className="w-full h-48 object-cover" loading="lazy" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -579,11 +655,7 @@ const Images: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex justify-end mt-3 gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => openAddToNotes(file)}
-                        title="Add this image to a task's notes"
-                      >
+                      <Button variant="secondary" onClick={() => openAddToNotes(file)} title="Add this image to a task's notes">
                         <StickyNote className="h-4 w-4 mr-2" />
                         Add to Notes
                       </Button>
