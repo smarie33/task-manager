@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, FilterIcon } from "lucide-react";
+import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
 import { addManyFiles } from "@/services/db";
@@ -96,7 +95,13 @@ const Images: React.FC = () => {
 
   // Combine library images + note-embedded images (deduped)
   const images = React.useMemo<FileMeta[]>(() => {
-    const all = [...libraryImages, ...noteImages].filter((f) => (f.mimeType ?? "").startsWith("image/") || /^data:image\//i.test(f.url) || /^https?:\/\//i.test(f.url) || /^blob:/i.test(f.url));
+    const all = [...libraryImages, ...noteImages].filter(
+      (f) =>
+        (f.mimeType ?? "").startsWith("image/") ||
+        /^data:image\//i.test(f.url) ||
+        /^https?:\/\//i.test(f.url) ||
+        /^blob:/i.test(f.url)
+    );
 
     const seen = new Set<string>();
     const deduped: FileMeta[] = [];
@@ -223,6 +228,17 @@ const Images: React.FC = () => {
     [allTasks]
   );
 
+  const tasksWithImages = React.useMemo(() => {
+    return Array.from(taskCounts.map.entries())
+      .map(([taskId, count]) => ({
+        taskId,
+        count,
+        name: taskNameById(taskId) ?? "Unknown task",
+      }))
+      .filter((x) => x.count > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }, [taskCounts.map, taskNameById]);
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <AppHeader />
@@ -277,46 +293,7 @@ const Images: React.FC = () => {
             </div>
           </div>
 
-          {/* Task chips with counts */}
-          <Card className="p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mr-2">
-                <FilterIcon className="h-4 w-4" />
-                <span>Tasks with images</span>
-              </div>
-
-              {taskCounts.unassigned > 0 && (
-                <Badge
-                  variant={selectedTaskFilter === UNASSIGNED ? "default" : "secondary"}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedTaskFilter(UNASSIGNED)}
-                >
-                  Unassigned ({taskCounts.unassigned})
-                </Badge>
-              )}
-
-              {Array.from(taskCounts.map.entries())
-                .map(([taskId, count]) => {
-                  const name = taskNameById(taskId) ?? "Unknown task";
-                  return (
-                    <Badge
-                      key={taskId}
-                      variant={selectedTaskFilter === taskId ? "default" : "secondary"}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedTaskFilter(taskId)}
-                      title={name}
-                    >
-                      {name} ({count})
-                    </Badge>
-                  );
-                })}
-              {taskCounts.map.size === 0 && taskCounts.unassigned === 0 && (
-                <span className="text-sm text-muted-foreground">No images yet.</span>
-              )}
-            </div>
-          </Card>
-
-          {/* Search / Sort controls */}
+          {/* Search / Filter / Sort controls */}
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <Input
               placeholder="Search by image name..."
@@ -324,6 +301,21 @@ const Images: React.FC = () => {
               onChange={(e) => setQuery(e.target.value)}
               className="w-full sm:w-64"
             />
+
+            <Select value={selectedTaskFilter ?? undefined} onValueChange={(v) => setSelectedTaskFilter(v)}>
+              <SelectTrigger className="w-full sm:w-72">
+                <SelectValue placeholder="Filter by task" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value={UNASSIGNED}>Unassigned ({taskCounts.unassigned})</SelectItem>
+                {tasksWithImages.map((t) => (
+                  <SelectItem key={t.taskId} value={t.taskId}>
+                    {t.name} ({t.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <div className="flex gap-2">
               <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
                 <SelectTrigger className="w-40">
@@ -351,7 +343,7 @@ const Images: React.FC = () => {
         {filteredSorted.length === 0 ? (
           <p className="text-sm text-gray-600 dark:text-gray-400">
             No images found
-            {query ? ` for "${query}"` : ""}
+            {query ? ` for \"${query}\"` : ""}
             {selectedTaskFilter
               ? selectedTaskFilter === UNASSIGNED
                 ? " in Unassigned"
