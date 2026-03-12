@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2 } from "lucide-react";
+import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2, StickyNote } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
-import { addManyFilesWithIds, deleteFileMeta } from "@/services/db";
+import { addManyFilesWithIds, deleteFileMeta, updateTaskRow } from "@/services/db";
 import { useSession } from "@/context/session-context";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -95,7 +95,7 @@ const extractNoteImages = (groups: TaskGroupData[]): FileMeta[] => {
 
 const Images: React.FC = () => {
   const { toast } = useToast();
-  const { libraryImages, setLibraryImages, groups } = useTaskData();
+  const { libraryImages, setLibraryImages, groups, setGroups } = useTaskData();
   const { session } = useSession();
 
   const libraryImageIdSet = React.useMemo(() => new Set(libraryImages.map((i) => i.id)), [libraryImages]);
@@ -147,6 +147,76 @@ const Images: React.FC = () => {
   const [selected, setSelected] = React.useState<FileMeta | null>(null);
   const [selectedTaskFilter, setSelectedTaskFilter] = React.useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+  const [addToNotesOpen, setAddToNotesOpen] = React.useState(false);
+  const [addToNotesImage, setAddToNotesImage] = React.useState<FileMeta | null>(null);
+  const [addToNotesTaskId, setAddToNotesTaskId] = React.useState<string | undefined>(undefined);
+
+  const appendImageToNotesHtml = React.useCallback((existingHtml: string, img: FileMeta) => {
+    if (!isSafeImageSrc(img.url)) return existingHtml;
+
+    const parser = new DOMParser();
+    const base = existingHtml && existingHtml.trim() ? existingHtml : "<p><br /></p>";
+    const doc = parser.parseFromString(base, "text/html");
+
+    const figure = doc.createElement("figure");
+    figure.className = "notes-inline-figure";
+
+    const imageEl = doc.createElement("img");
+    imageEl.className = "notes-inline-image";
+    imageEl.src = img.url;
+    imageEl.alt = (img.name || "Image").slice(0, 200);
+
+    figure.appendChild(imageEl);
+
+    const p = doc.createElement("p");
+    p.appendChild(doc.createElement("br"));
+
+    doc.body.appendChild(figure);
+    doc.body.appendChild(p);
+
+    return doc.body.innerHTML;
+  }, []);
+
+  const openAddToNotes = React.useCallback((img: FileMeta) => {
+    setAddToNotesImage(img);
+    setAddToNotesTaskId(img.sourceTaskId ?? undefined);
+    setAddToNotesOpen(true);
+  }, []);
+
+  const handleAddImageToTaskNotes = React.useCallback(async () => {
+    if (!addToNotesImage || !addToNotesTaskId) return;
+    if (!isSafeImageSrc(addToNotesImage.url)) {
+      toast({ title: "Can't insert image", description: "This image has an unsafe URL." });
+      return;
+    }
+
+    const task = groups.flatMap((g) => g.tasks).find((t) => t.id === addToNotesTaskId);
+    if (!task) {
+      toast({ title: "Task not found" });
+      return;
+    }
+
+    const nextNotes = appendImageToNotesHtml(String(task.notes ?? ""), addToNotesImage);
+
+    setGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        tasks: g.tasks.map((t) => (t.id === addToNotesTaskId ? { ...t, notes: nextNotes } : t)),
+      }))
+    );
+
+    try {
+      await updateTaskRow(addToNotesTaskId, { notes: nextNotes });
+      toast({ title: "Added to notes" });
+    } catch {
+      toast({ title: "Failed to update notes" });
+    } finally {
+      setAddToNotesOpen(false);
+      setAddToNotesImage(null);
+      setAddToNotesTaskId(undefined);
+    }
+  }, [addToNotesImage, addToNotesTaskId, appendImageToNotesHtml, groups, setGroups, toast]);
 
   // Upload form state
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -272,6 +342,12 @@ const Images: React.FC = () => {
   }, [taskCounts.map, taskNameById]);
 
   const selectedIsDeletable = !!selected && libraryImageIdSet.has(selected.id);
+
+  const allTasksForSelect = React.useMemo(() => {
+    return groups
+      .flatMap((g) => g.tasks.map((t) => ({ id: t.id, label: `${t.content || "Untitled task"} — ${g.name}` })) )
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+  }, [groups]);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -436,7 +512,15 @@ const Images: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex justify-end mt-3">
+                    <div className="flex justify-end mt-3 gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => openAddToNotes(file)}
+                        title="Add this image to a task's notes"
+                      >
+                        <StickyNote className="h-4 w-4 mr-2" />
+                        Add to Notes
+                      </Button>
                       <Button asChild variant="outline">
                         <a href={file.url} target="_blank" rel="noreferrer">
                           <ExternalLinkIcon className="h-4 w-4 mr-2" />
@@ -504,6 +588,10 @@ const Images: React.FC = () => {
               </div>
 
               <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => openAddToNotes(selected)}>
+                  <StickyNote className="h-4 w-4 mr-2" />
+                  Add to Notes
+                </Button>
                 {selectedIsDeletable ? (
                   <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -520,6 +608,51 @@ const Images: React.FC = () => {
             </div>
           )}
         </AppDrawer>
+
+        <Dialog open={addToNotesOpen} onOpenChange={setAddToNotesOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add image to task notes</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Select value={addToNotesTaskId} onValueChange={(v) => setAddToNotesTaskId(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a task" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {allTasksForSelect.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {addToNotesImage ? (
+                <div className="rounded-md border overflow-hidden bg-white dark:bg-gray-800">
+                  <img src={addToNotesImage.url} alt={addToNotesImage.name} className="w-full max-h-48 object-contain" />
+                </div>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                This will append the image to the end of the selected task's notes.
+              </p>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAddToNotesOpen(false);
+                  setAddToNotesImage(null);
+                  setAddToNotesTaskId(undefined);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddImageToTaskNotes} disabled={!addToNotesTaskId || !addToNotesImage}>
+                Add
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <DialogContent>
