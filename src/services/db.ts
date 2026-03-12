@@ -445,6 +445,27 @@ export async function addManyFiles(userId: string, metas: FileMeta[]) {
   if (error) throw new Error(error.message);
 }
 
+export async function addManyFilesWithIds(userId: string, metas: FileMeta[]) {
+  if (metas.length === 0) return;
+  const rows = metas.map((m) => ({
+    id: m.id,
+    user_id: userId,
+    name: m.name,
+    url: m.url,
+    mime_type: m.mimeType ?? null,
+    size: m.size ?? null,
+    source_task_id: m.sourceTaskId ?? null,
+    source_task_content: m.sourceTaskContent ?? null,
+  }));
+  const { error } = await supabase.from("files").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteFileMeta(id: string) {
+  const { error } = await supabase.from("files").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function addExternalLink(userId: string, link: LinkMeta): Promise<LinkMeta> {
   const { data, error } = await supabase
     .from("external_links")

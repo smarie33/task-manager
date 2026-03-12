@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon } from "lucide-react";
+import { ImageIcon, ExternalLinkIcon, UploadIcon, XIcon, Trash2 } from "lucide-react";
 import { FileMeta, TaskGroupData } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
-import { addManyFiles } from "@/services/db";
+import { addManyFilesWithIds, deleteFileMeta } from "@/services/db";
 import { useSession } from "@/context/session-context";
+import { v4 as uuidv4 } from "uuid";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
@@ -96,6 +98,8 @@ const Images: React.FC = () => {
   const { libraryImages, setLibraryImages, groups } = useTaskData();
   const { session } = useSession();
 
+  const libraryImageIdSet = React.useMemo(() => new Set(libraryImages.map((i) => i.id)), [libraryImages]);
+
   // All tasks for assignment/filtering
   const allTasks = React.useMemo(() => flattenTasks(groups), [groups]);
 
@@ -142,6 +146,7 @@ const Images: React.FC = () => {
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
   const [selected, setSelected] = React.useState<FileMeta | null>(null);
   const [selectedTaskFilter, setSelectedTaskFilter] = React.useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   // Upload form state
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -177,7 +182,7 @@ const Images: React.FC = () => {
     const dataUrls = await Promise.all(ok.map((f) => fileToDataUrl(f)));
 
     const newFiles: FileMeta[] = ok.map((f, idx) => ({
-      id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2)}`,
+      id: uuidv4(),
       name: f.name,
       url: dataUrls[idx],
       mimeType: f.type,
@@ -190,7 +195,7 @@ const Images: React.FC = () => {
     setLibraryImages((prev) => [...prev, ...newFiles]);
 
     if (session?.user) {
-      addManyFiles(session.user.id, newFiles).catch(() => {});
+      addManyFilesWithIds(session.user.id, newFiles).catch(() => {});
     }
 
     toast({
@@ -201,6 +206,21 @@ const Images: React.FC = () => {
     if (chosenTaskId) setSelectedTaskFilter(chosenTaskId);
 
     e.target.value = "";
+  };
+
+  const handleDeleteImage = async (img: FileMeta) => {
+    setLibraryImages((prev) => prev.filter((x) => x.id !== img.id));
+    if (selected?.id === img.id) setSelected(null);
+
+    if (session?.user) {
+      try {
+        await deleteFileMeta(img.id);
+      } catch {
+        // If delete fails, reload from DB on next refresh/login
+      }
+    }
+
+    toast({ title: "Image deleted" });
   };
 
   // Derived filtered/sorted images
@@ -257,6 +277,8 @@ const Images: React.FC = () => {
       .filter((x) => x.count > 0)
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }, [taskCounts.map, taskNameById]);
+
+  const selectedIsDeletable = !!selected && libraryImageIdSet.has(selected.id);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -372,64 +394,86 @@ const Images: React.FC = () => {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSorted.map((file) => (
-              <Card key={file.id} className="shadow-sm overflow-hidden">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-base truncate">{file.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div
-                    className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelected(file)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") setSelected(file);
-                    }}
-                    aria-label={`Open details for ${file.name}`}
-                  >
-                    <img
-                      src={file.url}
-                      alt={file.name}
-                      className="w-full h-48 object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Type</p>
-                      <p className="break-all">{file.mimeType || "Unknown"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Date</p>
-                      <p>{file.createdAt ? new Date(file.createdAt).toLocaleString() : "Unknown"}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">From Task</p>
-                      {file.sourceTaskId ? (
-                        <button
-                          className="truncate text-blue-600 hover:underline dark:text-blue-400"
-                          onClick={() => setSelectedTaskFilter(file.sourceTaskId!)}
-                          title="Filter by this task"
+            {filteredSorted.map((file) => {
+              const deletable = libraryImageIdSet.has(file.id);
+              return (
+                <Card key={file.id} className="shadow-sm overflow-hidden">
+                  <CardHeader className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base truncate flex-1">{file.name}</CardTitle>
+                      {deletable ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelected(file);
+                            setDeleteOpen(true);
+                          }}
+                          aria-label={`Delete ${file.name}`}
+                          title="Delete"
                         >
-                          {file.sourceTaskContent ?? "Unknown"}
-                        </button>
-                      ) : (
-                        <span className="truncate">Unassigned</span>
-                      )}
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </div>
-                  </div>
-                  <div className="flex justify-end mt-3">
-                    <Button asChild variant="outline">
-                      <a href={file.url} target="_blank" rel="noreferrer">
-                        <ExternalLinkIcon className="h-4 w-4 mr-2" />
-                        Open
-                      </a>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <div
+                      className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelected(file)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelected(file);
+                      }}
+                      aria-label={`Open details for ${file.name}`}
+                    >
+                      <img
+                        src={file.url}
+                        alt={file.name}
+                        className="w-full h-48 object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Type</p>
+                        <p className="break-all">{file.mimeType || "Unknown"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Date</p>
+                        <p>{file.createdAt ? new Date(file.createdAt).toLocaleString() : "Unknown"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">From Task</p>
+                        {file.sourceTaskId ? (
+                          <button
+                            className="truncate text-blue-600 hover:underline dark:text-blue-400"
+                            onClick={() => setSelectedTaskFilter(file.sourceTaskId!)}
+                            title="Filter by this task"
+                          >
+                            {file.sourceTaskContent ?? "Unknown"}
+                          </button>
+                        ) : (
+                          <span className="truncate">Unassigned</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-3">
+                      <Button asChild variant="outline">
+                        <a href={file.url} target="_blank" rel="noreferrer">
+                          <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                          Open
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
@@ -449,6 +493,12 @@ const Images: React.FC = () => {
                   className="w-full max-h-[60vh] object-contain bg-black/5"
                 />
               </div>
+
+              {!selectedIsDeletable ? (
+                <p className="text-xs text-muted-foreground">
+                  This image is embedded in task notes. To remove it, edit the task's notes.
+                </p>
+              ) : null}
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -479,7 +529,13 @@ const Images: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {selectedIsDeletable ? (
+                  <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                ) : null}
                 <Button asChild variant="outline">
                   <a href={selected.url} target="_blank" rel="noreferrer">
                     <ExternalLinkIcon className="h-4 w-4 mr-2" />
@@ -490,6 +546,32 @@ const Images: React.FC = () => {
             </div>
           )}
         </AppDrawer>
+
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete image?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              This will remove the image from your Images library. This action cannot be undone.
+            </p>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (!selected) return;
+                  setDeleteOpen(false);
+                  handleDeleteImage(selected);
+                }}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
