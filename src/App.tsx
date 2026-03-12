@@ -33,6 +33,7 @@ import Guides from "./pages/Guides";
 import GuidesEntry from "./pages/GuidesEntry";
 import GuidesTag from "./pages/GuidesTag";
 import GuidesCategory from "./pages/GuidesCategory";
+import GuidesAdmin from "./pages/GuidesAdmin";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
                     <Route path="/wiki/:slug" element={<ProtectedRoute><WikiEntry /></ProtectedRoute>} />
                     <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                     {/* ADD: guides routes */}
+                    <Route path="/guides/admin" element={<ProtectedRoute><GuidesAdmin /></ProtectedRoute>} />
                     <Route path="/guides/categories/:categoryName" element={<ProtectedRoute><GuidesCategory /></ProtectedRoute>} />
                     <Route path="/guides/tags/:tagName" element={<ProtectedRoute><GuidesTag /></ProtectedRoute>} />
                     <Route path="/guides/:slug" element={<ProtectedRoute><GuidesEntry /></ProtectedRoute>} />

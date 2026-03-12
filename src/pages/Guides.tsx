@@ -4,6 +4,7 @@ import React from "react";
 import AppHeader from "@/components/AppHeader";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import GuidesSidebar from "@/components/guides/GuidesSidebar";
@@ -15,6 +16,7 @@ const Guides: React.FC = () => {
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
   const isAdmin = profile?.role === "Admin";
+  const canEdit = !!profile && profile.role !== "Viewer";
 
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
 
@@ -50,7 +52,14 @@ const Guides: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Guides (A–Z)</CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle>Guides (A–Z)</CardTitle>
+                  {canEdit && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/guides/admin">Create Guide Page</Link>
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {userId ? (

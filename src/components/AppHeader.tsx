@@ -101,6 +101,18 @@ const AppHeader: React.FC = () => {
               <DropdownMenuItem asChild>
                 <Link to="/guides">Guides</Link>
               </DropdownMenuItem>
+              {canManageDrafts && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/wiki/admin">Create Wiki Page</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/guides/admin">Create Guide Page</Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
                   href="https://github.com/MosleyGraphics/bonum-maleficus"

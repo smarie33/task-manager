@@ -4,6 +4,7 @@ import React from "react";
 import AppHeader from "@/components/AppHeader";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import WikiSidebar from "@/components/wiki/WikiSidebar";
@@ -15,6 +16,7 @@ const Wiki: React.FC = () => {
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
   const isAdmin = profile?.role === "Admin";
+  const canEdit = !!profile && profile.role !== "Viewer";
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
 
   React.useEffect(() => {
@@ -57,7 +59,14 @@ const Wiki: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Wiki Entries (A–Z)</CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle>Wiki Entries (A–Z)</CardTitle>
+                  {canEdit && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/wiki/admin">Create Wiki Page</Link>
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {userId ? (
