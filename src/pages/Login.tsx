@@ -6,9 +6,10 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login: React.FC = () => {
-  const { session, loading } = useSession();
+  const { session, loading, error } = useSession();
   const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: string } };
 
@@ -26,6 +27,14 @@ const Login: React.FC = () => {
           <h1 className="text-2xl font-semibold">Sign in</h1>
           <p className="text-sm text-muted-foreground mt-1">Access your Task Manager</p>
         </div>
+
+        {error && (
+          <Alert>
+            <AlertTitle>Supabase unreachable</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="rounded-lg border bg-card p-6">
           <Auth
             supabaseClient={supabase}
