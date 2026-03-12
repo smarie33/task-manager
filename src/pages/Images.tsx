@@ -254,7 +254,11 @@ const Images: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <Select
                 value={assignTaskId ?? UNASSIGNED}
-                onValueChange={(v) => setAssignTaskId(v === UNASSIGNED ? null : v)}
+                onValueChange={(v) => {
+                  // Selecting a task here also filters the images list.
+                  setAssignTaskId(v === UNASSIGNED ? null : v);
+                  setSelectedTaskFilter(v);
+                }}
               >
                 <SelectTrigger className="w-full sm:w-56">
                   <SelectValue placeholder="Assign to task (optional)" />
@@ -302,7 +306,13 @@ const Images: React.FC = () => {
               className="w-full sm:w-64"
             />
 
-            <Select value={selectedTaskFilter ?? undefined} onValueChange={(v) => setSelectedTaskFilter(v)}>
+            <Select
+              value={selectedTaskFilter ?? undefined}
+              onValueChange={(v) => {
+                setSelectedTaskFilter(v);
+                setAssignTaskId(v === UNASSIGNED ? null : v);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-72">
                 <SelectValue placeholder="Filter by task" />
               </SelectTrigger>
