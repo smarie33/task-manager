@@ -78,22 +78,37 @@ export async function loadAll(
   if (cErr) throw new Error(cErr.message);
 
   // Load files (images + non-images)
-  let fileQuery = supabase
-    .from("files")
-    .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
-    .order("created_at", { ascending: true });
-  if (!adminReadAll) fileQuery = fileQuery.eq("user_id", userId);
-  const { data: fileRows, error: fErr } = await fileQuery;
-  if (fErr) throw new Error(`${fErr.message}${fErr.details ? `: ${fErr.details}` : ""}`);
+  // NOTE: file.url can be very large (data URLs). To keep the app responsive, we only load a recent window.
+  let fileRows: any[] | null = null;
+  try {
+    let fileQuery = supabase
+      .from("files")
+      .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!adminReadAll) fileQuery = fileQuery.eq("user_id", userId);
+    const { data, error } = await fileQuery;
+    if (error) throw error;
+    fileRows = data;
+  } catch {
+    // If files fail to load (e.g., due to large payload/timeouts), keep the rest of the app working.
+    fileRows = [];
+  }
 
   // Load file-task links (for images belonging to multiple tasks)
-  let fileTaskQuery = supabase
-    .from("file_task_links")
-    .select("file_id, task_id")
-    .order("created_at", { ascending: true });
-  if (!adminReadAll) fileTaskQuery = fileTaskQuery.eq("user_id", userId);
-  const { data: fileTaskRows, error: ftErr } = await fileTaskQuery;
-  if (ftErr) throw new Error(ftErr.message);
+  let fileTaskRows: any[] | null = null;
+  try {
+    let fileTaskQuery = supabase
+      .from("file_task_links")
+      .select("file_id, task_id")
+      .order("created_at", { ascending: true });
+    if (!adminReadAll) fileTaskQuery = fileTaskQuery.eq("user_id", userId);
+    const { data, error } = await fileTaskQuery;
+    if (error) throw error;
+    fileTaskRows = data;
+  } catch {
+    fileTaskRows = [];
+  }
 
   // Load external links
   let linkQuery = supabase
