@@ -23,6 +23,66 @@ const UNASSIGNED = "__unassigned__";
 const flattenTasks = (groups: TaskGroupData[]) =>
   groups.flatMap((g) => g.tasks.map((t) => ({ id: t.id, content: t.content })));
 
+const hashString = (s: string) => {
+  // Deterministic, lightweight hash (not cryptographic)
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+};
+
+const isSafeImageSrc = (src: string) => {
+  const s = src.trim();
+  if (!s) return false;
+  // Block javascript: and other dangerous protocols
+  if (/^javascript:/i.test(s)) return false;
+  // Allow common safe image sources
+  if (/^data:image\//i.test(s)) return true;
+  if (/^https?:\/\//i.test(s)) return true;
+  if (/^blob:/i.test(s)) return true;
+  return false;
+};
+
+const mimeFromSrc = (src: string) => {
+  const m = src.match(/^data:([^;]+);/i);
+  return m?.[1];
+};
+
+const extractNoteImages = (groups: TaskGroupData[]): FileMeta[] => {
+  const out: FileMeta[] = [];
+  const parser = new DOMParser();
+
+  for (const g of groups) {
+    for (const t of g.tasks) {
+      const html = String(t.notes ?? "").trim();
+      if (!html || !/<img\b/i.test(html)) continue;
+
+      const doc = parser.parseFromString(html, "text/html");
+      const imgs = Array.from(doc.querySelectorAll("img"));
+
+      imgs.forEach((img, idx) => {
+        const src = img.getAttribute("src") ?? "";
+        if (!isSafeImageSrc(src)) return;
+
+        const alt = (img.getAttribute("alt") ?? "").trim();
+        const name = alt || `Embedded image ${idx + 1}`;
+
+        out.push({
+          id: `noteimg-${t.id}-${idx}-${hashString(src)}`,
+          name,
+          url: src,
+          mimeType: mimeFromSrc(src),
+          sourceTaskId: t.id,
+          sourceTaskContent: t.content,
+        });
+      });
+    }
+  }
+
+  return out;
+};
+
 const Images: React.FC = () => {
   const { toast } = useToast();
   const { libraryImages, setLibraryImages, groups } = useTaskData();
@@ -31,10 +91,23 @@ const Images: React.FC = () => {
   // All tasks for assignment/filtering
   const allTasks = React.useMemo(() => flattenTasks(groups), [groups]);
 
-  // Only image files from library
+  // Images embedded inside task notes (WYSIWYG)
+  const noteImages = React.useMemo(() => extractNoteImages(groups), [groups]);
+
+  // Combine library images + note-embedded images (deduped)
   const images = React.useMemo<FileMeta[]>(() => {
-    return libraryImages.filter((f) => (f.mimeType ?? "").startsWith("image/"));
-  }, [libraryImages]);
+    const all = [...libraryImages, ...noteImages].filter((f) => (f.mimeType ?? "").startsWith("image/") || /^data:image\//i.test(f.url) || /^https?:\/\//i.test(f.url) || /^blob:/i.test(f.url));
+
+    const seen = new Set<string>();
+    const deduped: FileMeta[] = [];
+    for (const f of all) {
+      const key = `${f.sourceTaskId ?? ""}|${f.url}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(f);
+    }
+    return deduped;
+  }, [libraryImages, noteImages]);
 
   // Counts per task for chips
   const taskCounts = React.useMemo(() => {
