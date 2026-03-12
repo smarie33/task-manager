@@ -11,6 +11,7 @@ import { Task, StatusOption } from '@/types/task'; // updated import
 import { useSynchronizedScroll } from "@/components/SynchronizedScrollProvider"; // Import the hook
 import { Archive } from 'lucide-react';
 import GroupDeleteDialog from '@/components/group/GroupDeleteDialog';
+import StatusDistributionBar from '@/components/group/StatusDistributionBar';
 
 type SortKey = "owner" | "content" | "status" | "timeline";
 
@@ -338,39 +339,45 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
         </Droppable>
       )}
       {!collapsed && (
-        <CardFooter className="p-4 border-t bg-white dark:bg-gray-800">
-          <Input
-            type="text"
-            placeholder="Add a new task..."
-            value={newTaskContent}
-            onChange={(e) => setNewTaskContent(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+        <CardFooter className="p-4 border-t bg-white dark:bg-gray-800 flex flex-col gap-3">
+          <div className="flex w-full items-center">
+            <Input
+              type="text"
+              placeholder="Add a new task..."
+              value={newTaskContent}
+              onChange={(e) => setNewTaskContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (!readOnly) {
+                    if (newTaskContent.trim()) {
+                      onAddTask(group.id, newTaskContent.trim());
+                      setNewTaskContent('');
+                    }
+                  }
+                }
+              }}
+              className="flex-grow mr-2"
+              disabled={readOnly}
+            />
+            <Button
+              onClick={() => {
                 if (!readOnly) {
                   if (newTaskContent.trim()) {
                     onAddTask(group.id, newTaskContent.trim());
                     setNewTaskContent('');
                   }
                 }
-              }
-            }}
-            className="flex-grow mr-2"
-            disabled={readOnly}
-          />
-          <Button
-            onClick={() => {
-              if (!readOnly) {
-                if (newTaskContent.trim()) {
-                  onAddTask(group.id, newTaskContent.trim());
-                  setNewTaskContent('');
-                }
-              }
-            }}
-            size="icon"
-            disabled={readOnly}
-          >
-            <PlusIcon className="h-4 w-4" />
-          </Button>
+              }}
+              size="icon"
+              disabled={readOnly}
+            >
+              <PlusIcon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="w-1/2">
+            <StatusDistributionBar tasks={group.tasks} availableStatuses={availableStatuses} />
+          </div>
         </CardFooter>
       )}
     </Card>
