@@ -108,9 +108,21 @@ type TaskDataContextValue = {
   // ADDED: global images folder
   libraryImages: FileMeta[];
   setLibraryImages: React.Dispatch<React.SetStateAction<FileMeta[]>>;
+  // NEW: surface Supabase connectivity issues in the UI
+  dataError: string | null;
+  retryLoad: () => void;
 };
 
 const TaskDataContext = createContext<TaskDataContextValue | undefined>(undefined);
+
+const toNiceError = (e: unknown) => {
+  const msg = String((e as any)?.message ?? "");
+  if (/aborterror|aborted/i.test(msg)) {
+    return "Supabase request timed out while loading task data.";
+  }
+  if (msg) return msg;
+  return "Failed to load task data.";
+};
 
 export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [groups, setGroups] = useState<TaskGroupData[]>(initialGroups);
@@ -121,6 +133,10 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // ADDED: global images folder
   const [libraryImages, setLibraryImages] = useState<FileMeta[]>([]);
 
+  const [dataError, setDataError] = React.useState<string | null>(null);
+  const [loadKey, setLoadKey] = React.useState(0);
+  const retryLoad = React.useCallback(() => setLoadKey((k) => k + 1), []);
+
   // NEW: load from Supabase when session is ready
   const { session } = useSession();
   const { profile } = useUserProfile();
@@ -130,6 +146,8 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     async function run() {
       if (!session?.user) return;
       const adminReadAll = profile?.role === "Admin";
+      setDataError(null);
+
       try {
         const loaded = await loadAll(session.user.id, { adminReadAll });
         if (cancelled) return;
@@ -165,20 +183,31 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
       } catch (e) {
         const err = e as any;
+        if (cancelled) return;
+
+        const nice = toNiceError(e);
+        setDataError(nice);
+
+        // Keep current state; do not wipe sample tasks on failure.
         console.error("[task-data] load failed", {
           message: err?.message,
           name: err?.name,
           stack: err?.stack,
         });
-        if (cancelled) return;
-        // Keep current state; do not wipe sample tasks on failure.
       }
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, session?.user?.email, profile?.id, profile?.email, profile?.role]);
+  }, [
+    loadKey,
+    session?.user?.id,
+    session?.user?.email,
+    profile?.id,
+    profile?.email,
+    profile?.role,
+  ]);
 
   return (
     <TaskDataContext.Provider
@@ -194,6 +223,8 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // ADDED:
         libraryImages,
         setLibraryImages,
+        dataError,
+        retryLoad,
       }}
     >
       {children}

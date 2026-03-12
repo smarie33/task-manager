@@ -8,9 +8,10 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 const fetchWithTimeout: typeof fetch = async (input, init) => {
+
   // If a signal is already provided, respect it.
   if (init?.signal) return fetch(input, init);
 

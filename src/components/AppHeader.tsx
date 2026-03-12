@@ -13,6 +13,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/context/user-profile-context";
 import { supabase } from "@/integrations/supabase/client";
+import { useTaskData } from "@/context/task-data-context";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const initialsFromName = (name?: string) => {
   if (!name) return "ME";
@@ -24,6 +26,7 @@ const initialsFromName = (name?: string) => {
 
 const AppHeader: React.FC = () => {
   const { profile } = useUserProfile();
+  const { dataError, retryLoad } = useTaskData();
   const navigate = useNavigate();
   const canManageDrafts = !!profile && profile.role !== "Viewer";
 
@@ -36,117 +39,135 @@ const AppHeader: React.FC = () => {
     "bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white";
 
   return (
-    <div className="w-full flex items-center justify-between p-4 border-b bg-background">
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Task Manager */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={topButtonClassName}>
-              Task Manager
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem asChild>
-              <Link to="/">Tasks</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/time-tracking">Time Tracking</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/archived-groups">Archived Groups</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <div className="w-full border-b bg-background">
+      {dataError && (
+        <div className="p-3">
+          <Alert>
+            <AlertTitle>Task data didn't load</AlertTitle>
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+              <span>{dataError}</span>
+              <Button size="sm" variant="outline" onClick={retryLoad}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
-        {/* Simple top-level links */}
-        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
-          <Link to="/files">Files</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
-          <Link to="/images">Images</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
-          <Link to="/tags">Tags</Link>
-        </Button>
+      <div className="w-full flex items-center justify-between p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Task Manager */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={topButtonClassName}>
+                Task Manager
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem asChild>
+                <Link to="/">Tasks</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/time-tracking">Time Tracking</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/archived-groups">Archived Groups</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Wiki */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={topButtonClassName}>
-              Wiki
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem asChild>
-              <Link to="/wiki">Wiki</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/wiki#guides">Guides</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href="https://github.com/MosleyGraphics/bonum-maleficus"
-                target="_blank"
-                rel="noopener noreferrer"
+          {/* Simple top-level links */}
+          <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+            <Link to="/files">Files</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+            <Link to="/images">Images</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+            <Link to="/tags">Tags</Link>
+          </Button>
+
+          {/* Wiki */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={topButtonClassName}>
+                Wiki
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem asChild>
+                <Link to="/wiki">Wiki</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/wiki#guides">Guides</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href="https://github.com/MosleyGraphics/bonum-maleficus"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Github
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Admin */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={topButtonClassName}>
+                Admin
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                <Link to="/wiki/admin/drafts">Drafts</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                <Link to="/wiki/admin/importing">Importing</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Avatar className="h-9 w-9">
+            {profile?.avatar_url ? (
+              <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />
+            ) : (
+              <AvatarFallback className="text-xs">
+                {initialsFromName(profile?.name ?? undefined)}
+              </AvatarFallback>
+            )}
+          </Avatar>
+
+          {/* Profile menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={topButtonClassName}>
+                Profile
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  handleLogout();
+                }}
               >
-                Github
-              </a>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Admin */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={topButtonClassName}>
-              Admin
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem asChild disabled={!canManageDrafts}>
-              <Link to="/wiki/admin/drafts">Drafts</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild disabled={!canManageDrafts}>
-              <Link to="/wiki/admin/importing">Importing</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild disabled={!canManageDrafts}>
-              <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Avatar className="h-9 w-9">
-          {profile?.avatar_url ? (
-            <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />
-          ) : (
-            <AvatarFallback className="text-xs">{initialsFromName(profile?.name ?? undefined)}</AvatarFallback>
-          )}
-        </Avatar>
-
-        {/* Profile menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={topButtonClassName}>
-              Profile
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to="/profile">Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                handleLogout();
-              }}
-            >
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
