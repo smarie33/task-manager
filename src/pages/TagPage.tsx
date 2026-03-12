@@ -15,6 +15,9 @@ import DrawerImagesSection from "@/components/task-item/drawer/DrawerImagesSecti
 import CommentsSection from "@/components/task-item/drawer/CommentsSection";
 import { useAuth } from "@/context/auth-context";
 import NotesEditor from "@/components/task-item/drawer/NotesEditor";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type SortMode = "content" | "group" | "status";
 
 const TagPage: React.FC = () => {
   const { tagName = "" } = useParams();
@@ -25,6 +28,7 @@ const TagPage: React.FC = () => {
   const [selected, setSelected] = useState<{ task: Task; groupId: string; groupName: string; groupColor: string } | null>(null);
   const [editedContent, setEditedContent] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("content");
 
   // Compute all tags for DrawerEditSection tags picker parity
   const allTags = React.useMemo(() => {
@@ -43,6 +47,12 @@ const TagPage: React.FC = () => {
     );
   };
 
+  const statusRank = React.useMemo(() => {
+    const map = new Map<string, number>();
+    availableStatuses.forEach((s, idx) => map.set(s.name, idx));
+    return map;
+  }, [availableStatuses]);
+
   const statusColor = React.useMemo(() => {
     if (!selected) return "#6b7280";
     const s = availableStatuses.find((x) => x.name === selected.task.status);
@@ -50,10 +60,47 @@ const TagPage: React.FC = () => {
   }, [selected, availableStatuses]);
 
   const decodedTag = decodeURIComponent(tagName);
-  const tasksWithTag = groups
-    .flatMap((g) => g.tasks.map((t) => ({ task: t, groupId: g.id, groupName: g.name, groupColor: g.color })))
-    .filter(({ task }) => task.tags.includes(decodedTag))
-    .sort((a, b) => a.task.content.localeCompare(b.task.content, undefined, { sensitivity: "base" }));
+
+  const tasksWithTag = React.useMemo(() => {
+    const list = groups
+      .flatMap((g) =>
+        g.tasks.map((t) => ({
+          task: t,
+          groupId: g.id,
+          groupName: g.name,
+          groupColor: g.color,
+          groupPosition: typeof (g as any).position === "number" ? ((g as any).position as number) : undefined,
+        }))
+      )
+      .filter(({ task }) => task.tags.includes(decodedTag));
+
+    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+    list.sort((a, b) => {
+      if (sortMode === "group") {
+        const ap = typeof a.groupPosition === "number" ? a.groupPosition : Number.MAX_SAFE_INTEGER;
+        const bp = typeof b.groupPosition === "number" ? b.groupPosition : Number.MAX_SAFE_INTEGER;
+        if (ap !== bp) return ap - bp;
+        const gn = norm(a.groupName).localeCompare(norm(b.groupName));
+        if (gn !== 0) return gn;
+        return norm(a.task.content).localeCompare(norm(b.task.content));
+      }
+
+      if (sortMode === "status") {
+        const ar = statusRank.has(a.task.status) ? (statusRank.get(a.task.status) as number) : Number.MAX_SAFE_INTEGER;
+        const br = statusRank.has(b.task.status) ? (statusRank.get(b.task.status) as number) : Number.MAX_SAFE_INTEGER;
+        if (ar !== br) return ar - br;
+        const sn = norm(a.task.status).localeCompare(norm(b.task.status));
+        if (sn !== 0) return sn;
+        return norm(a.task.content).localeCompare(norm(b.task.content));
+      }
+
+      // content
+      return norm(a.task.content).localeCompare(norm(b.task.content));
+    });
+
+    return list;
+  }, [decodedTag, groups, sortMode, statusRank]);
 
   React.useEffect(() => {
     if (selected) {
@@ -82,8 +129,22 @@ const TagPage: React.FC = () => {
     <div className="p-6 min-h-screen bg-black">
       <AppHeader />
       <div className="max-w-5xl mx-auto pt-4">
-        <div className="flex items-center justify-center mb-6">
-          <h1 className="text-2xl font-bold text-white text-center"># {decodedTag}</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <h1 className="text-2xl font-bold text-white"># {decodedTag}</h1>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-300">Sort</span>
+            <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+              <SelectTrigger className="w-44 bg-white">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="content">Task</SelectItem>
+                <SelectItem value="group">Group</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {tasksWithTag.length === 0 ? (
@@ -259,7 +320,6 @@ const TagPage: React.FC = () => {
                 onUpdateTaskField={(taskId, field, value) => {
                   updateSelectedTaskField(field as keyof Task, value);
                 }}
-                readOnly={readOnly}
               />
             </div>
           )}
