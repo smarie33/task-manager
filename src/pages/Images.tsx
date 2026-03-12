@@ -531,11 +531,11 @@ const Images: React.FC = () => {
             You can upload images using the button above.
           </p>
         ) : viewMode === "masonry" ? (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4">
+          <div className="columns-2 sm:columns-4 lg:columns-6 gap-3">
             {filteredSorted.map((file) => {
               const deletable = libraryImageIdSet.has(file.id);
               return (
-                <div key={file.id} className="mb-4 break-inside-avoid">
+                <div key={file.id} className="mb-3 break-inside-avoid">
                   <div
                     className="relative rounded-md border overflow-hidden bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
                     role="button"
@@ -546,7 +546,7 @@ const Images: React.FC = () => {
                     }}
                     aria-label={`Open details for ${file.name}`}
                   >
-                    {/* Full image thumbnail (uncropped), shown in a 3-column masonry layout */}
+                    {/* Full image thumbnail (uncropped), shown in a masonry layout */}
                     <img src={file.url} alt={file.name} className="w-full h-auto" loading="lazy" />
 
                     {deletable ? (
@@ -569,7 +569,11 @@ const Images: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end mt-2 gap-2">
-                    <Button variant="secondary" onClick={() => openAddToNotes(file)} title="Add this image to a task's notes">
+                    <Button
+                      variant="secondary"
+                      onClick={() => openAddToNotes(file)}
+                      title="Add this image to a task's notes"
+                    >
                       <StickyNote className="h-4 w-4 mr-2" />
                       Add to Notes
                     </Button>
