@@ -164,7 +164,12 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           links: loaded.links.length,
         });
       } catch (e) {
-        console.error("[task-data] load failed", e);
+        const err = e as any;
+        console.error("[task-data] load failed", {
+          message: err?.message,
+          name: err?.name,
+          stack: err?.stack,
+        });
         if (cancelled) return;
         // Keep current state; do not wipe sample tasks on failure.
       }

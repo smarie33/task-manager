@@ -80,11 +80,11 @@ export async function loadAll(
   // Load files (images + non-images)
   let fileQuery = supabase
     .from("files")
-    .select("*")
+    .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
     .order("created_at", { ascending: true });
   if (!adminReadAll) fileQuery = fileQuery.eq("user_id", userId);
   const { data: fileRows, error: fErr } = await fileQuery;
-  if (fErr) throw new Error(fErr.message);
+  if (fErr) throw new Error(`${fErr.message}${fErr.details ? `: ${fErr.details}` : ""}`);
 
   // Load file-task links (for images belonging to multiple tasks)
   let fileTaskQuery = supabase
