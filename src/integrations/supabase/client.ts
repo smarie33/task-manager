@@ -8,15 +8,21 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-const DEFAULT_TIMEOUT_MS = 20_000;
+const REST_TIMEOUT_MS = 20_000;
+const AUTH_TIMEOUT_MS = 12_000;
 
 const fetchWithTimeout: typeof fetch = async (input, init) => {
-
   // If a signal is already provided, respect it.
   if (init?.signal) return fetch(input, init);
 
+  const url = typeof input === "string" ? input : (input as Request).url;
+  const timeoutMs = url.includes("/auth/v1") ? AUTH_TIMEOUT_MS : REST_TIMEOUT_MS;
+
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => {
+    // Give a helpful error message instead of "signal is aborted without reason".
+    controller.abort(new DOMException("Supabase request timed out", "TimeoutError"));
+  }, timeoutMs);
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
