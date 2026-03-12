@@ -114,8 +114,18 @@ const AppHeader: React.FC = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
 
-        {/* Profile */}
+      <div className="flex items-center gap-2">
+        <Avatar className="h-9 w-9">
+          {profile?.avatar_url ? (
+            <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />
+          ) : (
+            <AvatarFallback className="text-xs">{initialsFromName(profile?.name ?? undefined)}</AvatarFallback>
+          )}
+        </Avatar>
+
+        {/* Profile menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className={topButtonClassName}>
@@ -137,16 +147,6 @@ const AppHeader: React.FC = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Avatar className="h-9 w-9">
-          {profile?.avatar_url ? (
-            <AvatarImage src={profile.avatar_url} alt={profile?.name || "Profile photo"} />
-          ) : (
-            <AvatarFallback className="text-xs">{initialsFromName(profile?.name ?? undefined)}</AvatarFallback>
-          )}
-        </Avatar>
       </div>
     </div>
   );
