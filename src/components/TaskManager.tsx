@@ -5,7 +5,7 @@ import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import TaskGroup from "./TaskGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { PlusIcon, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useTaskData } from "@/context/task-data-context";
 import { Task } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
@@ -45,6 +45,7 @@ const TaskManager: React.FC = () => {
   // NEW: global filters
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [taskSearch, setTaskSearch] = useState<string>("");
 
   // NEW: sentinel values (Radix Select items cannot use empty strings)
   const ALL_USERS = "__all_users__";
@@ -178,7 +179,24 @@ const TaskManager: React.FC = () => {
   ).sort();
 
   // NEW: filter active flag
-  const filterActive = (selectedOwner && selectedOwner.length > 0) || (selectedStatus && selectedStatus.length > 0);
+  const filterActive =
+    (selectedOwner && selectedOwner.length > 0) ||
+    (selectedStatus && selectedStatus.length > 0) ||
+    (taskSearch && taskSearch.trim().length > 0);
+
+  const taskSearchNorm = taskSearch.trim().toLowerCase();
+  const searchActive = taskSearchNorm.length > 0;
+
+  const hasAnyVisibleTasks = React.useMemo(() => {
+    return orderedGroups.some((g) =>
+      g.tasks.some((t) => {
+        const ownerOk = !selectedOwner || t.owner === selectedOwner;
+        const statusOk = !selectedStatus || t.status === selectedStatus;
+        const searchOk = !taskSearchNorm || String(t.content ?? "").toLowerCase().includes(taskSearchNorm);
+        return ownerOk && statusOk && searchOk;
+      })
+    );
+  }, [orderedGroups, selectedOwner, selectedStatus, taskSearchNorm]);
 
   // NEW: delete a tag globally (remove from all tasks in all groups)
   const handleDeleteGlobalTag = (tagToDelete: string) => {
@@ -556,7 +574,30 @@ const TaskManager: React.FC = () => {
             <ChevronUp className="h-4 w-4 mr-2" /> Expand All
           </Button>
 
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-center gap-2 ml-2 flex-wrap">
+            <div className="relative">
+              <Search className="h-4 w-4 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
+              <Input
+                value={taskSearch}
+                onChange={(e) => setTaskSearch(e.target.value)}
+                placeholder="Search tasks..."
+                className="w-[220px] pl-8 pr-8 bg-white dark:bg-gray-800"
+              />
+              {taskSearch.trim().length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 absolute right-1 top-1/2 -translate-y-1/2"
+                  onClick={() => setTaskSearch("")}
+                  aria-label="Clear search"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+
             <Select
               value={selectedOwner === "" ? ALL_USERS : selectedOwner}
               onValueChange={(val) => setSelectedOwner(val === ALL_USERS ? "" : val)}
@@ -596,12 +637,20 @@ const TaskManager: React.FC = () => {
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col items-center gap-6 pb-4">
+          {searchActive && !hasAnyVisibleTasks ? (
+            <p className="text-sm text-muted-foreground">No tasks match "{taskSearch.trim()}".</p>
+          ) : null}
+
           {orderedGroups.map((group) => {
             const visibleTasks = group.tasks.filter((t) => {
               const ownerOk = !selectedOwner || t.owner === selectedOwner;
               const statusOk = !selectedStatus || t.status === selectedStatus;
-              return ownerOk && statusOk;
+              const searchOk = !taskSearchNorm || String(t.content ?? "").toLowerCase().includes(taskSearchNorm);
+              return ownerOk && statusOk && searchOk;
             });
+
+            if (searchActive && visibleTasks.length === 0) return null;
+
             const otherGroups = groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, name: g.name }));
 
             const isDragging = draggingGroupId === group.id;
