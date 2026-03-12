@@ -34,6 +34,7 @@ import GuidesEntry from "./pages/GuidesEntry";
 import GuidesTag from "./pages/GuidesTag";
 import GuidesCategory from "./pages/GuidesCategory";
 import GuidesAdmin from "./pages/GuidesAdmin";
+import GuidesEdit from "./pages/GuidesEdit";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
                     <Route path="/guides/admin" element={<ProtectedRoute><GuidesAdmin /></ProtectedRoute>} />
                     <Route path="/guides/categories/:categoryName" element={<ProtectedRoute><GuidesCategory /></ProtectedRoute>} />
                     <Route path="/guides/tags/:tagName" element={<ProtectedRoute><GuidesTag /></ProtectedRoute>} />
+                    <Route path="/guides/:slug/edit" element={<ProtectedRoute><GuidesEdit /></ProtectedRoute>} />
                     <Route path="/guides/:slug" element={<ProtectedRoute><GuidesEntry /></ProtectedRoute>} />
                     <Route path="/guides" element={<ProtectedRoute><Guides /></ProtectedRoute>} />
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

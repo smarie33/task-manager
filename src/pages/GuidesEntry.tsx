@@ -11,6 +11,8 @@ import "highlight.js/styles/monokai.css";
 import csharp from "highlight.js/lib/languages/csharp";
 import GuidesSidebar from "@/components/guides/GuidesSidebar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type Entry = {
   id: string;
@@ -36,6 +38,7 @@ const GuidesEntry: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const { profile } = useUserProfile();
 
   const formatDate = (d?: string | null) => {
     if (!d) return null;
@@ -104,7 +107,14 @@ const GuidesEntry: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{entry?.title || "Guide"}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{entry?.title || "Guide"}</CardTitle>
+                  {profile?.role && profile.role !== "Viewer" && entry?.slug && (
+                    <Button asChild variant="outline" size="sm">
+                      <Link to={`/guides/${entry.slug}/edit`}>Edit</Link>
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {(entry?.entry_date || entry?.author) && (
