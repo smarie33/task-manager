@@ -12,29 +12,48 @@ const REST_TIMEOUT_MS = 20_000;
 // Auth can involve DB work (rate limits, password hashing, etc.). Allow a longer window than REST reads.
 const AUTH_TIMEOUT_MS = 45_000;
 
-const fetchWithTimeout: typeof fetch = async (input, init) => {
-  // If a signal is already provided, respect it.
-  if (init?.signal) return fetch(input, init);
+const createTimeoutSignal = (ms: number, label: string) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort(new DOMException(`${label} timed out`, "TimeoutError"));
+  }, ms);
+  return {
+    signal: controller.signal,
+    cancel: () => window.clearTimeout(timeoutId),
+  };
+};
 
+const fetchWithTimeout: typeof fetch = async (input, init) => {
   const url = typeof input === "string" ? input : (input as Request).url;
   const timeoutMs = url.includes("/auth/v1") ? AUTH_TIMEOUT_MS : REST_TIMEOUT_MS;
 
+  const timeout = createTimeoutSignal(timeoutMs, "Supabase request");
+
+  // Always enforce our timeout, even if the caller provided a signal.
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => {
-    // Give a helpful error message instead of "signal is aborted without reason".
-    controller.abort(new DOMException("Supabase request timed out", "TimeoutError"));
-  }, timeoutMs);
+  const onAbort = () => {
+    controller.abort();
+  };
+
+  if (init?.signal) {
+    if (init.signal.aborted) controller.abort();
+    else init.signal.addEventListener("abort", onAbort, { once: true });
+  }
+  if (timeout.signal.aborted) controller.abort();
+  else timeout.signal.addEventListener("abort", onAbort, { once: true });
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (e) {
     const msg = String((e as any)?.message ?? "");
-    if (controller.signal.aborted) {
+    if (timeout.signal.aborted) {
       console.warn("[supabase] request timed out", { url, timeoutMs, message: msg });
     }
     throw e;
   } finally {
-    window.clearTimeout(timeoutId);
+    timeout.cancel();
+    if (init?.signal) init.signal.removeEventListener("abort", onAbort);
+    timeout.signal.removeEventListener("abort", onAbort);
   }
 };
 
