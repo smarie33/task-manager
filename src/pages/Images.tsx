@@ -261,9 +261,9 @@ const Images: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
                   <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {allTasks.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.content}
+                  {tasksWithImages.map((t) => (
+                    <SelectItem key={t.taskId} value={t.taskId}>
+                      {t.name} ({t.count})
                     </SelectItem>
                   ))}
                 </SelectContent>
