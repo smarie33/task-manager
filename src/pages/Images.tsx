@@ -18,6 +18,7 @@ type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
 
 const UNASSIGNED = "__unassigned__";
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 const flattenTasks = (groups: TaskGroupData[]) =>
   groups.flatMap((g) => g.tasks.map((t) => ({ id: t.id, content: t.content })));
@@ -47,6 +48,14 @@ const mimeFromSrc = (src: string) => {
   const m = src.match(/^data:([^;]+);/i);
   return m?.[1];
 };
+
+const fileToDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  });
 
 const extractNoteImages = (groups: TaskGroupData[]): FileMeta[] => {
   const out: FileMeta[] = [];
@@ -140,7 +149,7 @@ const Images: React.FC = () => {
 
   const handlePickFiles = () => fileInputRef.current?.click();
 
-  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list || list.length === 0) return;
 
@@ -149,37 +158,47 @@ const Images: React.FC = () => {
       ? allTasks.find((t) => t.id === chosenTaskId)?.content
       : undefined;
 
-    const newFiles: FileMeta[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const f = list.item(i);
-      if (!f) continue;
-      if (!f.type.startsWith("image/")) continue;
-      const url = URL.createObjectURL(f);
-      newFiles.push({
-        id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2)}`,
-        name: f.name,
-        url,
-        mimeType: f.type,
-        size: f.size,
-        createdAt: new Date(f.lastModified || Date.now()).toISOString(),
-        sourceTaskId: chosenTaskId,
-        sourceTaskContent: chosenTaskContent,
+    const files = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    const tooLarge = files.filter((f) => f.size > MAX_IMAGE_BYTES);
+    const ok = files.filter((f) => f.size <= MAX_IMAGE_BYTES);
+
+    if (tooLarge.length > 0) {
+      toast({
+        title: "Some images were skipped",
+        description: `Please choose images smaller than 2MB. Skipped ${tooLarge.length}.`,
       });
     }
 
-    if (newFiles.length > 0) {
-      setLibraryImages((prev) => [...prev, ...newFiles]);
-      // Persist
-      if (session?.user) {
-        addManyFiles(session.user.id, newFiles).catch(() => {});
-      }
-      toast({
-        title: "Upload complete",
-        description: `${newFiles.length} image${newFiles.length > 1 ? "s" : ""} added${chosenTaskId ? " to task" : ""}.`,
-      });
-      // If we assigned to a task, automatically filter to that task for convenience
-      if (chosenTaskId) setSelectedTaskFilter(chosenTaskId);
+    if (ok.length === 0) {
+      e.target.value = "";
+      return;
     }
+
+    const dataUrls = await Promise.all(ok.map((f) => fileToDataUrl(f)));
+
+    const newFiles: FileMeta[] = ok.map((f, idx) => ({
+      id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2)}`,
+      name: f.name,
+      url: dataUrls[idx],
+      mimeType: f.type,
+      size: f.size,
+      createdAt: new Date(f.lastModified || Date.now()).toISOString(),
+      sourceTaskId: chosenTaskId,
+      sourceTaskContent: chosenTaskContent,
+    }));
+
+    setLibraryImages((prev) => [...prev, ...newFiles]);
+
+    if (session?.user) {
+      addManyFiles(session.user.id, newFiles).catch(() => {});
+    }
+
+    toast({
+      title: "Upload complete",
+      description: `${newFiles.length} image${newFiles.length > 1 ? "s" : ""} added${chosenTaskId ? " to task" : ""}.`,
+    });
+
+    if (chosenTaskId) setSelectedTaskFilter(chosenTaskId);
 
     e.target.value = "";
   };
@@ -254,11 +273,7 @@ const Images: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <Select
                 value={assignTaskId ?? UNASSIGNED}
-                onValueChange={(v) => {
-                  // Selecting a task here also filters the images list.
-                  setAssignTaskId(v === UNASSIGNED ? null : v);
-                  setSelectedTaskFilter(v);
-                }}
+                onValueChange={(v) => setAssignTaskId(v === UNASSIGNED ? null : v)}
               >
                 <SelectTrigger className="w-full sm:w-56">
                   <SelectValue placeholder="Assign to task (optional)" />
@@ -306,13 +321,7 @@ const Images: React.FC = () => {
               className="w-full sm:w-64"
             />
 
-            <Select
-              value={selectedTaskFilter ?? undefined}
-              onValueChange={(v) => {
-                setSelectedTaskFilter(v);
-                setAssignTaskId(v === UNASSIGNED ? null : v);
-              }}
-            >
+            <Select value={selectedTaskFilter ?? undefined} onValueChange={(v) => setSelectedTaskFilter(v)}>
               <SelectTrigger className="w-full sm:w-72">
                 <SelectValue placeholder="Filter by task" />
               </SelectTrigger>
