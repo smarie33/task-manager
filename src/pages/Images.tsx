@@ -25,12 +25,14 @@ import { addManyFilesWithIds, deleteFileMeta, addFileTaskLink, updateTaskRow } f
 import { useSession } from "@/context/session-context";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
 
 const UNASSIGNED = "__unassigned__";
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const IMAGE_PAGE_SIZE = 120;
 
 const flattenTasks = (groups: TaskGroupData[]) =>
   groups.flatMap((g) => g.tasks.map((t) => ({ id: t.id, content: t.content })));
@@ -108,6 +110,78 @@ const Images: React.FC = () => {
   const { toast } = useToast();
   const { libraryImages, setLibraryImages, groups, setGroups } = useTaskData();
   const { session } = useSession();
+
+  // Load older library images from Supabase (TaskDataProvider only loads a limited window).
+  const [libraryOffset, setLibraryOffset] = React.useState(0);
+  const [libraryHasMore, setLibraryHasMore] = React.useState(true);
+  const [libraryLoadingMore, setLibraryLoadingMore] = React.useState(false);
+  const didInitLibraryFetch = React.useRef(false);
+
+  const fetchMoreLibraryImages = React.useCallback(async () => {
+    if (!session?.user) return;
+    if (libraryLoadingMore || !libraryHasMore) return;
+
+    setLibraryLoadingMore(true);
+    try {
+      const from = libraryOffset;
+      const to = libraryOffset + IMAGE_PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from("files")
+        .select(
+          "id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content"
+        )
+        .eq("user_id", session.user.id)
+        .or("mime_type.ilike.image/%,url.ilike.data:image/%")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) throw new Error(error.message);
+
+      const rows = (data ?? []) as any[];
+      const metas: FileMeta[] = rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        url: r.url,
+        mimeType: r.mime_type ?? undefined,
+        size: typeof r.size === "number" ? r.size : r.size ? Number(r.size) : undefined,
+        createdAt: r.created_at ?? undefined,
+        sourceTaskId: r.source_task_id ?? undefined,
+        sourceTaskContent: r.source_task_content ?? undefined,
+        userId: r.user_id ?? undefined,
+      }));
+
+      setLibraryImages((prev) => {
+        const seen = new Set(prev.map((x) => x.id));
+        const next = [...prev];
+        for (const m of metas) {
+          if (!seen.has(m.id)) next.push(m);
+        }
+        return next;
+      });
+
+      setLibraryOffset(from + rows.length);
+      setLibraryHasMore(rows.length === IMAGE_PAGE_SIZE);
+    } catch (e) {
+      toast({
+        title: "Couldn't load more images",
+        description: String((e as any)?.message ?? ""),
+      });
+    } finally {
+      setLibraryLoadingMore(false);
+    }
+  }, [libraryHasMore, libraryLoadingMore, libraryOffset, session?.user, setLibraryImages, toast]);
+
+  React.useEffect(() => {
+    if (!session?.user) return;
+    if (didInitLibraryFetch.current) return;
+    didInitLibraryFetch.current = true;
+
+    // Start fetching from the beginning to ensure we show everything, not just the initial limited window.
+    setLibraryOffset(0);
+    setLibraryHasMore(true);
+    fetchMoreLibraryImages();
+  }, [fetchMoreLibraryImages, session?.user]);
 
   const libraryImageIdSet = React.useMemo(() => new Set(libraryImages.map((i) => i.id)), [libraryImages]);
 
@@ -531,77 +605,30 @@ const Images: React.FC = () => {
             You can upload images using the button above.
           </p>
         ) : viewMode === "masonry" ? (
-          <div className="columns-2 sm:columns-4 lg:columns-6 gap-3">
-            {filteredSorted.map((file) => {
-              const deletable = libraryImageIdSet.has(file.id);
-              return (
-                <div key={file.id} className="mb-3 break-inside-avoid">
-                  <div
-                    className="relative rounded-md border overflow-hidden bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelected(file)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") setSelected(file);
-                    }}
-                    aria-label={`Open details for ${file.name}`}
-                  >
-                    {/* Full image thumbnail (uncropped), shown in a masonry layout */}
-                    <img src={file.url} alt={file.name} className="w-full h-auto" loading="lazy" />
-
-                    {deletable ? (
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 bg-white/90 hover:bg-white dark:bg-gray-900/80"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSelected(file);
-                          setDeleteOpen(true);
-                        }}
-                        aria-label={`Delete ${file.name}`}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  <div className="flex justify-end mt-2 gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => openAddToNotes(file)}
-                      title="Add this image to a task's notes"
+          <>
+            <div className="columns-2 sm:columns-4 lg:columns-6 gap-3">
+              {filteredSorted.map((file) => {
+                const deletable = libraryImageIdSet.has(file.id);
+                return (
+                  <div key={file.id} className="mb-3 break-inside-avoid">
+                    <div
+                      className="relative rounded-md border overflow-hidden bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelected(file)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelected(file);
+                      }}
+                      aria-label={`Open details for ${file.name}`}
                     >
-                      <StickyNote className="h-4 w-4 mr-2" />
-                      Add to Notes
-                    </Button>
-                    <Button asChild variant="outline">
-                      <a href={file.url} target="_blank" rel="noreferrer">
-                        <ExternalLinkIcon className="h-4 w-4 mr-2" />
-                        Open
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSorted.map((file) => {
-              const deletable = libraryImageIdSet.has(file.id);
-              return (
-                <Card key={file.id} className="shadow-sm overflow-hidden">
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base truncate flex-1">{file.name}</CardTitle>
+                      {/* Full image thumbnail (uncropped), shown in a masonry layout */}
+                      <img src={file.url} alt={file.name} className="w-full h-auto" loading="lazy" />
+
                       {deletable ? (
                         <Button
-                          variant="ghost"
+                          variant="secondary"
                           size="icon"
-                          className="h-8 w-8"
+                          className="absolute top-2 right-2 h-8 w-8 bg-white/90 hover:bg-white dark:bg-gray-900/80"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -615,51 +642,13 @@ const Images: React.FC = () => {
                         </Button>
                       ) : null}
                     </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4">
-                    <div
-                      className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelected(file)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") setSelected(file);
-                      }}
-                      aria-label={`Open details for ${file.name}`}
-                    >
-                      <img src={file.url} alt={file.name} className="w-full h-48 object-cover" loading="lazy" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Type</p>
-                        <p className="break-all">{file.mimeType || "Unknown"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Date</p>
-                        <p>{file.createdAt ? new Date(file.createdAt).toLocaleString() : "Unknown"}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-muted-foreground">From Task</p>
-                        {getImageTasks(file).length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {getImageTasks(file).map((t) => (
-                              <button
-                                key={t.id}
-                                className="truncate rounded border px-2 py-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
-                                onClick={() => setSelectedTaskFilter(t.id)}
-                                title="Filter by this task"
-                              >
-                                {t.content}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="truncate">Unassigned</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-end mt-3 gap-2">
-                      <Button variant="secondary" onClick={() => openAddToNotes(file)} title="Add this image to a task's notes">
+
+                    <div className="flex justify-end mt-2 gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => openAddToNotes(file)}
+                        title="Add this image to a task's notes"
+                      >
                         <StickyNote className="h-4 w-4 mr-2" />
                         Add to Notes
                       </Button>
@@ -670,11 +659,97 @@ const Images: React.FC = () => {
                         </a>
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {session?.user && libraryHasMore && (
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" onClick={fetchMoreLibraryImages} disabled={libraryLoadingMore}>
+                  {libraryLoadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSorted.map((file) => {
+                const deletable = libraryImageIdSet.has(file.id);
+                return (
+                  <Card key={file.id} className="shadow-sm overflow-hidden">
+                    <CardHeader className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base truncate flex-1">{file.name}</CardTitle>
+                        {deletable ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelected(file);
+                              setDeleteOpen(true);
+                            }}
+                            aria-label={`Delete ${file.name}`}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      <div
+                        className="rounded-md border overflow-hidden mb-3 bg-white dark:bg-gray-800 cursor-zoom-in hover:ring-2 hover:ring-primary/50"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelected(file)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") setSelected(file);
+                        }}
+                        aria-label={`Open details for ${file.name}`}
+                      >
+                        <img
+                          src={file.url}
+                          alt={file.name}
+                          className="w-full h-auto"
+                          loading="lazy"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          onClick={() => openAddToNotes(file)}
+                          title="Add this image to a task's notes"
+                        >
+                          <StickyNote className="h-4 w-4 mr-2" />
+                          Add to Notes
+                        </Button>
+                        <Button asChild variant="outline">
+                          <a href={file.url} target="_blank" rel="noreferrer">
+                            <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                            Open
+                          </a>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {session?.user && libraryHasMore && (
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" onClick={fetchMoreLibraryImages} disabled={libraryLoadingMore}>
+                  {libraryLoadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         <AppDrawer
