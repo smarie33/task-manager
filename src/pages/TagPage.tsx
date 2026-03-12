@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useTaskData } from "@/context/task-data-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -53,11 +53,18 @@ const TagPage: React.FC = () => {
     return map;
   }, [availableStatuses]);
 
+  const getStatusColor = React.useCallback(
+    (status: string) => {
+      const s = availableStatuses.find((x) => x.name === status);
+      return s?.color ?? "#6b7280";
+    },
+    [availableStatuses]
+  );
+
   const statusColor = React.useMemo(() => {
     if (!selected) return "#6b7280";
-    const s = availableStatuses.find((x) => x.name === selected.task.status);
-    return s?.color ?? "#6b7280";
-  }, [selected, availableStatuses]);
+    return getStatusColor(selected.task.status);
+  }, [getStatusColor, selected]);
 
   const decodedTag = decodeURIComponent(tagName);
 
@@ -151,45 +158,61 @@ const TagPage: React.FC = () => {
           <p className="text-sm text-gray-300">No items with this tag.</p>
         ) : (
           <div className="space-y-4">
-            {tasksWithTag.map(({ task, groupId, groupName, groupColor }) => (
-              <Card
-                key={task.id}
-                className="shadow-sm cursor-pointer hover:bg-gray-100"
-                onClick={() => setSelected({ task, groupId, groupName, groupColor })}
-                role="button"
-                aria-label={`Open details for ${task.content}`}
-              >
-                <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">{task.content}</CardTitle>
-                  <span
-                    className="text-xs font-medium rounded-md px-2 py-1 border"
-                    style={{
-                      color: groupColor,
-                      backgroundColor: lightenHexColor(groupColor, 0.9),
-                      borderColor: groupColor,
-                    }}
-                  >
-                    {groupName}
-                  </span>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Owner</p>
-                      <p>{task.owner || "N/A"}</p>
+            {tasksWithTag.map(({ task, groupId, groupName, groupColor }) => {
+              const statusC = getStatusColor(task.status);
+              return (
+                <Card
+                  key={task.id}
+                  className="shadow-sm cursor-pointer hover:bg-gray-100 relative"
+                  onClick={() => setSelected({ task, groupId, groupName, groupColor })}
+                  role="button"
+                  aria-label={`Open details for ${task.content}`}
+                >
+                  <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-base">{task.content}</CardTitle>
+                    <span
+                      className="text-xs font-medium rounded-md px-2 py-1 border"
+                      style={{
+                        color: groupColor,
+                        backgroundColor: lightenHexColor(groupColor, 0.9),
+                        borderColor: groupColor,
+                      }}
+                    >
+                      {groupName}
+                    </span>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-8">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Owner</p>
+                        <p>{task.owner || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Timeline</p>
+                        <p>{task.timeline || "N/A"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Tags</p>
+                        <p>{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Timeline</p>
-                      <p>{task.timeline || "N/A"}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">Tags</p>
-                      <p>{task.tags.length ? task.tags.join(", ") : "N/A"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    <span
+                      className="absolute bottom-3 right-4 text-xs font-medium rounded-md px-2 py-1 border"
+                      style={{
+                        color: statusC,
+                        backgroundColor: lightenHexColor(statusC, 0.9),
+                        borderColor: statusC,
+                      }}
+                      aria-label={`Status ${task.status || "N/A"}`}
+                      title="Status"
+                    >
+                      {task.status || "N/A"}
+                    </span>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
