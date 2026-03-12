@@ -9,7 +9,8 @@ const SUPABASE_PUBLISHABLE_KEY =
 // import { supabase } from "@/integrations/supabase/client";
 
 const REST_TIMEOUT_MS = 20_000;
-const AUTH_TIMEOUT_MS = 12_000;
+// Auth can involve DB work (rate limits, password hashing, etc.). Allow a longer window than REST reads.
+const AUTH_TIMEOUT_MS = 45_000;
 
 const fetchWithTimeout: typeof fetch = async (input, init) => {
   // If a signal is already provided, respect it.
@@ -26,6 +27,12 @@ const fetchWithTimeout: typeof fetch = async (input, init) => {
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
+  } catch (e) {
+    const msg = String((e as any)?.message ?? "");
+    if (controller.signal.aborted) {
+      console.warn("[supabase] request timed out", { url, timeoutMs, message: msg });
+    }
+    throw e;
   } finally {
     window.clearTimeout(timeoutId);
   }
