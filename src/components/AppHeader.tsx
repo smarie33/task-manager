@@ -6,9 +6,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -35,93 +32,101 @@ const AppHeader: React.FC = () => {
     navigate("/login");
   };
 
+  const topButtonClassName =
+    "bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white";
+
   return (
     <div className="w-full flex items-center justify-between p-4 border-b bg-background">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Task Manager */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
-            >
-              Menu
+            <Button variant="outline" size="sm" className={topButtonClassName}>
+              Task Manager
             </Button>
           </DropdownMenuTrigger>
-
           <DropdownMenuContent align="start">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Task Manager</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem asChild>
-                  <Link to="/">Tasks</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/time-tracking">Time Tracking</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/archived-groups">Archived Groups</Link>
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-
-            <DropdownMenuSeparator />
-
             <DropdownMenuItem asChild>
-              <Link to="/files">Files</Link>
+              <Link to="/">Tasks</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/images">Images</Link>
+              <Link to="/time-tracking">Time Tracking</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/tags">Tags</Link>
+              <Link to="/archived-groups">Archived Groups</Link>
             </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-            <DropdownMenuSeparator />
+        {/* Simple top-level links */}
+        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+          <Link to="/files">Files</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+          <Link to="/images">Images</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm" className={topButtonClassName}>
+          <Link to="/tags">Tags</Link>
+        </Button>
 
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Wiki</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem asChild>
-                  <Link to="/wiki">Wiki</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/wiki#guides">Guides</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="https://github.com/MosleyGraphics/bonum-maleficus"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Github
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+        {/* Wiki */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className={topButtonClassName}>
+              Wiki
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem asChild>
+              <Link to="/wiki">Wiki</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/wiki#guides">Guides</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href="https://github.com/MosleyGraphics/bonum-maleficus"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Github
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Admin</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                  <Link to="/wiki/admin/drafts">Drafts</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                  <Link to="/wiki/admin/importing">Importing</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                  <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+        {/* Admin */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className={topButtonClassName}>
+              Admin
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem asChild disabled={!canManageDrafts}>
+              <Link to="/wiki/admin/drafts">Drafts</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild disabled={!canManageDrafts}>
+              <Link to="/wiki/admin/importing">Importing</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild disabled={!canManageDrafts}>
+              <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-            <DropdownMenuSeparator />
-
+        {/* Profile */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className={topButtonClassName}>
+              Profile
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
               <Link to="/profile">Profile</Link>
             </DropdownMenuItem>
-
             <DropdownMenuSeparator />
-
             <DropdownMenuItem
               onSelect={(e) => {
                 e.preventDefault();
