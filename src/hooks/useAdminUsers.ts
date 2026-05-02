@@ -17,6 +17,17 @@ export type AdminUser = {
   createdAt: string;
 };
 
+const normalizeUsers = (users: Partial<AdminUser>[] | undefined): AdminUser[] => {
+  return (users ?? []).map((user) => ({
+    id: String(user.id ?? ""),
+    name: String(user.name ?? ""),
+    email: String(user.email ?? ""),
+    role: (["Admin", "Editor", "Viewer"].includes(String(user.role)) ? user.role : "Viewer") as Role,
+    status: (String(user.status).toLowerCase() === "active" ? "active" : "pending") as UserStatus,
+    createdAt: String(user.createdAt ?? new Date().toISOString()),
+  }));
+};
+
 export function useAdminUsers() {
   const { session, loading: sessionLoading } = useSession();
   const { profile, loading: profileLoading } = useUserProfile();
@@ -31,14 +42,28 @@ export function useAdminUsers() {
 
   const load = React.useCallback(async () => {
     setLoading(true);
-    const { data, error } = await invokeEdge<{ users: AdminUser[] }>("admin-users", { action: "list" });
-    if (error) {
-      setUsers([]);
+
+    const primary = await invokeEdge<{ users: AdminUser[] }>("admin-users", { action: "list" });
+    if (!primary.error && primary.data) {
+      setUsers(normalizeUsers((primary.data as any)?.users));
       setLoading(false);
-      throw new Error(error.message ?? "Edge function request failed (list). Are you signed in and approved?");
+      return;
     }
-    setUsers((data as any)?.users ?? []);
+
+    const fallback = await invokeEdge<{ users: AdminUser[] }>("task-data", { action: "listAssignableUsers" });
+    if (!fallback.error && fallback.data) {
+      setUsers(normalizeUsers((fallback.data as any)?.users));
+      setLoading(false);
+      return;
+    }
+
+    setUsers([]);
     setLoading(false);
+    throw new Error(
+      fallback.error?.message ??
+        primary.error?.message ??
+        "Edge function request failed (list). Are you signed in and approved?"
+    );
   }, []);
 
   React.useEffect(() => {

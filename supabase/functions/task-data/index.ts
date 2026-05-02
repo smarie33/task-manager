@@ -62,6 +62,15 @@ type LoadedData = {
   links: LinkMeta[]
 }
 
+type AssignableUser = {
+  id: string
+  name: string
+  email: string
+  role: Role
+  status: string
+  createdAt: string
+}
+
 const splitTaskOwners = (value?: string | null): string[] => {
   return Array.from(
     new Set(
@@ -407,6 +416,49 @@ const buildArchivedGroups = async (
   return { groups }
 }
 
+const buildAssignableUsers = async (
+  supabase: ReturnType<typeof createClient>,
+): Promise<{ users: AssignableUser[] }> => {
+  const { data: profileRows, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,name,email,role,status")
+    .order("updated_at", { ascending: false })
+  if (profileError) throw profileError
+
+  const authUsers = new Map<string, { email: string; createdAt: string; name: string }>()
+  const { data: authData, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (authError) throw authError
+
+  for (const user of authData.users ?? []) {
+    authUsers.set(user.id, {
+      email: user.email ?? "",
+      createdAt: user.created_at,
+      name: String((user.user_metadata as Record<string, unknown> | null)?.name ?? "").trim(),
+    })
+  }
+
+  const profileMap = new Map<string, any>()
+  for (const row of profileRows ?? []) {
+    profileMap.set(row.id, row)
+  }
+
+  const allUserIds = Array.from(new Set([...(profileRows ?? []).map((row) => row.id), ...authUsers.keys()]))
+  const users = allUserIds.map((id) => {
+    const profile = profileMap.get(id)
+    const authUser = authUsers.get(id)
+    return {
+      id,
+      name: String(profile?.name ?? authUser?.name ?? "").trim(),
+      email: String(profile?.email ?? authUser?.email ?? "").trim(),
+      role: (["Admin", "Editor", "Viewer"].includes(String(profile?.role)) ? profile.role : "Viewer") as Role,
+      status: String(profile?.status ?? "pending"),
+      createdAt: authUser?.createdAt ?? new Date().toISOString(),
+    }
+  })
+
+  return { users }
+}
+
 const createSharedTask = async (
   supabase: ReturnType<typeof createClient>,
   callerId: string,
@@ -586,6 +638,20 @@ serve(async (req) => {
   try {
     if (action === "load") {
       const data = await buildSharedTaskData(supabase, callerId, role)
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    if (action === "listAssignableUsers") {
+      if (!canWriteTasks(role)) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+
+      const data = await buildAssignableUsers(supabase)
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
