@@ -26,6 +26,7 @@ import { useSession } from "@/context/session-context";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserProfile } from "@/context/user-profile-context";
 
 type SortKey = "name" | "date" | "type";
 type SortOrder = "asc" | "desc";
@@ -110,6 +111,9 @@ const Images: React.FC = () => {
   const { toast } = useToast();
   const { libraryImages, setLibraryImages, groups, setGroups } = useTaskData();
   const { session } = useSession();
+  const { profile } = useUserProfile();
+
+  const readAllImages = !!profile;
 
   // Load older library images from Supabase (TaskDataProvider only loads a limited window).
   const [libraryOffset, setLibraryOffset] = React.useState(0);
@@ -126,19 +130,23 @@ const Images: React.FC = () => {
       const from = libraryOffset;
       const to = libraryOffset + IMAGE_PAGE_SIZE - 1;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("files")
         .select(
           "id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content"
         )
-        .eq("user_id", session.user.id)
-        .or("mime_type.ilike.image/%,url.ilike.data:image/%")
         .order("created_at", { ascending: false })
         .range(from, to);
 
+      if (!readAllImages) {
+        query = query.eq("user_id", session.user.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
 
       const rows = (data ?? []) as any[];
+
       const metas: FileMeta[] = rows.map((r) => ({
         id: r.id,
         name: r.name,

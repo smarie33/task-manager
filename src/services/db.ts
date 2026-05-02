@@ -31,11 +31,14 @@ const toTask = (row: any): Task => ({
 export async function loadAll(
   userId: string,
   opts?: {
-    /** When true, do not apply user_id filtering (requires RLS policy granting admin read access). */
+    readAllContent?: boolean;
+    timeLogsUserId?: string | null;
+    /** When true, do not apply user_id filtering (kept for compatibility with older call sites). */
     adminReadAll?: boolean;
   }
 ): Promise<LoadedData> {
-  const adminReadAll = !!opts?.adminReadAll;
+  const readAllContent = !!opts?.readAllContent || !!opts?.adminReadAll;
+  const timeLogsUserId = opts?.timeLogsUserId ?? null;
 
   // Load groups (only non-archived)
   let groupQuery = supabase
@@ -44,7 +47,7 @@ export async function loadAll(
     .eq("archived", false)
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true });
-  if (!adminReadAll) groupQuery = groupQuery.eq("user_id", userId);
+  if (!readAllContent) groupQuery = groupQuery.eq("user_id", userId);
   const { data: groupRows, error: gErr } = await groupQuery;
   if (gErr) throw new Error(gErr.message);
 
@@ -55,7 +58,7 @@ export async function loadAll(
     .order("group_id", { ascending: true })
     .order("position", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true });
-  if (!adminReadAll) taskQuery = taskQuery.eq("user_id", userId);
+  if (!readAllContent) taskQuery = taskQuery.eq("user_id", userId);
   const { data: taskRows, error: tErr } = await taskQuery;
   if (tErr) throw new Error(tErr.message);
 
@@ -64,7 +67,8 @@ export async function loadAll(
     .from("task_time_logs")
     .select("*")
     .order("created_at", { ascending: true });
-  if (!adminReadAll) logQuery = logQuery.eq("user_id", userId);
+  if (timeLogsUserId) logQuery = logQuery.eq("user_id", timeLogsUserId);
+  else if (!readAllContent) logQuery = logQuery.eq("user_id", userId);
   const { data: logRows, error: lErr } = await logQuery;
   if (lErr) throw new Error(lErr.message);
 
@@ -73,7 +77,7 @@ export async function loadAll(
     .from("task_comments")
     .select("*")
     .order("created_at", { ascending: true });
-  if (!adminReadAll) commentQuery = commentQuery.eq("user_id", userId);
+  if (!readAllContent) commentQuery = commentQuery.eq("user_id", userId);
   const { data: commentRows, error: cErr } = await commentQuery;
   if (cErr) throw new Error(cErr.message);
 
@@ -86,7 +90,7 @@ export async function loadAll(
       .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
       .order("created_at", { ascending: false })
       .limit(200);
-    if (!adminReadAll) fileQuery = fileQuery.eq("user_id", userId);
+    if (!readAllContent) fileQuery = fileQuery.eq("user_id", userId);
     const { data, error } = await fileQuery;
     if (error) throw error;
     fileRows = data;
@@ -102,7 +106,7 @@ export async function loadAll(
       .from("file_task_links")
       .select("file_id, task_id")
       .order("created_at", { ascending: true });
-    if (!adminReadAll) fileTaskQuery = fileTaskQuery.eq("user_id", userId);
+    if (!readAllContent) fileTaskQuery = fileTaskQuery.eq("user_id", userId);
     const { data, error } = await fileTaskQuery;
     if (error) throw error;
     fileTaskRows = data;
@@ -115,7 +119,7 @@ export async function loadAll(
     .from("external_links")
     .select("*")
     .order("created_at", { ascending: true });
-  if (!adminReadAll) linkQuery = linkQuery.eq("user_id", userId);
+  if (!readAllContent) linkQuery = linkQuery.eq("user_id", userId);
   const { data: linkRows, error: eErr } = await linkQuery;
   if (eErr) throw new Error(eErr.message);
 
@@ -124,7 +128,7 @@ export async function loadAll(
     .from("statuses")
     .select("*")
     .order("created_at", { ascending: true });
-  if (!adminReadAll) statusQuery = statusQuery.eq("user_id", userId);
+  if (!readAllContent) statusQuery = statusQuery.eq("user_id", userId);
   const { data: statusRows, error: sErr } = await statusQuery;
   if (sErr) throw new Error(sErr.message);
 
@@ -169,6 +173,13 @@ export async function loadAll(
     const arr = task.timeLogs ?? [];
     arr.push({ durationSeconds: lr.duration_seconds, date: lr.date, adminEdit: !!lr.admin_edit });
     task.timeLogs = arr;
+  }
+
+  if (timeLogsUserId) {
+    for (const task of tasksMap.values()) {
+      const totalSeconds = (task.timeLogs ?? []).reduce((sum, log) => sum + log.durationSeconds, 0);
+      task.timeTracking = totalSeconds / 3600;
+    }
   }
 
   // Attach comments

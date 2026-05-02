@@ -15,7 +15,6 @@ const Wiki: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
-  const isAdmin = profile?.role !== "Viewer";
   const canEdit = !!profile && profile.role !== "Viewer";
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
 
@@ -30,8 +29,6 @@ const Wiki: React.FC = () => {
       .eq("published", true)
       .order("title", { ascending: true });
 
-    if (!isAdmin) q = q.eq("user_id", userId);
-
     q.then(({ data, error }) => {
       if (error) {
         console.error("[wiki] list load failed", error);
@@ -39,7 +36,6 @@ const Wiki: React.FC = () => {
         return;
       }
       console.log("[wiki] list loaded", {
-        isAdmin,
         sessionUserId: userId,
         sessionEmail: session?.user?.email,
         profileId: profile?.id,
@@ -49,7 +45,7 @@ const Wiki: React.FC = () => {
       });
       setEntries(data || []);
     });
-  }, [userId, isAdmin, session?.user?.email, profile?.id, profile?.email, profile?.role]);
+  }, [userId, session?.user?.email, profile?.id, profile?.email, profile?.role]);
 
   return (
     <div className="min-h-screen flex flex-col">

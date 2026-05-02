@@ -145,11 +145,12 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
     async function run() {
       if (!session?.user) return;
-      const adminReadAll = profile?.role !== "Viewer";
+      const readAllContent = !!profile;
+      const timeLogsUserId = profile?.role === "Viewer" ? session.user.id : null;
       setDataError(null);
 
       try {
-        const loaded = await loadAll(session.user.id, { adminReadAll });
+        const loaded = await loadAll(session.user.id, { readAllContent, timeLogsUserId });
         if (cancelled) return;
 
         const ensureNoStatus = (statuses: StatusOption[]) => {
@@ -168,7 +169,8 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Diagnostics (helps track "empty data" reports)
         console.log("[task-data] loaded", {
-          adminReadAll,
+          readAllContent,
+          timeLogsUserId,
           sessionUserId: session.user.id,
           sessionEmail: session.user.email,
           profileId: profile?.id,

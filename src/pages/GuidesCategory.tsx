@@ -8,7 +8,6 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import GuidesSidebar from "@/components/guides/GuidesSidebar";
-import { useUserProfile } from "@/context/user-profile-context";
 
 type EntryBrief = { id: string; title: string; slug: string };
 
@@ -16,8 +15,6 @@ const GuidesCategory: React.FC = () => {
   const { categoryName } = useParams();
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
-  const { profile } = useUserProfile();
-  const isAdmin = profile?.role !== "Viewer";
 
   const [entries, setEntries] = React.useState<EntryBrief[]>([]);
 
@@ -28,9 +25,7 @@ const GuidesCategory: React.FC = () => {
     }
 
     (async () => {
-      let catQ = supabase.from("guides_categories").select("id,name").eq("name", categoryName).limit(1);
-      if (!isAdmin) catQ = catQ.eq("user_id", userId);
-      const { data: catRows, error: catErr } = await catQ;
+      const { data: catRows, error: catErr } = await supabase.from("guides_categories").select("id,name").eq("name", categoryName).limit(1);
       if (catErr) throw new Error(catErr.message);
       const category = catRows && catRows[0];
       if (!category) {
@@ -38,9 +33,7 @@ const GuidesCategory: React.FC = () => {
         return;
       }
 
-      let linkQ = supabase.from("guides_entry_categories").select("entry_id").eq("category_id", category.id);
-      if (!isAdmin) linkQ = linkQ.eq("user_id", userId);
-      const { data: links, error: linkErr } = await linkQ;
+      const { data: links, error: linkErr } = await supabase.from("guides_entry_categories").select("entry_id").eq("category_id", category.id);
       if (linkErr) throw new Error(linkErr.message);
 
       const entryIds = (links || []).map((l: any) => l.entry_id);
@@ -49,20 +42,17 @@ const GuidesCategory: React.FC = () => {
         return;
       }
 
-      let entryQ = supabase
+      const { data: rows, error: eErr } = await supabase
         .from("guides_entries")
         .select("id,title,slug")
         .in("id", entryIds)
         .eq("published", true)
         .order("title", { ascending: true });
 
-      if (!isAdmin) entryQ = entryQ.eq("user_id", userId);
-
-      const { data: rows, error: eErr } = await entryQ;
       if (eErr) throw new Error(eErr.message);
       setEntries(rows || []);
     })();
-  }, [userId, categoryName, isAdmin]);
+  }, [userId, categoryName]);
 
   return (
     <div className="min-h-screen flex flex-col">

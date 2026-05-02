@@ -29,6 +29,7 @@ const AppHeader: React.FC = () => {
   const { dataError, retryLoad } = useTaskData();
   const navigate = useNavigate();
   const canManageDrafts = !!profile && profile.role !== "Viewer";
+  const showAdminMenu = !!profile && profile.role !== "Viewer";
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -115,31 +116,33 @@ const AppHeader: React.FC = () => {
           </DropdownMenu>
 
           {/* Admin */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={topButtonClassName}>
-                Admin
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                <Link to="/wiki/admin">Create Wiki Page</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                <Link to="/guides/admin">Create Guide Page</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                <Link to="/wiki/admin/drafts">Drafts</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                <Link to="/wiki/admin/importing">Importing</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild disabled={!canManageDrafts}>
-                <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {showAdminMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={topButtonClassName}>
+                  Admin
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                  <Link to="/wiki/admin">Create Wiki Page</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                  <Link to="/guides/admin">Create Guide Page</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                  <Link to="/wiki/admin/drafts">Drafts</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                  <Link to="/wiki/admin/importing">Importing</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild disabled={!canManageDrafts}>
+                  <Link to="/wiki/admin/bulk-delete">Bulk Delete</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">

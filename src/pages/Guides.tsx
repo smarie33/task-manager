@@ -15,7 +15,6 @@ const Guides: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
-  const isAdmin = profile?.role !== "Viewer";
   const canEdit = !!profile && profile.role !== "Viewer";
 
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);
@@ -32,8 +31,6 @@ const Guides: React.FC = () => {
       .eq("published", true)
       .order("title", { ascending: true });
 
-    if (!isAdmin) q = q.eq("user_id", userId);
-
     q.then(({ data, error }) => {
       if (error) {
         console.error("[guides] list load failed", error);
@@ -42,7 +39,7 @@ const Guides: React.FC = () => {
       }
       setEntries(data || []);
     });
-  }, [userId, isAdmin]);
+  }, [userId]);
 
   return (
     <div className="min-h-screen flex flex-col">

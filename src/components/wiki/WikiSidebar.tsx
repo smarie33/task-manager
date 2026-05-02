@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/context/session-context";
 import { Link } from "react-router-dom";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { useUserProfile } from "@/context/user-profile-context";
 
 type EntryBrief = { id: string; title: string; slug: string };
 type WikiTag = { id: string; name: string };
@@ -19,8 +18,6 @@ type WikiScript = { id: string; name: string };
 const WikiSidebar: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
-  const { profile } = useUserProfile();
-  const isAdmin = profile?.role !== "Viewer";
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<EntryBrief[]>([]);
@@ -49,15 +46,9 @@ const WikiSidebar: React.FC = () => {
     if (!userId) return;
 
     // Load tags, categories, scripts
-    let tagQ = supabase.from("wiki_tags").select("id,name").order("name", { ascending: true });
-    let catQ = supabase.from("wiki_categories").select("id,name").order("name", { ascending: true });
-    let scriptQ = supabase.from("wiki_scripts").select("id,name").order("name", { ascending: true });
-
-    if (!isAdmin) {
-      tagQ = tagQ.eq("user_id", userId);
-      catQ = catQ.eq("user_id", userId);
-      scriptQ = scriptQ.eq("user_id", userId);
-    }
+    const tagQ = supabase.from("wiki_tags").select("id,name").order("name", { ascending: true });
+    const catQ = supabase.from("wiki_categories").select("id,name").order("name", { ascending: true });
+    const scriptQ = supabase.from("wiki_scripts").select("id,name").order("name", { ascending: true });
 
     tagQ.then(({ data, error }) => {
       if (error) throw new Error(error.message);
@@ -73,7 +64,7 @@ const WikiSidebar: React.FC = () => {
       if (error) throw new Error(error.message);
       setScripts(data || []);
     });
-  }, [userId, isAdmin]);
+  }, [userId]);
 
   React.useEffect(() => {
     if (!userId) return;
@@ -92,14 +83,12 @@ const WikiSidebar: React.FC = () => {
         .order("title", { ascending: true })
         .limit(25);
 
-      if (!isAdmin) q = q.eq("user_id", userId);
-
       const { data, error } = await q;
       if (error) throw new Error(error.message);
       setSearchResults(data || []);
     }, 300);
     return () => clearTimeout(handle);
-  }, [searchTerm, userId, isAdmin]);
+  }, [searchTerm, userId]);
 
   return (
     <div className="space-y-4">
