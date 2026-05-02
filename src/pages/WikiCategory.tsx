@@ -11,6 +11,14 @@ import WikiSidebar from "@/components/wiki/WikiSidebar";
 
 type EntryBrief = { id: string; title: string; slug: string };
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "")
+    .replace(/\-+/g, "-");
+
 const WikiCategory: React.FC = () => {
   const { categoryName } = useParams();
   const { session } = useSession();
@@ -23,33 +31,55 @@ const WikiCategory: React.FC = () => {
       setEntries([]);
       return;
     }
+
     (async () => {
-      const { data: catRows, error: catErr } = await supabase.from("wiki_categories").select("id,name").eq("name", categoryName).limit(1);
+      const normalizedSlug = slugify(categoryName);
+
+      const [{ data: catRows, error: catErr }, { data: matchingRows, error: matchingErr }] = await Promise.all([
+        supabase.from("wiki_categories").select("id,name").eq("name", categoryName).limit(1),
+        supabase
+          .from("wiki_entries")
+          .select("id,title,slug")
+          .eq("published", true)
+          .or(`title.ilike.${categoryName},slug.eq.${normalizedSlug}`),
+      ]);
+
       if (catErr) throw new Error(catErr.message);
-      const category = catRows && catRows[0];
-      if (!category) {
-        setEntries([]);
-        return;
+      if (matchingErr) throw new Error(matchingErr.message);
+
+      const category = catRows?.[0] ?? null;
+      const relatedEntries = new Map<string, EntryBrief>();
+
+      for (const entry of matchingRows || []) {
+        relatedEntries.set(entry.id, entry);
       }
 
-      const { data: links, error: linkErr } = await supabase.from("wiki_entry_categories").select("entry_id").eq("category_id", category.id);
-      if (linkErr) throw new Error(linkErr.message);
+      if (category) {
+        const { data: links, error: linkErr } = await supabase
+          .from("wiki_entry_categories")
+          .select("entry_id")
+          .eq("category_id", category.id);
+        if (linkErr) throw new Error(linkErr.message);
 
-      const entryIds = (links || []).map((l: any) => l.entry_id);
-      if (entryIds.length === 0) {
-        setEntries([]);
-        return;
+        const entryIds = (links || []).map((l: any) => l.entry_id);
+        if (entryIds.length > 0) {
+          const { data: rows, error: eErr } = await supabase
+            .from("wiki_entries")
+            .select("id,title,slug")
+            .in("id", entryIds)
+            .eq("published", true)
+            .order("title", { ascending: true });
+
+          if (eErr) throw new Error(eErr.message);
+          for (const entry of rows || []) {
+            relatedEntries.set(entry.id, entry);
+          }
+        }
       }
 
-      const { data: rows, error: eErr } = await supabase
-        .from("wiki_entries")
-        .select("id,title,slug")
-        .in("id", entryIds)
-        .eq("published", true)
-        .order("title", { ascending: true });
-
-      if (eErr) throw new Error(eErr.message);
-      setEntries(rows || []);
+      setEntries(
+        Array.from(relatedEntries.values()).sort((a, b) => a.title.localeCompare(b.title))
+      );
     })();
   }, [userId, categoryName]);
 
