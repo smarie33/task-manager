@@ -160,11 +160,11 @@ const WikiSidebar: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Categories (A–Z)</CardTitle>
+          <CardTitle>Methods (A–Z)</CardTitle>
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No categories yet.</div>
+            <div className="text-sm text-muted-foreground">No methods yet.</div>
           ) : (
             <Accordion type="multiple" className="w-full">
               {groupedCategories.map(([letter, cats]) => (

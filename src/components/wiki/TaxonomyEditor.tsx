@@ -102,18 +102,18 @@ const TaxonomyEditor: React.FC<TaxonomyEditorProps> = ({
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     if (!userId) {
-      toast({ title: "Not signed in", description: "Please sign in to add categories." });
+      toast({ title: "Not signed in", description: "Please sign in to add methods." });
       return;
     }
     if (!canEdit) {
-      toast({ title: "Permission denied", description: "Viewers cannot create categories." });
+      toast({ title: "Permission denied", description: "Viewers cannot create methods." });
       return;
     }
     const { data, error } = await supabase.from("wiki_categories").insert({ user_id: userId, name: newCategory }).select("id,name").single();
     if (error) throw new Error(error.message);
     setCategories((prev) => [...prev, data]);
     setNewCategory("");
-    toast({ title: "Category created", description: `Added "${data.name}"` });
+    toast({ title: "Method created", description: `Added "${data.name}"` });
   };
 
   const addScript = async () => {
@@ -155,21 +155,21 @@ const TaxonomyEditor: React.FC<TaxonomyEditorProps> = ({
 
   const removeCategory = async (id: string, name: string) => {
     if (!userId) {
-      toast({ title: "Not signed in", description: "Please sign in to manage categories." });
+      toast({ title: "Not signed in", description: "Please sign in to manage methods." });
       return;
     }
     if (!canEdit) {
-      toast({ title: "Permission denied", description: "Viewers cannot delete categories." });
+      toast({ title: "Permission denied", description: "Viewers cannot delete methods." });
       return;
     }
-    if (!window.confirm(`Delete category "${name}"? This will unlink it from all entries.`)) return;
+    if (!window.confirm(`Delete method "${name}"? This will unlink it from all entries.`)) return;
     const { error: linkErr } = await supabase.from("wiki_entry_categories").delete().eq("user_id", userId).eq("category_id", id);
     if (linkErr) throw new Error(linkErr.message);
     const { error } = await supabase.from("wiki_categories").delete().eq("user_id", userId).eq("id", id);
     if (error) throw new Error(error.message);
     setCategories((prev) => prev.filter((c) => c.id !== id));
     setSelectedCategoryIds(selectedCategoryIds.filter((cid) => cid !== id));
-    toast({ title: "Category deleted", description: `"${name}" was removed.` });
+    toast({ title: "Method deleted", description: `"${name}" was removed.` });
   };
 
   const removeScript = async (id: string, name: string) => {
@@ -202,9 +202,9 @@ const TaxonomyEditor: React.FC<TaxonomyEditorProps> = ({
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="newCategory">Add Category</Label>
+          <Label htmlFor="newCategory">Add Method</Label>
           <div className="flex gap-2">
-            <Input id="newCategory" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New category name" />
+            <Input id="newCategory" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New method name" />
             <Button onClick={addCategory} disabled={!canEdit}>Add</Button>
           </div>
         </div>
@@ -245,9 +245,9 @@ const TaxonomyEditor: React.FC<TaxonomyEditorProps> = ({
         </div>
 
         <div className="space-y-3">
-          <Label>Categories</Label>
+          <Label>Methods</Label>
           <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
-            {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories yet.</div>}
+            {categories.length === 0 && <div className="text-sm text-muted-foreground">No methods yet.</div>}
             {categories.map((c) => (
               <div key={c.id} className="flex items-center gap-2">
                 <Checkbox
@@ -261,7 +261,7 @@ const TaxonomyEditor: React.FC<TaxonomyEditorProps> = ({
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => removeCategory(c.id, c.name)}
                   disabled={!canEdit}
-                  aria-label={`Delete category ${c.name}`}
+                  aria-label={`Delete method ${c.name}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>

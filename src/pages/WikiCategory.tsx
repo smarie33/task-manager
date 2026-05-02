@@ -61,11 +61,11 @@ const WikiCategory: React.FC = () => {
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Entries in "{categoryName}"</CardTitle>
+                <CardTitle>Entries in method "{categoryName}"</CardTitle>
               </CardHeader>
               <CardContent>
                 {entries.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No entries found for this category.</div>
+                  <div className="text-sm text-muted-foreground">No entries found for this method.</div>
                 ) : (
                   <ul className="space-y-2">
                     {entries.map((e) => (

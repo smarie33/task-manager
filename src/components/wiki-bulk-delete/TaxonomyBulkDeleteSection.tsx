@@ -100,7 +100,7 @@ const TaxonomyBulkDeleteSection: React.FC = () => {
       toast({ title: "Deleted", description: "Removed all tags." });
     } else if (activeTab === "categories") {
       await deleteAllCategoriesForUser();
-      toast({ title: "Deleted", description: "Removed all categories." });
+      toast({ title: "Deleted", description: "Removed all methods." });
     } else {
       await deleteAllScriptsForUser();
       toast({ title: "Deleted", description: "Removed all scripts." });
@@ -126,7 +126,7 @@ const TaxonomyBulkDeleteSection: React.FC = () => {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
             <TabsList className="h-9">
               <TabsTrigger value="tags">Tags</TabsTrigger>
-              <TabsTrigger value="categories">Categories</TabsTrigger>
+              <TabsTrigger value="categories">Methods</TabsTrigger>
               <TabsTrigger value="scripts">Scripts</TabsTrigger>
             </TabsList>
           </Tabs>

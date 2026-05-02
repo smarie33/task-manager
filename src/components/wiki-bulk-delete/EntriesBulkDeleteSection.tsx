@@ -63,7 +63,7 @@ const EntriesBulkDeleteSection: React.FC = () => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete selected entries?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {selected.size} entr{selected.size === 1 ? "y" : "ies"} and their tag/category/script links. This action cannot be undone.
+                  This will permanently delete {selected.size} entr{selected.size === 1 ? "y" : "ies"} and their tag/method/script links. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

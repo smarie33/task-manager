@@ -149,11 +149,11 @@ const WikiAdmin: React.FC = () => {
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     if (!profile?.id) {
-      toast({ title: "Not signed in", description: "Please sign in to add categories." });
+      toast({ title: "Not signed in", description: "Please sign in to add methods." });
       return;
     }
     if (profile.role === "Viewer") {
-      toast({ title: "Permission denied", description: "Viewers cannot create categories." });
+      toast({ title: "Permission denied", description: "Viewers cannot create methods." });
       return;
     }
     const { data, error } = await supabase
@@ -164,7 +164,7 @@ const WikiAdmin: React.FC = () => {
     if (error) throw new Error(error.message);
     setCategories((prev) => [...prev, data]);
     setNewCategory("");
-    toast({ title: "Category created", description: `Added "${data.name}"` });
+    toast({ title: "Method created", description: `Added "${data.name}"` });
   };
 
   const addScript = async () => {
@@ -218,14 +218,14 @@ const WikiAdmin: React.FC = () => {
 
   const removeCategory = async (id: string, name: string) => {
     if (!profile?.id) {
-      toast({ title: "Not signed in", description: "Please sign in to manage categories." });
+      toast({ title: "Not signed in", description: "Please sign in to manage methods." });
       return;
     }
     if (profile.role === "Viewer") {
-      toast({ title: "Permission denied", description: "Viewers cannot delete categories." });
+      toast({ title: "Permission denied", description: "Viewers cannot delete methods." });
       return;
     }
-    if (!window.confirm(`Delete category "${name}"? This will unlink it from all entries.`)) return;
+    if (!window.confirm(`Delete method "${name}"? This will unlink it from all entries.`)) return;
     const { error: linkErr } = await supabase
       .from("wiki_entry_categories")
       .delete()
@@ -240,7 +240,7 @@ const WikiAdmin: React.FC = () => {
     if (error) throw new Error(error.message);
     setCategories((prev) => prev.filter((c) => c.id !== id));
     setSelectedCategoryIds((prev) => prev.filter((cid) => cid !== id));
-    toast({ title: "Category deleted", description: `"${name}" was removed.` });
+    toast({ title: "Method deleted", description: `"${name}" was removed.` });
   };
 
   const removeScript = async (id: string, name: string) => {
@@ -356,12 +356,12 @@ const WikiAdmin: React.FC = () => {
                 <div className="text-sm text-muted-foreground">Create tags to organize entries.</div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="newCategory">Add Category</Label>
+                <Label htmlFor="newCategory">Add Method</Label>
                 <div className="flex gap-2">
-                  <Input id="newCategory" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New category name" />
+                  <Input id="newCategory" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New method name" />
                   <Button onClick={addCategory}>Add</Button>
                 </div>
-                <div className="text-sm text-muted-foreground">Create categories to group entries.</div>
+                <div className="text-sm text-muted-foreground">Create methods to group entries.</div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newScript">Add Script</Label>
@@ -445,9 +445,9 @@ const WikiAdmin: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-3">
-                <Label>Categories</Label>
+                <Label>Methods</Label>
                 <div className="flex flex-col gap-2 max-h-48 overflow-auto p-2 border rounded-md">
-                  {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories yet.</div>}
+                  {categories.length === 0 && <div className="text-sm text-muted-foreground">No methods yet.</div>}
                   {categories.map((c) => (
                     <div key={c.id} className="flex items-center gap-2">
                       <Checkbox
@@ -460,7 +460,7 @@ const WikiAdmin: React.FC = () => {
                         size="icon"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => removeCategory(c.id, c.name)}
-                        aria-label={`Delete category ${c.name}`}
+                        aria-label={`Delete method ${c.name}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

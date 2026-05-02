@@ -177,7 +177,7 @@ const WikiEntry: React.FC = () => {
                   <div className="pt-6 mt-4 border-t space-y-4">
                     {categories.length > 0 && (
                       <div>
-                        <div className="text-xs font-medium text-muted-foreground mb-2">Categories</div>
+                        <div className="text-xs font-medium text-muted-foreground mb-2">Methods</div>
                         <div className="flex flex-wrap gap-2">
                           {categories.map((c) => (
                             <Link key={c.id} to={`/wiki/categories/${encodeURIComponent(c.name)}`}>
