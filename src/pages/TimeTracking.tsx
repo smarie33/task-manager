@@ -148,27 +148,29 @@ const TimeTracking: React.FC = () => {
     }
   }, [ownersOptions, selectedOwner, role, currentOwnerGuess]);
 
+  const activeOwner = role === "Admin" ? selectedOwner : currentOwnerGuess;
+
   // Owner tasks for AddHoursForm
   const ownerTasks = React.useMemo(() => {
-    if (!selectedOwner) return [];
+    if (!activeOwner) return [];
     const list: { id: string; content: string }[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === selectedOwner) {
+        if ((t.owner || "").trim() === activeOwner) {
           list.push({ id: t.id, content: t.content });
         }
       }
     }
     return list.sort((a, b) => a.content.localeCompare(b.content));
-  }, [groups, selectedOwner]);
+  }, [groups, activeOwner]);
 
   // Aggregated logs for selected owner with date filtering
   const logsForOwner = React.useMemo<AggregatedLog[]>(() => {
-    if (!selectedOwner) return [];
+    if (!activeOwner) return [];
     let result: AggregatedLog[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === selectedOwner) {
+        if ((t.owner || "").trim() === activeOwner) {
           for (const log of t.timeLogs || []) {
             result.push({
               taskContent: t.content,
@@ -188,15 +190,15 @@ const TimeTracking: React.FC = () => {
       result = result.filter((l) => inRange(l.date));
     }
     return result.sort((a, b) => b.date.localeCompare(a.date));
-  }, [groups, selectedOwner, dateRange]);
+  }, [groups, activeOwner, dateRange]);
 
   // Overall logs for owner for totals
   const allLogsForOwner = React.useMemo<AggregatedLog[]>(() => {
-    if (!selectedOwner) return [];
+    if (!activeOwner) return [];
     const res: AggregatedLog[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === selectedOwner) {
+        if ((t.owner || "").trim() === activeOwner) {
           for (const log of t.timeLogs || []) {
             res.push({ taskContent: t.content, date: log.date, durationSeconds: log.durationSeconds, adminEdit: !!log.adminEdit });
           }
@@ -204,7 +206,7 @@ const TimeTracking: React.FC = () => {
       }
     }
     return res.sort((a, b) => a.date.localeCompare(b.date));
-  }, [groups, selectedOwner]);
+  }, [groups, activeOwner]);
 
   const totalSeconds = logsForOwner.reduce((sum, l) => sum + l.durationSeconds, 0);
 
@@ -232,7 +234,7 @@ const TimeTracking: React.FC = () => {
   }, [allLogsForOwner]);
 
   // Payments
-  const ownerSettings: PaymentSettings | undefined = selectedOwner ? settings[selectedOwner] : undefined;
+  const ownerSettings: PaymentSettings | undefined = activeOwner ? settings[activeOwner] : undefined;
 
   const selectedTimeframePayment = React.useMemo(() => {
     if (!ownerSettings) return 0;
@@ -266,7 +268,7 @@ const TimeTracking: React.FC = () => {
   // Save manual log handler
   const handleSaveManualLog = async (taskId: string, date: string, seconds: number) => {
     const isAdmin = role === "Admin";
-    const targetUserId = isAdmin ? resolveOwnerToUserId(selectedOwner ?? null) : null;
+    const targetUserId = isAdmin ? resolveOwnerToUserId(activeOwner ?? null) : null;
     const usingAdminEdge = isAdmin && targetUserId && session?.user?.id && targetUserId !== session.user.id;
 
     // Immutably update the task's logs and timeTracking with setGroups
@@ -327,7 +329,7 @@ const TimeTracking: React.FC = () => {
         )}
 
         <Card className="p-4 mb-4">
-          {selectedOwner ? (
+          {activeOwner ? (
             <AddHoursForm
               ownerTasks={ownerTasks}
               onSave={handleSaveManualLog}
@@ -341,7 +343,7 @@ const TimeTracking: React.FC = () => {
           )}
         </Card>
 
-        {selectedOwner ? (
+        {activeOwner ? (
           role === "Admin" ? null : (
             <TotalsCard
               selectedTimeframePayment={selectedTimeframePayment}
@@ -363,7 +365,7 @@ const TimeTracking: React.FC = () => {
         )}
 
         <Card className="mb-4">
-          <LogsTable logs={logsForOwner} selectedOwner={selectedOwner} totalSeconds={totalSeconds} />
+          <LogsTable logs={logsForOwner} selectedOwner={activeOwner} totalSeconds={totalSeconds} />
         </Card>
       </div>
     </div>
