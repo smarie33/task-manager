@@ -9,23 +9,35 @@ type EnsureIdFn = (name: string) => Promise<string | null>;
 const ensureByName = async (table: "wiki_tags" | "wiki_categories" | "wiki_scripts", userId: string, name: string) => {
   const normalized = (name || "").trim();
   if (!normalized) return null;
-  // Case-insensitive lookup to honor unique constraints like (user_id, lower(name))
-  const { data: found, error: findErr } = await supabase
+
+  const findExisting = async () => {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id")
+      .eq("user_id", userId)
+      .ilike("name", normalized)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    return data?.[0]?.id as string | undefined;
+  };
+
+  const existingId = await findExisting();
+  if (existingId) return existingId;
+
+  const { data: inserted, error: insertErr } = await supabase
     .from(table)
-    .select("id")
-    .eq("user_id", userId)
-    .ilike("name", normalized)
-    .limit(1);
-  if (findErr) throw new Error(findErr.message);
-  if (found && found.length > 0) return found[0].id as string;
-  // Use upsert to avoid race conditions on duplicates
-  const { data: upserted, error: upsertErr } = await supabase
-    .from(table)
-    .upsert({ user_id: userId, name: normalized }, { onConflict: "user_id,name" })
+    .insert({ user_id: userId, name: normalized })
     .select("id")
     .single();
-  if (upsertErr) throw new Error(upsertErr.message);
-  return (upserted.id as string) ?? null;
+
+  if (!insertErr) {
+    return (inserted.id as string) ?? null;
+  }
+
+  const retryId = await findExisting();
+  if (retryId) return retryId;
+
+  throw new Error(insertErr.message);
 };
 
 const ensureTag = (userId: string): EnsureIdFn => (name: string) => ensureByName("wiki_tags", userId, name);
