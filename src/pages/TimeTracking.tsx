@@ -141,10 +141,15 @@ const TimeTracking: React.FC = () => {
       setSelectedOwner(currentOwnerGuess);
       return;
     }
-    if (!selectedOwner && ownersOptions.length > 0) {
-      setSelectedOwner(ownersOptions[0]);
+
+    const preferredOwner = currentOwnerGuess && ownersOptions.includes(currentOwnerGuess)
+      ? currentOwnerGuess
+      : (ownersOptions[0] ?? null);
+
+    if (!selectedOwner && preferredOwner) {
+      setSelectedOwner(preferredOwner);
     } else if (selectedOwner && !ownersOptions.includes(selectedOwner)) {
-      setSelectedOwner(ownersOptions[0] ?? null);
+      setSelectedOwner(preferredOwner);
     }
   }, [ownersOptions, selectedOwner, role, currentOwnerGuess]);
 
