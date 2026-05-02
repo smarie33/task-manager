@@ -3,6 +3,7 @@
 import React from "react";
 import { invokeEdge } from "@/utils/invokeEdge";
 import { useSession } from "@/context/session-context";
+import { useUserProfile } from "@/context/user-profile-context";
 
 export type Role = "Admin" | "Editor" | "Viewer";
 export type UserStatus = "pending" | "active";
@@ -18,8 +19,15 @@ export type AdminUser = {
 
 export function useAdminUsers() {
   const { session, loading: sessionLoading } = useSession();
+  const { profile, loading: profileLoading } = useUserProfile();
   const [users, setUsers] = React.useState<AdminUser[]>([]);
   const [loading, setLoading] = React.useState(true);
+
+  const canLoadUsers =
+    !!session?.user?.id &&
+    !!profile &&
+    profile.status === "active" &&
+    (profile.role === "Admin" || profile.role === "Editor");
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -34,14 +42,16 @@ export function useAdminUsers() {
   }, []);
 
   React.useEffect(() => {
-    if (sessionLoading) return;
-    if (!session?.user?.id) {
+    if (sessionLoading || profileLoading) return;
+
+    if (!session?.user?.id || !canLoadUsers) {
       setUsers([]);
       setLoading(false);
       return;
     }
+
     load().catch(() => {});
-  }, [load, session?.user?.id, sessionLoading]);
+  }, [canLoadUsers, load, profileLoading, session?.user?.id, sessionLoading]);
 
   const addUser = async (name: string, email: string, password: string, role: Role) => {
     const { data, error } = await invokeEdge("admin-users", {
