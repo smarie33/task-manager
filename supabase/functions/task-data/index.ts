@@ -170,37 +170,62 @@ const buildSharedTaskData = async (
       }
     }
 
-    const { data: commentRows, error: commentError } = await supabase
-      .from("task_comments")
-      .select("*")
-      .in("task_id", taskIds)
-      .order("created_at", { ascending: true })
-    if (commentError) throw commentError
+    try {
+      const { data: commentRows, error: commentError } = await supabase
+        .from("task_comments")
+        .select("*")
+        .in("task_id", taskIds)
+        .order("created_at", { ascending: true })
+      if (commentError) throw commentError
 
-    for (const cr of commentRows || []) {
-      const task = tasksMap.get(cr.task_id)
-      if (!task) continue
-      task.comments.push({
-        id: cr.id,
-        text: cr.text,
-        createdAt: cr.created_at,
-        author: cr.author ?? undefined,
+      for (const cr of commentRows || []) {
+        const task = tasksMap.get(cr.task_id)
+        if (!task) continue
+        task.comments.push({
+          id: cr.id,
+          text: cr.text,
+          createdAt: cr.created_at,
+          author: cr.author ?? undefined,
+        })
+      }
+    } catch (error) {
+      console.warn("[task-data] skipped comments while loading shared task data", {
+        message: (error as Error).message,
       })
     }
   }
 
-  const { data: fileRows, error: fileError } = await supabase
-    .from("files")
-    .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
-    .order("created_at", { ascending: false })
-    .limit(200)
-  if (fileError) throw fileError
+  let fileRows: any[] = []
+  let fileTaskRows: any[] = []
 
-  const { data: fileTaskRows, error: fileTaskError } = await supabase
-    .from("file_task_links")
-    .select("file_id, task_id")
-    .order("created_at", { ascending: true })
-  if (fileTaskError) throw fileTaskError
+  try {
+    const { data, error } = await supabase
+      .from("files")
+      .select("id, user_id, name, url, mime_type, size, created_at, source_task_id, source_task_content")
+      .order("created_at", { ascending: false })
+      .limit(100)
+    if (error) throw error
+    fileRows = data || []
+  } catch (error) {
+    console.warn("[task-data] skipped files while loading shared task data", {
+      message: (error as Error).message,
+    })
+  }
+
+  if (fileRows.length > 0) {
+    try {
+      const { data, error } = await supabase
+        .from("file_task_links")
+        .select("file_id, task_id")
+        .order("created_at", { ascending: true })
+      if (error) throw error
+      fileTaskRows = data || []
+    } catch (error) {
+      console.warn("[task-data] skipped file-task links while loading shared task data", {
+        message: (error as Error).message,
+      })
+    }
+  }
 
   const fileIdToTaskIds = new Map<string, string[]>()
   for (const row of fileTaskRows || []) {
@@ -260,6 +285,17 @@ const buildSharedTaskData = async (
     const bp = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER
     if (ap !== bp) return ap - bp
     return a.name.localeCompare(b.name)
+  })
+
+  console.info("[task-data] built shared task data", {
+    callerId,
+    callerRole,
+    groups: groups.length,
+    tasks: Array.from(tasksMap.values()).length,
+    files: files.length,
+    images: images.length,
+    links: (linkRows || []).length,
+    statuses: (statusRows || []).length,
   })
 
   return {
@@ -339,6 +375,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  console.info("[task-data] request received", { method: req.method })
+
   const authHeader = req.headers.get("Authorization")
 
   if (!authHeader) {
@@ -355,6 +393,7 @@ serve(async (req) => {
 
   const { data: userData, error: userError } = await supabase.auth.getUser(token)
   if (userError || !userData?.user) {
+    console.error("[task-data] user lookup failed", { message: userError?.message })
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -369,6 +408,11 @@ serve(async (req) => {
     .single()
 
   if (profileError || !profile || profile.status !== "active") {
+    console.error("[task-data] profile lookup failed", {
+      callerId,
+      message: profileError?.message,
+      status: profile?.status,
+    })
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -377,6 +421,7 @@ serve(async (req) => {
 
   const role = profile.role as Role
   if (!["Admin", "Editor", "Viewer"].includes(role)) {
+    console.error("[task-data] invalid role", { callerId, role })
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -406,6 +451,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (e) {
+    console.error("[task-data] request failed", { message: (e as Error).message })
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

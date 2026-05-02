@@ -15,85 +15,7 @@ const initialStatuses: StatusOption[] = [
   { name: "Blocked", color: "#6b7280" },
 ];
 
-const initialGroups: TaskGroupData[] = [
-  {
-    id: uuidv4(),
-    name: "To Do",
-    color: "#ef4444",
-    tasks: [
-      {
-        id: uuidv4(),
-        content: "Buy groceries",
-        owner: "Alice",
-        status: "To Do",
-        timeline: "Next Week",
-        timeTracking: 0,
-        tags: ["personal", "urgent"],
-        hasFiles: false,
-        timeLogs: [],
-        comments: [],
-        files: [],
-        notes: "",
-      },
-      {
-        id: uuidv4(),
-        content: "Walk the dog",
-        owner: "Bob",
-        status: "To Do",
-        timeline: "Today",
-        timeTracking: 0,
-        tags: ["home"],
-        hasFiles: true,
-        timeLogs: [],
-        comments: [],
-        files: [],
-        notes: "",
-      },
-    ],
-  },
-  {
-    id: uuidv4(),
-    name: "In Progress",
-    color: "#f97316",
-    tasks: [
-      {
-        id: uuidv4(),
-        content: "Work on project",
-        owner: "Charlie",
-        status: "In Progress",
-        timeline: "End of Month",
-        timeTracking: 10,
-        tags: ["work", "development"],
-        hasFiles: true,
-        timeLogs: [],
-        comments: [],
-        files: [],
-        notes: "",
-      },
-    ],
-  },
-  {
-    id: uuidv4(),
-    name: "Done",
-    color: "#22c55e",
-    tasks: [
-      {
-        id: uuidv4(),
-        content: "Finish report",
-        owner: "Alice",
-        status: "Done",
-        timeline: "Last Week",
-        timeTracking: 5,
-        tags: ["work"],
-        hasFiles: false,
-        timeLogs: [],
-        comments: [],
-        files: [],
-        notes: "",
-      },
-    ],
-  },
-];
+const initialGroups: TaskGroupData[] = [];
 
 type TaskDataContextValue = {
   groups: TaskGroupData[];
@@ -204,8 +126,11 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         const nice = toNiceError(e);
         setDataError(nice);
+        setGroups([]);
+        setLibraryFiles([]);
+        setLibraryImages([]);
+        setExternalLinks([]);
 
-        // Keep current state; do not wipe sample tasks on failure.
         console.error("[task-data] load failed", {
           message: err?.message,
           name: err?.name,
