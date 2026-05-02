@@ -62,11 +62,25 @@ type LoadedData = {
   links: LinkMeta[]
 }
 
-const toTask = (row: any): Task => ({
+const splitTaskOwners = (value?: string | null): string[] => {
+  return Array.from(
+    new Set(
+      String(value ?? "")
+        .split(",")
+        .map((owner) => owner.trim())
+        .filter(Boolean),
+    ),
+  )
+}
 
+const formatTaskOwners = (value?: string | null): string => {
+  return splitTaskOwners(value).join(", ")
+}
+
+const toTask = (row: any): Task => ({
   id: row.id,
   content: row.content ?? "",
-  owner: row.owner ?? "",
+  owner: formatTaskOwners(row.owner),
   status: row.status ?? "To Do",
   timeline: row.timeline ?? "",
   timeTracking: Number(row.time_tracking ?? 0),

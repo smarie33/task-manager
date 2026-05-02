@@ -29,6 +29,7 @@ import { insertTimeLog, updateTaskRow } from "@/services/db";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdge } from "@/utils/invokeEdge";
 import { showError, showSuccess } from "@/utils/toast";
+import { hasTaskOwner, splitTaskOwners } from "@/lib/task-owners";
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -69,8 +70,9 @@ const TimeTracking: React.FC = () => {
     const set = new Set<string>();
     for (const g of groups) {
       for (const t of g.tasks) {
-        const owner = (t.owner || "").trim();
-        if (owner) set.add(owner);
+        for (const owner of splitTaskOwners(t.owner)) {
+          set.add(owner);
+        }
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -170,7 +172,7 @@ const TimeTracking: React.FC = () => {
     const list: { id: string; content: string }[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === activeOwner) {
+        if (hasTaskOwner(t.owner, activeOwner)) {
           list.push({ id: t.id, content: t.content });
         }
       }
@@ -186,7 +188,7 @@ const TimeTracking: React.FC = () => {
     let result: AggregatedLog[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === activeOwner) {
+        if (hasTaskOwner(t.owner, activeOwner)) {
           for (const log of t.timeLogs || []) {
             result.push({
               id: log.id,
@@ -216,7 +218,7 @@ const TimeTracking: React.FC = () => {
     const res: AggregatedLog[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {
-        if ((t.owner || "").trim() === activeOwner) {
+        if (hasTaskOwner(t.owner, activeOwner)) {
           for (const log of t.timeLogs || []) {
             res.push({
               id: log.id,

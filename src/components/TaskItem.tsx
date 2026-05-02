@@ -22,6 +22,7 @@ import NotesEditor from "./task-item/drawer/NotesEditor";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import OwnerCell from "./task-item/OwnerCell";
 import { MessageSquare, StickyNote } from "lucide-react";
+import { formatTaskOwners, splitTaskOwners } from "@/lib/task-owners";
 
 interface TaskItemProps {
   task: Task;
@@ -92,6 +93,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
       (f.mimeType ?? "").startsWith("image/")
     );
   }, [task.files]);
+
+  const ownerOptions = React.useMemo(
+    () => Array.from(new Set([...splitTaskOwners(task.owner), ...owners])).sort((a, b) => a.localeCompare(b)),
+    [owners, task.owner]
+  );
 
   const hasComments = (task.comments ?? []).length > 0;
   const hasNotes = React.useMemo(() => {
@@ -176,7 +182,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                   <div className="flex-grow min-w-0 border-r border-gray-200 dark:border-gray-700">
                     <OwnerCell
                       value={task.owner}
-                      owners={owners}
+                      owners={ownerOptions}
                       onChange={(newOwner) =>
                         onUpdateTaskField(task.id, "owner", newOwner as Task["owner"])
                       }
@@ -306,8 +312,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
               {/* Quick details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Owner</p>
-                  <p className="text-sm">{task.owner || "N/A"}</p>
+                  <p className="text-sm text-muted-foreground">Owners</p>
+                  <p className="text-sm">{formatTaskOwners(task.owner) || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>

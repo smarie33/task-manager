@@ -3,6 +3,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Task, TaskGroupData, StatusOption, FileMeta, LinkMeta } from "@/types/task";
 import { invokeEdge } from "@/utils/invokeEdge";
+import { formatTaskOwners } from "@/lib/task-owners";
 
 export type LoadedData = {
   groups: TaskGroupData[];
@@ -15,7 +16,7 @@ export type LoadedData = {
 const toTask = (row: any): Task => ({
   id: row.id,
   content: row.content ?? "",
-  owner: row.owner ?? "",
+  owner: formatTaskOwners(row.owner),
   status: row.status ?? "To Do",
   timeline: row.timeline ?? "",
   timeTracking: Number(row.time_tracking ?? 0),
@@ -402,7 +403,7 @@ export async function createTask(userId: string, groupId: string, task: Omit<Tas
       user_id: targetUserId,
       group_id: groupId,
       content: task.content,
-      owner: task.owner,
+      owner: formatTaskOwners(task.owner),
       status: task.status,
       timeline: task.timeline,
       time_tracking: task.timeTracking,
@@ -420,7 +421,7 @@ export async function createTask(userId: string, groupId: string, task: Omit<Tas
 export async function updateTaskRow(taskId: string, fields: Partial<Task>) {
   const payload: any = {};
   if (fields.content !== undefined) payload.content = fields.content;
-  if (fields.owner !== undefined) payload.owner = fields.owner;
+  if (fields.owner !== undefined) payload.owner = formatTaskOwners(fields.owner);
   if (fields.status !== undefined) payload.status = fields.status;
   if (fields.timeline !== undefined) payload.timeline = fields.timeline;
   if (fields.timeTracking !== undefined) payload.time_tracking = fields.timeTracking;
@@ -653,7 +654,7 @@ export async function bulkCreateTasks(userId: string, groupId: string, tasks: Om
     user_id: userId,
     group_id: groupId,
     content: t.content,
-    owner: t.owner,
+    owner: formatTaskOwners(t.owner),
     status: t.status,
     timeline: t.timeline,
     time_tracking: t.timeTracking,
@@ -669,7 +670,7 @@ export async function bulkCreateTasks(userId: string, groupId: string, tasks: Om
   return (data || []).map((row: any) => ({
     id: row.id,
     content: row.content ?? "",
-    owner: row.owner ?? "",
+    owner: formatTaskOwners(row.owner),
     status: row.status ?? "To Do",
     timeline: row.timeline ?? "",
     timeTracking: Number(row.time_tracking ?? 0),

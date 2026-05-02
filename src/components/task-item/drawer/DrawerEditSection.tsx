@@ -10,6 +10,8 @@ import { format, parseISO, isValid } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import TagsCell from "@/components/task-item/TagsCell";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
+import OwnerCell from "@/components/task-item/OwnerCell";
+import { splitTaskOwners } from "@/lib/task-owners";
 
 type DrawerEditSectionProps = {
   task: Task;
@@ -28,20 +30,24 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
   onUpdateTaskField,
   readOnly = false,
 }) => {
-  const [editedOwner, setEditedOwner] = React.useState(task.owner || "");
-  React.useEffect(() => setEditedOwner(task.owner || ""), [task.owner]);
   const { users } = useAdminUsers();
-  const activeNames = React.useMemo(
-    () => users.filter((u) => u.status === "active").map((u) => u.name).sort((a, b) => a.localeCompare(b)),
-    [users]
-  );
-  // Ensure current owner appears in the list if it's not an active user (to display value properly)
+  const activeNames = React.useMemo(() => {
+    const emailToUsername = (email?: string | null) => {
+      if (!email) return "";
+      return String(email).split("@")[0] ?? "";
+    };
+
+    return users
+      .filter((u) => u.status === "active")
+      .map((u) => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  }, [users]);
+
   const ownerOptions = React.useMemo(() => {
-    if (editedOwner && !activeNames.includes(editedOwner)) {
-      return [editedOwner, ...activeNames];
-    }
-    return activeNames;
-  }, [activeNames, editedOwner]);
+    const currentOwners = splitTaskOwners(task.owner);
+    return Array.from(new Set([...currentOwners, ...activeNames])).sort((a, b) => a.localeCompare(b));
+  }, [activeNames, task.owner]);
 
   const selectedDateRange: DateRange | undefined = React.useMemo(() => {
     const t = task.timeline || "";
@@ -93,32 +99,13 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Owner</p>
-          <Select
-            value={editedOwner || ""}
-            onValueChange={(val) => {
-              if (readOnly) return;
-              const next = val === "__none__" ? "" : val;
-              setEditedOwner(next);
-              onUpdateTaskField(task.id, "owner", next as Task["owner"]);
-            }}
+          <p className="text-xs text-muted-foreground mb-1">Owners</p>
+          <OwnerCell
+            value={task.owner}
+            owners={ownerOptions}
+            onChange={(owners) => onUpdateTaskField(task.id, "owner", owners as Task["owner"])}
             disabled={readOnly}
-          >
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Select owner" />
-            </SelectTrigger>
-            <SelectContent>
-              {ownerOptions.length === 0 ? (
-                <SelectItem value="__none__">No active users</SelectItem>
-              ) : (
-                ownerOptions.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          />
         </div>
 
         <div>
@@ -192,8 +179,6 @@ const DrawerEditSection: React.FC<DrawerEditSectionProps> = ({
           disabled={readOnly}
         />
       </div>
-
-      // REMOVED: Notes editor here. Notes now appears above Edit Details in the drawer.
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { parseCSV, getCellByHeader, splitList } from "@/utils/csv";
 import type { Task, TaskGroupData, StatusOption } from "@/types/task";
 import { bulkCreateTasks, addStatus } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
+import { formatTaskOwners } from "@/lib/task-owners";
 
 type Props = {
   userId: string | null;
@@ -101,7 +102,7 @@ const TaskCsvImportDialog: React.FC<Props> = ({
 
         return {
           content: name,
-          owner,
+          owner: formatTaskOwners(owner),
           status,
           timeline: buildTimeline(start, end),
           timeTracking: 0,

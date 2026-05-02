@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { useTaskData } from "@/context/task-data-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { lightenHexColor } from "@/lib/utils";
+import { formatTaskOwners } from "@/lib/task-owners";
 import AppDrawer from "@/components/AppDrawer";
 import { Task } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
@@ -184,8 +185,8 @@ const TagPage: React.FC = () => {
                   <CardContent className="px-4 pb-8">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-muted-foreground">Owner</p>
-                        <p>{task.owner || "N/A"}</p>
+                        <p className="text-muted-foreground">Owners</p>
+                        <p>{formatTaskOwners(task.owner) || "N/A"}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Timeline</p>
@@ -270,8 +271,8 @@ const TagPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Owner</p>
-                  <p className="text-sm">{selected.task.owner || "N/A"}</p>
+                  <p className="text-sm text-muted-foreground">Owners</p>
+                  <p className="text-sm">{formatTaskOwners(selected.task.owner) || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Timeline</p>

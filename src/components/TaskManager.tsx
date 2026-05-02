@@ -16,6 +16,7 @@ import { updateGroupPositions, updateTaskPositions, deleteTasksByGroup, deleteTa
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import TaskCsvImportDialog from "@/components/task-import/TaskCsvImportDialog";
+import { formatTaskOwners, hasTaskOwner, splitTaskOwners } from "@/lib/task-owners";
 
 type SortKey = "owner" | "content" | "status" | "timeline";
 
@@ -174,7 +175,7 @@ const TaskManager: React.FC = () => {
   // NEW: collect unique owners across all tasks (non-empty)
   const allOwners = Array.from(
     new Set(
-      groups.flatMap((g) => g.tasks.map((t) => t.owner).filter((o) => !!o && o.trim().length > 0))
+      groups.flatMap((g) => g.tasks.flatMap((t) => splitTaskOwners(t.owner)))
     )
   ).sort();
 
@@ -190,7 +191,7 @@ const TaskManager: React.FC = () => {
   const hasAnyVisibleTasks = React.useMemo(() => {
     return orderedGroups.some((g) =>
       g.tasks.some((t) => {
-        const ownerOk = !selectedOwner || t.owner === selectedOwner;
+        const ownerOk = !selectedOwner || hasTaskOwner(t.owner, selectedOwner);
         const statusOk = !selectedStatus || t.status === selectedStatus;
         const searchOk = !taskSearchNorm || String(t.content ?? "").toLowerCase().includes(taskSearchNorm);
         return ownerOk && statusOk && searchOk;
@@ -230,8 +231,8 @@ const TaskManager: React.FC = () => {
       const copy = [...tasks];
       copy.sort((a, b) => {
         if (sortBy === "owner") {
-          const ao = norm(a.owner);
-          const bo = norm(b.owner);
+          const ao = norm(formatTaskOwners(a.owner));
+          const bo = norm(formatTaskOwners(b.owner));
           if (!ao && bo) return 1;
           if (ao && !bo) return -1;
           if (ao !== bo) return ao.localeCompare(bo);
@@ -306,7 +307,7 @@ const TaskManager: React.FC = () => {
       const createdTask = {
         id: row.id as string,
         content: row.content ?? trimmed,
-        owner: row.owner ?? "",
+        owner: formatTaskOwners(row.owner),
         status: row.status ?? baseTask.status,
         timeline: row.timeline ?? "",
         timeTracking: Number(row.time_tracking ?? 0),
@@ -643,7 +644,7 @@ const TaskManager: React.FC = () => {
 
           {orderedGroups.map((group) => {
             const visibleTasks = group.tasks.filter((t) => {
-              const ownerOk = !selectedOwner || t.owner === selectedOwner;
+              const ownerOk = !selectedOwner || hasTaskOwner(t.owner, selectedOwner);
               const statusOk = !selectedStatus || t.status === selectedStatus;
               const searchOk = !taskSearchNorm || String(t.content ?? "").toLowerCase().includes(taskSearchNorm);
               return ownerOk && statusOk && searchOk;

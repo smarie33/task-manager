@@ -280,8 +280,9 @@ const TaskGroup: React.FC<TaskGroupProps> = ({
           <div className="overflow-x-auto" ref={scrollHeaderRef} onScroll={handleHeaderScroll}>
             <div className="grid grid-cols-[repeat(5,_minmax(150px,_1fr))_minmax(120px,_0.5fr)] min-w-[740px]">
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
-                <SortHeader label="Owner" sortKey="owner" />
+                <SortHeader label="Owners" sortKey="owner" />
               </div>
+
               <div className="border-r border-gray-200 dark:border-gray-700 py-2">
                 <SortHeader label="Status" sortKey="status" />
               </div>
