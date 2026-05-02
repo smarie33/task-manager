@@ -341,6 +341,14 @@ export async function loadSharedArchivedGroups(role: "Admin" | "Editor" | "Viewe
   return data.groups;
 }
 
+export async function loadTaskAssignableUsers() {
+  const { data, error } = await invokeEdge<{ users: string[] }>("task-data", { action: "listUsers" });
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to load users");
+  }
+  return data.users;
+}
+
 export async function createSharedTask(groupId: string, content: string) {
   const { data, error } = await invokeEdge<any>("task-data", {
     action: "createTask",

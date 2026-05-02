@@ -79,6 +79,34 @@ const formatTaskOwners = (value?: string | null): string => {
 
 const canWriteTasks = (role: Role) => role === "Admin" || role === "Editor"
 
+const listAssignableUsers = async (
+  supabase: ReturnType<typeof createClient>,
+): Promise<string[]> => {
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("name,email")
+    .order("name", { ascending: true, nullsFirst: false })
+    .order("email", { ascending: true, nullsFirst: false })
+  if (error) throw error
+
+  const emailToUsername = (email?: string | null) => {
+    if (!email) return ""
+    return String(email).split("@")[0] ?? ""
+  }
+
+  return Array.from(
+    new Set(
+      (profiles || [])
+        .map((profile) => {
+          const name = String(profile.name ?? "").trim()
+          if (name) return name
+          return emailToUsername(profile.email)
+        })
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b))
+}
+
 const toTask = (row: any): Task => ({
   id: row.id,
   content: row.content ?? "",
@@ -566,6 +594,20 @@ serve(async (req) => {
     if (action === "loadArchived") {
       const data = await buildArchivedGroups(supabase)
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    if (action === "listUsers") {
+      if (role === "Viewer") {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+
+      const users = await listAssignableUsers(supabase)
+      return new Response(JSON.stringify({ users }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
     }
