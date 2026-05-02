@@ -11,7 +11,15 @@ import { Task } from "@/types/task";
 import { useAuth } from "@/context/auth-context";
 import { useSession } from "@/context/session-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createGroup, updateGroup, deleteGroup, createTask, updateTaskRow } from "@/services/db";
+import {
+  createGroup,
+  updateGroup,
+  deleteGroup,
+  createTask,
+  createSharedTask,
+  updateTaskRow,
+  updateSharedTaskOwner,
+} from "@/services/db";
 import { updateGroupPositions, updateTaskPositions, deleteTasksByGroup, deleteTasksByIds } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
@@ -303,7 +311,10 @@ const TaskManager: React.FC = () => {
       userId: groupOwnerUserId,
     } as Omit<Task, "id">;
     try {
-      const row = await createTask(groupOwnerUserId, groupId, baseTask);
+      const row =
+        role === "Editor"
+          ? await createSharedTask(groupId, trimmed)
+          : await createTask(groupOwnerUserId, groupId, baseTask);
       const createdTask = {
         id: row.id as string,
         content: row.content ?? trimmed,
@@ -318,7 +329,7 @@ const TaskManager: React.FC = () => {
         files: [],
         notes: row.notes ?? "",
         position: typeof row.position === "number" ? row.position : newPos,
-        userId: row.user_id ?? groupOwnerUserId,
+        userId: row.user_id ?? (role === "Editor" ? session.user.id : groupOwnerUserId),
       } as Task;
       setGroups((prev) =>
         prev.map((g) => (g.id === groupId ? { ...g, tasks: [...g.tasks, createdTask] } : g))
@@ -519,6 +530,12 @@ const TaskManager: React.FC = () => {
           : group
       )
     );
+
+    if (role === "Editor" && field === "owner") {
+      updateSharedTaskOwner(taskId, String(value ?? "")).catch(() => showError("Failed to update task"));
+      return;
+    }
+
     const persistable: Partial<Task> = { [field]: value } as any;
     updateTaskRow(taskId, persistable).catch(() => showError("Failed to update task"));
   };

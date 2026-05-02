@@ -341,6 +341,28 @@ export async function loadSharedArchivedGroups(role: "Admin" | "Editor" | "Viewe
   return data.groups;
 }
 
+export async function createSharedTask(groupId: string, content: string) {
+  const { data, error } = await invokeEdge<any>("task-data", {
+    action: "createTask",
+    payload: { groupId, content },
+  });
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to create task");
+  }
+  return data;
+}
+
+export async function updateSharedTaskOwner(taskId: string, owner: string) {
+  const { data, error } = await invokeEdge<any>("task-data", {
+    action: "updateTaskOwner",
+    payload: { taskId, owner },
+  });
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to update task owner");
+  }
+  return data;
+}
+
 // Persist helpers
 
 export async function createGroup(userId: string, name: string, color: string) {

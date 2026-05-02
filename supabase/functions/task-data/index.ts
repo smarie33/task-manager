@@ -77,6 +77,8 @@ const formatTaskOwners = (value?: string | null): string => {
   return splitTaskOwners(value).join(", ")
 }
 
+const canWriteTasks = (role: Role) => role === "Admin" || role === "Editor"
+
 const toTask = (row: any): Task => ({
   id: row.id,
   content: row.content ?? "",
@@ -377,6 +379,97 @@ const buildArchivedGroups = async (
   return { groups }
 }
 
+const createSharedTask = async (
+  supabase: ReturnType<typeof createClient>,
+  callerId: string,
+  groupId: string,
+  content: string,
+) => {
+  const trimmedGroupId = groupId.trim()
+  const trimmedContent = content.trim()
+
+  if (!trimmedGroupId) {
+    throw new Error("Group is required")
+  }
+
+  if (!trimmedContent) {
+    throw new Error("Task content is required")
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("task_groups")
+    .select("id, archived")
+    .eq("id", trimmedGroupId)
+    .single()
+  if (groupError || !group || group.archived) {
+    throw new Error("Group not found")
+  }
+
+  const { data: lastTaskRows, error: lastTaskError } = await supabase
+    .from("tasks")
+    .select("position")
+    .eq("group_id", trimmedGroupId)
+    .order("position", { ascending: false, nullsFirst: false })
+    .limit(1)
+  if (lastTaskError) throw lastTaskError
+
+  const lastPosition = typeof lastTaskRows?.[0]?.position === "number" ? lastTaskRows[0].position : -1
+  const nextPosition = lastPosition + 1
+
+  const { data: row, error: insertError } = await supabase
+    .from("tasks")
+    .insert([{
+      user_id: callerId,
+      group_id: trimmedGroupId,
+      content: trimmedContent,
+      owner: "",
+      status: "No Status",
+      timeline: "",
+      time_tracking: 0,
+      tags: [],
+      has_files: false,
+      notes: "",
+      position: nextPosition,
+    }])
+    .select("*")
+    .single()
+  if (insertError) throw insertError
+
+  console.info("[task-data] task created", {
+    callerId,
+    groupId: trimmedGroupId,
+    taskId: row.id,
+  })
+
+  return row
+}
+
+const updateSharedTaskOwner = async (
+  supabase: ReturnType<typeof createClient>,
+  taskId: string,
+  owner: string,
+) => {
+  const trimmedTaskId = taskId.trim()
+  if (!trimmedTaskId) {
+    throw new Error("Task is required")
+  }
+
+  const normalizedOwner = formatTaskOwners(owner)
+  const { data: row, error: updateError } = await supabase
+    .from("tasks")
+    .update({ owner: normalizedOwner })
+    .eq("id", trimmedTaskId)
+    .select("*")
+    .single()
+  if (updateError) throw updateError
+
+  console.info("[task-data] task owner updated", {
+    taskId: trimmedTaskId,
+  })
+
+  return row
+}
+
 serve(async (req) => {
   const requestedHeaders = req.headers.get("Access-Control-Request-Headers") || "authorization, x-client-info, apikey, content-type"
   const corsHeaders = {
@@ -450,8 +543,17 @@ serve(async (req) => {
     })
   }
 
-  const body = await req.json().catch(() => ({ action: "load" })) as { action?: string }
+  const body = await req.json().catch(() => ({ action: "load" })) as {
+    action?: string
+    payload?: {
+      groupId?: string
+      content?: string
+      taskId?: string
+      owner?: string
+    }
+  }
   const action = body.action ?? "load"
+  const payload = body.payload ?? {}
 
   try {
     if (action === "load") {
@@ -464,6 +566,34 @@ serve(async (req) => {
     if (action === "loadArchived") {
       const data = await buildArchivedGroups(supabase)
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    if (action === "createTask") {
+      if (!canWriteTasks(role)) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+
+      const row = await createSharedTask(supabase, callerId, String(payload.groupId ?? ""), String(payload.content ?? ""))
+      return new Response(JSON.stringify(row), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    if (action === "updateTaskOwner") {
+      if (!canWriteTasks(role)) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+
+      const row = await updateSharedTaskOwner(supabase, String(payload.taskId ?? ""), String(payload.owner ?? ""))
+      return new Response(JSON.stringify(row), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
     }
