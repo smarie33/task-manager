@@ -42,7 +42,7 @@ export function useAdminUsers() {
       payload: { name, email, password, role },
     });
     if (error) {
-      throw new Error(error.message ?? "Edge function request failed (create). If you see Forbidden, your account might not be Admin/active.");
+      throw new Error(error.message ?? "Edge function request failed (create). If you see Forbidden, your account might not be Admin or Editor and active.");
     }
     await load();
     return data;

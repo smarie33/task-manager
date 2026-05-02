@@ -33,7 +33,7 @@ serve(async (req) => {
     .select("role,status")
     .eq("id", callerId)
     .single()
-  if (profErr || !profile || profile.role !== "Admin" || profile.status !== "active") {
+  if (profErr || !profile || (profile.role !== "Admin" && profile.role !== "Editor") || profile.status !== "active") {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   }
 

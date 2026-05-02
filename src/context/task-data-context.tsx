@@ -145,7 +145,7 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
     async function run() {
       if (!session?.user) return;
-      const adminReadAll = profile?.role === "Admin";
+      const adminReadAll = profile?.role !== "Viewer";
       setDataError(null);
 
       try {

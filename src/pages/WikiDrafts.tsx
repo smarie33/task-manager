@@ -89,7 +89,7 @@ const WikiDrafts: React.FC = () => {
   const { profile } = useUserProfile();
   const { toast } = useToast();
   const userId = session?.user?.id ?? null;
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = profile?.role !== "Viewer";
 
   const [loading, setLoading] = React.useState(true);
   const [wikiDrafts, setWikiDrafts] = React.useState<DraftEntry[]>([]);

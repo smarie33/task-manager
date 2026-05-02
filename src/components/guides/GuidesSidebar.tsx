@@ -19,7 +19,7 @@ const GuidesSidebar: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = profile?.role !== "Viewer";
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<EntryBrief[]>([]);

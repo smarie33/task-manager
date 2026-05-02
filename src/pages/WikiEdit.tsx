@@ -38,7 +38,7 @@ const WikiEdit: React.FC = () => {
   const navigate = useNavigate();
 
   const { users: adminUsers } = useAdminUsers();
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = profile?.role !== "Viewer";
 
   const [entryId, setEntryId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -98,7 +98,7 @@ const WikiEdit: React.FC = () => {
     );
   }
 
-  const canEdit = profile?.role === "Admin" || profile?.role === "Editor";
+  const canEdit = true;
 
   // Admin: list of possible owners
   const ownerOptions = React.useMemo(() => {
@@ -210,7 +210,7 @@ const WikiEdit: React.FC = () => {
 
               {isAdmin && ownerOptions.length > 0 ? (
                 <div className="space-y-2">
-                  <Label>Entry Owner (Admin)</Label>
+                  <Label>Entry Owner</Label>
                   <Select
                     value={entryUserId ?? ""}
                     onValueChange={(v) => setEntryUserId(v)}

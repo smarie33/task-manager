@@ -36,7 +36,7 @@ const GuidesEdit: React.FC = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
 
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = profile?.role !== "Viewer";
 
   const [entryId, setEntryId] = useState<string | null>(null);
   const [entryUserId, setEntryUserId] = useState<string | null>(null);
@@ -98,7 +98,7 @@ const GuidesEdit: React.FC = () => {
     );
   }
 
-  const canEdit = profile?.role === "Admin" || profile?.role === "Editor";
+  const canEdit = true;
 
   const saveChanges = async (publishedOverride?: boolean) => {
     if (!entryId) return;

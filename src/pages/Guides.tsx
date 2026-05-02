@@ -15,7 +15,7 @@ const Guides: React.FC = () => {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
   const { profile } = useUserProfile();
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = profile?.role !== "Viewer";
   const canEdit = !!profile && profile.role !== "Viewer";
 
   const [entries, setEntries] = React.useState<{ id: string; title: string; slug: string }[]>([]);

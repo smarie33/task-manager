@@ -23,7 +23,7 @@ const ensureNoStatus = (statuses: StatusOption[]) => {
 const ArchivedGroups: React.FC = () => {
   const { session } = useSession();
   const { profile } = useUserProfile();
-  const adminReadAll = profile?.role === "Admin";
+  const adminReadAll = profile?.role !== "Viewer";
 
   const {
     setGroups,
