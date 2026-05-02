@@ -44,12 +44,12 @@ const TaskManager: React.FC = () => {
       if (!email) return "";
       return String(email).split("@")[0] ?? "";
     };
-    const labels = users
-      .filter((u) => u.status === "active")
+    const visibleUsers = role === "Editor" ? users : users.filter((u) => u.status === "active");
+    const labels = visibleUsers
       .map((u) => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
       .filter((v) => !!v);
     return Array.from(new Set(labels)).sort();
-  }, [users]);
+  }, [role, users]);
 
   // NEW: global filters
   const [selectedOwner, setSelectedOwner] = useState<string>("");
