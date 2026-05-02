@@ -22,7 +22,7 @@ const Profile: React.FC = () => {
           </Button>
         </div>
 
-        {role !== "Viewer" ? <AdminPanel /> : null}
+        {role === "Admin" ? <AdminPanel /> : null}
 
         <ProfileFormCard />
         <PasswordUpdateCard />

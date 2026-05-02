@@ -80,7 +80,10 @@ const TimeTracking: React.FC = () => {
   // Admin users list for owner->user mapping (email preferred)
   const [adminUsers, setAdminUsers] = React.useState<AdminListUser[] | null>(null);
   React.useEffect(() => {
-    if (role === "Viewer") return;
+    if (role !== "Admin") {
+      setAdminUsers(null);
+      return;
+    }
     invokeEdge<{ users: AdminListUser[] }>("admin-users", { action: "list" })
       .then(({ data }) => {
         const list = (data as any)?.users as AdminListUser[] | undefined;
@@ -107,7 +110,7 @@ const TimeTracking: React.FC = () => {
       if (!email) return "";
       return String(email).split("@")[0] ?? "";
     };
-    if (role !== "Viewer" && Array.isArray(adminUsers)) {
+    if (role === "Admin" && Array.isArray(adminUsers)) {
       const labels = adminUsers
         .filter(u => u.status === "active")
         .map(u => (u.name && u.name.trim().length > 0 ? u.name.trim() : emailToUsername(u.email)))
@@ -134,7 +137,7 @@ const TimeTracking: React.FC = () => {
   }, [ownersOptions, profile, session]);
 
   React.useEffect(() => {
-    if (role === "Viewer") {
+    if (role !== "Admin") {
       setSelectedOwner(currentOwnerGuess);
       return;
     }
@@ -262,7 +265,7 @@ const TimeTracking: React.FC = () => {
 
   // Save manual log handler
   const handleSaveManualLog = async (taskId: string, date: string, seconds: number) => {
-    const isAdmin = role !== "Viewer";
+    const isAdmin = role === "Admin";
     const targetUserId = isAdmin ? resolveOwnerToUserId(selectedOwner ?? null) : null;
     const usingAdminEdge = isAdmin && targetUserId && session?.user?.id && targetUserId !== session.user.id;
 
@@ -305,15 +308,14 @@ const TimeTracking: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Time Tracking</h1>
           <div className="flex items-center gap-3">
-            {role !== "Viewer" && (
+            {role === "Admin" && (
               <OwnerSelect owners={ownersOptions} value={selectedOwner} onChange={setSelectedOwner} />
             )}
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
         </div>
 
-        {/* Admins: Show Payment Settings above Add Hours */}
-        {selectedOwner && role !== "Viewer" && (
+        {selectedOwner && role === "Admin" && (
           <PaymentSettingsCard
             owner={selectedOwner}
             ownerSettings={ownerSettings}
@@ -332,16 +334,15 @@ const TimeTracking: React.FC = () => {
             />
           ) : (
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {role !== "Viewer"
+              {role === "Admin"
                 ? "Select a person to add hours."
                 : "No tasks are assigned to you yet. Ask an admin to assign you to tasks before logging time."}
             </div>
           )}
         </Card>
 
-        {/* Non-admins or no owner: show totals here (admins already saw payment settings above) */}
         {selectedOwner ? (
-          role !== "Viewer" ? null : (
+          role === "Admin" ? null : (
             <TotalsCard
               selectedTimeframePayment={selectedTimeframePayment}
               overallPayment={overallPayment}
@@ -354,7 +355,7 @@ const TimeTracking: React.FC = () => {
             selectedTimeframePayment={0}
             overallPayment={0}
             currency={currency}
-            messageWhenNoOwner={role !== "Viewer"
+            messageWhenNoOwner={role === "Admin"
               ? "Select a person to manage payment settings and view totals."
               : "No logs available for your account yet."
             }
