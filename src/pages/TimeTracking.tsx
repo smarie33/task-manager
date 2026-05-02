@@ -302,7 +302,7 @@ const TimeTracking: React.FC = () => {
       })
     );
 
-    // Persist: insert log (either as self or on behalf) + update task timeTracking when using shared totals
+    // Persist: insert log (either as self or on behalf) + update task timeTracking only for admin-wide totals
     if (session?.user) {
       if (usingAdminEdge) {
         await invokeEdge("time-logs", {
@@ -313,7 +313,7 @@ const TimeTracking: React.FC = () => {
         await insertTimeLog(session.user.id, taskId, date, seconds);
       }
 
-      if (role !== "Viewer") {
+      if (role === "Admin") {
         const task = groups.flatMap(g => g.tasks).find(t => t.id === taskId);
         const currentHours = (task?.timeTracking || 0) + seconds / 3600;
         await updateTaskRow(taskId, { timeTracking: currentHours });
