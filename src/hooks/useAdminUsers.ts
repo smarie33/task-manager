@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { invokeEdge } from "@/utils/invokeEdge";
+import { useSession } from "@/context/session-context";
 
 export type Role = "Admin" | "Editor" | "Viewer";
 export type UserStatus = "pending" | "active";
@@ -17,6 +17,7 @@ export type AdminUser = {
 };
 
 export function useAdminUsers() {
+  const { session, loading: sessionLoading } = useSession();
   const [users, setUsers] = React.useState<AdminUser[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -33,8 +34,14 @@ export function useAdminUsers() {
   }, []);
 
   React.useEffect(() => {
+    if (sessionLoading) return;
+    if (!session?.user?.id) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
     load().catch(() => {});
-  }, [load]);
+  }, [load, session?.user?.id, sessionLoading]);
 
   const addUser = async (name: string, email: string, password: string, role: Role) => {
     const { data, error } = await invokeEdge("admin-users", {
