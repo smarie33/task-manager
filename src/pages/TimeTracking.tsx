@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { insertTimeLog, updateTaskRow } from "@/services/db";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdge } from "@/utils/invokeEdge";
+import { showError, showSuccess } from "@/utils/toast";
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -81,6 +82,7 @@ const TimeTracking: React.FC = () => {
 
   // Admin users list for owner->user mapping (email preferred)
   const [adminUsers, setAdminUsers] = React.useState<AdminListUser[] | null>(null);
+  const [deletingLogId, setDeletingLogId] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (role !== "Admin") {
       setAdminUsers(null);
@@ -187,6 +189,8 @@ const TimeTracking: React.FC = () => {
         if ((t.owner || "").trim() === activeOwner) {
           for (const log of t.timeLogs || []) {
             result.push({
+              id: log.id,
+              taskId: t.id,
               taskContent: t.content,
               date: log.date,
               durationSeconds: log.durationSeconds,
@@ -214,7 +218,14 @@ const TimeTracking: React.FC = () => {
       for (const t of g.tasks) {
         if ((t.owner || "").trim() === activeOwner) {
           for (const log of t.timeLogs || []) {
-            res.push({ taskContent: t.content, date: log.date, durationSeconds: log.durationSeconds, adminEdit: !!log.adminEdit });
+            res.push({
+              id: log.id,
+              taskId: t.id,
+              taskContent: t.content,
+              date: log.date,
+              durationSeconds: log.durationSeconds,
+              adminEdit: !!log.adminEdit,
+            });
           }
         }
       }
@@ -287,37 +298,99 @@ const TimeTracking: React.FC = () => {
     const targetUserId = isAdmin ? resolveOwnerToUserId(activeOwner ?? null) : null;
     const usingAdminEdge = isAdmin && targetUserId && session?.user?.id && targetUserId !== session.user.id;
 
-    // Immutably update the task's logs and timeTracking with setGroups
-    setGroups((prev) =>
-      prev.map((g) => {
-        const taskIndex = g.tasks.findIndex((t) => t.id === taskId);
-        if (taskIndex === -1) return g;
-        const newTasks = g.tasks.map((t, idx) => {
-          if (idx !== taskIndex) return t;
-          const newLogs = [...(t.timeLogs || []), { durationSeconds: seconds, date, adminEdit: !!usingAdminEdge }];
-          const newHoursTotal = (t.timeTracking || 0) + seconds / 3600;
-          return { ...t, timeLogs: newLogs, timeTracking: newHoursTotal };
-        });
-        return { ...g, tasks: newTasks };
-      })
-    );
+    if (!session?.user) return;
 
-    // Persist: insert log (either as self or on behalf) + update task timeTracking only for admin-wide totals
-    if (session?.user) {
+    try {
+      let savedLog: { id?: string; durationSeconds: number; date: string; adminEdit?: boolean } = {
+        durationSeconds: seconds,
+        date,
+        adminEdit: !!usingAdminEdge,
+      };
+
       if (usingAdminEdge) {
-        await invokeEdge("time-logs", {
+        const { data, error } = await invokeEdge<{ log?: { id?: string; date: string; duration_seconds: number; admin_edit?: boolean } }>("time-logs", {
           action: "insert",
           payload: { userId: targetUserId, taskId, date, durationSeconds: seconds },
         });
+        if (error) throw new Error(error.message ?? "Failed to save time log");
+        savedLog = {
+          id: data?.log?.id,
+          durationSeconds: data?.log?.duration_seconds ?? seconds,
+          date: data?.log?.date ?? date,
+          adminEdit: !!data?.log?.admin_edit,
+        };
       } else {
-        await insertTimeLog(session.user.id, taskId, date, seconds);
+        const inserted = await insertTimeLog(session.user.id, taskId, date, seconds);
+        savedLog = {
+          id: inserted?.id,
+          durationSeconds: inserted?.duration_seconds ?? seconds,
+          date: inserted?.date ?? date,
+          adminEdit: !!inserted?.admin_edit,
+        };
       }
 
+      setGroups((prev) =>
+        prev.map((g) => {
+          const taskIndex = g.tasks.findIndex((t) => t.id === taskId);
+          if (taskIndex === -1) return g;
+          const newTasks = g.tasks.map((t, idx) => {
+            if (idx !== taskIndex) return t;
+            const newLogs = [...(t.timeLogs || []), savedLog];
+            const newHoursTotal = (t.timeTracking || 0) + savedLog.durationSeconds / 3600;
+            return { ...t, timeLogs: newLogs, timeTracking: newHoursTotal };
+          });
+          return { ...g, tasks: newTasks };
+        })
+      );
+
       if (role === "Admin") {
-        const task = groups.flatMap(g => g.tasks).find(t => t.id === taskId);
-        const currentHours = (task?.timeTracking || 0) + seconds / 3600;
+        const task = groups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
+        const currentHours = (task?.timeTracking || 0) + savedLog.durationSeconds / 3600;
         await updateTaskRow(taskId, { timeTracking: currentHours });
       }
+    } catch {
+      showError("Failed to save time log");
+    }
+  };
+
+  const handleDeleteLog = async (log: AggregatedLog) => {
+    if (role !== "Admin" || !log.id) return;
+
+    const task = groups.flatMap((g) => g.tasks).find((t) => t.id === log.taskId);
+    if (!task) return;
+
+    const remainingLogs = (task.timeLogs || []).filter((entry) => entry.id !== log.id);
+    const nextHoursTotal = remainingLogs.reduce((sum, entry) => sum + entry.durationSeconds, 0) / 3600;
+
+    setDeletingLogId(log.id);
+    try {
+      const { error } = await invokeEdge("time-logs", {
+        action: "delete",
+        payload: { logId: log.id },
+      });
+      if (error) throw new Error(error.message ?? "Failed to delete time log");
+
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          tasks: group.tasks.map((taskRow) =>
+            taskRow.id !== log.taskId
+              ? taskRow
+              : {
+                  ...taskRow,
+                  timeLogs: (taskRow.timeLogs || []).filter((entry) => entry.id !== log.id),
+                  timeTracking: nextHoursTotal,
+                }
+          ),
+        }))
+      );
+
+      await updateTaskRow(log.taskId, { timeTracking: nextHoursTotal });
+      showSuccess("Time log deleted");
+    } catch {
+      showError("Failed to delete time log");
+    } finally {
+      setDeletingLogId(null);
     }
   };
 
@@ -383,7 +456,14 @@ const TimeTracking: React.FC = () => {
         )}
 
         <Card className="mb-4">
-          <LogsTable logs={logsForOwner} selectedOwner={activeOwner} totalSeconds={totalSeconds} />
+          <LogsTable
+            logs={logsForOwner}
+            selectedOwner={activeOwner}
+            totalSeconds={totalSeconds}
+            canDeleteLogs={role === "Admin"}
+            deletingLogId={deletingLogId}
+            onDeleteLog={handleDeleteLog}
+          />
         </Card>
       </div>
     </div>

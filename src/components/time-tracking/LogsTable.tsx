@@ -3,8 +3,12 @@
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 export type AggregatedLog = {
+  id?: string;
+  taskId: string;
   taskContent: string;
   date: string;
   durationSeconds: number;
@@ -21,9 +25,19 @@ type LogsTableProps = {
   logs: AggregatedLog[];
   selectedOwner: string | null;
   totalSeconds: number;
+  canDeleteLogs?: boolean;
+  deletingLogId?: string | null;
+  onDeleteLog?: (log: AggregatedLog) => void;
 };
 
-const LogsTable: React.FC<LogsTableProps> = ({ logs, selectedOwner, totalSeconds }) => {
+const LogsTable: React.FC<LogsTableProps> = ({
+  logs,
+  selectedOwner,
+  totalSeconds,
+  canDeleteLogs = false,
+  deletingLogId = null,
+  onDeleteLog,
+}) => {
   return (
     <div className="p-4">
       {selectedOwner ? (
@@ -45,11 +59,12 @@ const LogsTable: React.FC<LogsTableProps> = ({ logs, selectedOwner, totalSeconds
                     <TableHead>Date</TableHead>
                     <TableHead>Task</TableHead>
                     <TableHead className="text-right">Duration</TableHead>
+                    {canDeleteLogs ? <TableHead className="w-[72px] text-right">Actions</TableHead> : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log, idx) => (
-                    <TableRow key={`${log.taskContent}-${log.date}-${idx}`}>
+                    <TableRow key={log.id ?? `${log.taskContent}-${log.date}-${idx}`}>
                       <TableCell className="whitespace-nowrap">{log.date}</TableCell>
                       <TableCell className="min-w-[16rem]">{log.taskContent}</TableCell>
                       <TableCell className="text-right whitespace-nowrap">
@@ -58,6 +73,20 @@ const LogsTable: React.FC<LogsTableProps> = ({ logs, selectedOwner, totalSeconds
                           <Badge variant="destructive" className="ml-2 align-middle">Admin Edit</Badge>
                         ) : null}
                       </TableCell>
+                      {canDeleteLogs ? (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!log.id || deletingLogId === log.id}
+                            onClick={() => onDeleteLog?.(log)}
+                            aria-label="Delete time log"
+                            title={!log.id ? "Saved log id unavailable" : "Delete time log"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   ))}
                 </TableBody>

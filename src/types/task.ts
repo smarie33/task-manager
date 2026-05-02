@@ -38,7 +38,7 @@ export interface Task {
   timeTracking: number; // in hours
   tags: string[];
   hasFiles: boolean;
-  timeLogs?: { durationSeconds: number; date: string; adminEdit?: boolean }[];
+  timeLogs?: { id?: string; durationSeconds: number; date: string; adminEdit?: boolean }[];
   comments?: { id: string; text: string; createdAt: string; author?: string }[];
   files?: FileMeta[]; // UPDATED: include mimeType for image detection
   notes?: string; // Rich text notes

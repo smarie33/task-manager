@@ -172,7 +172,7 @@ export async function loadAll(
     const task = tasksMap.get(lr.task_id);
     if (!task) continue;
     const arr = task.timeLogs ?? [];
-    arr.push({ durationSeconds: lr.duration_seconds, date: lr.date, adminEdit: !!lr.admin_edit });
+    arr.push({ id: lr.id, durationSeconds: lr.duration_seconds, date: lr.date, adminEdit: !!lr.admin_edit });
     task.timeLogs = arr;
   }
 
@@ -446,10 +446,13 @@ export async function deleteTasksByIds(taskIds: string[]) {
 }
 
 export async function insertTimeLog(userId: string, taskId: string, date: string, durationSeconds: number) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("task_time_logs")
-    .insert([{ user_id: userId, task_id: taskId, date, duration_seconds: durationSeconds }]);
+    .insert([{ user_id: userId, task_id: taskId, date, duration_seconds: durationSeconds }])
+    .select("id, task_id, date, duration_seconds, admin_edit")
+    .single();
   if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function replaceAllTimeLogs(userId: string, taskId: string, logs: { date: string; durationSeconds: number }[]) {
