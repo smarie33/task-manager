@@ -164,6 +164,8 @@ const TimeTracking: React.FC = () => {
     return list.sort((a, b) => a.content.localeCompare(b.content));
   }, [groups, activeOwner]);
 
+  const allowedOwnerTaskIds = React.useMemo(() => new Set(ownerTasks.map((task) => task.id)), [ownerTasks]);
+
   // Aggregated logs for selected owner with date filtering
   const logsForOwner = React.useMemo<AggregatedLog[]>(() => {
     if (!activeOwner) return [];
@@ -267,6 +269,8 @@ const TimeTracking: React.FC = () => {
 
   // Save manual log handler
   const handleSaveManualLog = async (taskId: string, date: string, seconds: number) => {
+    if (!allowedOwnerTaskIds.has(taskId)) return;
+
     const isAdmin = role === "Admin";
     const targetUserId = isAdmin ? resolveOwnerToUserId(activeOwner ?? null) : null;
     const usingAdminEdge = isAdmin && targetUserId && session?.user?.id && targetUserId !== session.user.id;
