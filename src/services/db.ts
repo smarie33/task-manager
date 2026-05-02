@@ -2,6 +2,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Task, TaskGroupData, StatusOption, FileMeta, LinkMeta } from "@/types/task";
+import { invokeEdge } from "@/utils/invokeEdge";
 
 export type LoadedData = {
   groups: TaskGroupData[];
@@ -313,6 +314,30 @@ export async function loadArchivedGroups(
     if (ap !== bp) return ap - bp;
     return a.name.localeCompare(b.name);
   });
+}
+
+export async function loadSharedTaskData(role: "Admin" | "Editor" | "Viewer") {
+  if (role === "Admin") {
+    return null;
+  }
+
+  const { data, error } = await invokeEdge<LoadedData>("task-data", { action: "load" });
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to load shared task data");
+  }
+  return data;
+}
+
+export async function loadSharedArchivedGroups(role: "Admin" | "Editor" | "Viewer") {
+  if (role === "Admin") {
+    return null;
+  }
+
+  const { data, error } = await invokeEdge<{ groups: TaskGroupData[] }>("task-data", { action: "loadArchived" });
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to load archived groups");
+  }
+  return data.groups;
 }
 
 // Persist helpers

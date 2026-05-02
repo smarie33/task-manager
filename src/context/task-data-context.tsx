@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { StatusOption, TaskGroupData, FileMeta, LinkMeta } from "@/types/task";
 import { v4 as uuidv4 } from "uuid";
 import { useSession } from "@/context/session-context";
-import { loadAll } from "@/services/db";
+import { loadAll, loadSharedTaskData } from "@/services/db";
 import { useUserProfile } from "@/context/user-profile-context";
 
 const initialStatuses: StatusOption[] = [
@@ -145,12 +145,27 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
     async function run() {
       if (!session?.user) return;
+      const role = profile?.role ?? "Viewer";
       const readAllContent = !!profile;
-      const timeLogsUserId = profile?.role === "Viewer" || profile?.role === "Editor" ? session.user.id : null;
+      const timeLogsUserId = role === "Viewer" || role === "Editor" ? session.user.id : null;
       setDataError(null);
 
       try {
-        const loaded = await loadAll(session.user.id, { readAllContent, timeLogsUserId });
+        let loaded = null;
+
+        try {
+          loaded = await loadSharedTaskData(role);
+        } catch (edgeError) {
+          console.warn("[task-data] edge load failed, falling back to direct queries", {
+            role,
+            message: String((edgeError as any)?.message ?? edgeError),
+          });
+        }
+
+        if (!loaded) {
+          loaded = await loadAll(session.user.id, { readAllContent, timeLogsUserId });
+        }
+
         if (cancelled) return;
 
         const ensureNoStatus = (statuses: StatusOption[]) => {
@@ -167,8 +182,8 @@ export const TaskDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLibraryImages(loaded.images);
         setExternalLinks(loaded.links);
 
-        // Diagnostics (helps track "empty data" reports)
         console.log("[task-data] loaded", {
+          role,
           readAllContent,
           timeLogsUserId,
           sessionUserId: session.user.id,

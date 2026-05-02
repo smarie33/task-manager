@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/context/session-context";
 import { useUserProfile } from "@/context/user-profile-context";
-import { loadAll, loadArchivedGroups, updateGroup } from "@/services/db";
+import { loadAll, loadArchivedGroups, loadSharedArchivedGroups, loadSharedTaskData, updateGroup } from "@/services/db";
 import { showError, showSuccess } from "@/utils/toast";
 import { useTaskData } from "@/context/task-data-context";
 import type { StatusOption, TaskGroupData } from "@/types/task";
@@ -23,7 +23,8 @@ const ensureNoStatus = (statuses: StatusOption[]) => {
 const ArchivedGroups: React.FC = () => {
   const { session } = useSession();
   const { profile } = useUserProfile();
-  const adminReadAll = profile?.role !== "Viewer";
+  const role = profile?.role ?? "Viewer";
+  const adminReadAll = role !== "Viewer";
 
   const {
     setGroups,
@@ -41,14 +42,28 @@ const ArchivedGroups: React.FC = () => {
     if (!session?.user?.id) return;
     setLoading(true);
     try {
-      const archived = await loadArchivedGroups(session.user.id, { adminReadAll });
+      let archived = null;
+
+      try {
+        archived = await loadSharedArchivedGroups(role);
+      } catch (edgeError) {
+        console.warn("[archived-groups] edge load failed, falling back to direct queries", {
+          role,
+          message: String((edgeError as any)?.message ?? edgeError),
+        });
+      }
+
+      if (!archived) {
+        archived = await loadArchivedGroups(session.user.id, { adminReadAll });
+      }
+
       setArchivedGroups(archived);
     } catch {
       showError("Failed to load archived groups");
     } finally {
       setLoading(false);
     }
-  }, [adminReadAll, session?.user?.id]);
+  }, [adminReadAll, role, session?.user?.id]);
 
   React.useEffect(() => {
     reloadArchived();
@@ -60,8 +75,24 @@ const ArchivedGroups: React.FC = () => {
     try {
       await updateGroup(groupId, { archived: false });
 
-      // Refresh main task data so the group re-appears immediately in the Task Manager.
-      const loaded = await loadAll(session.user.id, { adminReadAll });
+      let loaded = null;
+
+      try {
+        loaded = await loadSharedTaskData(role);
+      } catch (edgeError) {
+        console.warn("[archived-groups] edge refresh failed, falling back to direct queries", {
+          role,
+          message: String((edgeError as any)?.message ?? edgeError),
+        });
+      }
+
+      if (!loaded) {
+        loaded = await loadAll(session.user.id, {
+          readAllContent: !!profile,
+          timeLogsUserId: role === "Viewer" || role === "Editor" ? session.user.id : null,
+        });
+      }
+
       setGroups(loaded.groups);
       setAvailableStatuses(ensureNoStatus(loaded.statuses));
       setLibraryFiles(loaded.files);
