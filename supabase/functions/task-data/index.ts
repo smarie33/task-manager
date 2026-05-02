@@ -62,13 +62,8 @@ type LoadedData = {
   links: LinkMeta[]
 }
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
-
 const toTask = (row: any): Task => ({
+
   id: row.id,
   content: row.content ?? "",
   owner: row.owner ?? "",
@@ -333,11 +328,19 @@ const buildArchivedGroups = async (
 }
 
 serve(async (req) => {
+  const requestedHeaders = req.headers.get("Access-Control-Request-Headers") || "authorization, x-client-info, apikey, content-type"
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": requestedHeaders,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders })
   }
 
   const authHeader = req.headers.get("Authorization")
+
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
