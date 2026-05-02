@@ -7,6 +7,7 @@ import { useTaskData } from "@/context/task-data-context";
 import { usePayroll, type PaymentSettings } from "@/context/payroll-context";
 import { useAuth } from "@/context/auth-context";
 import { useSession } from "@/context/session-context";
+import { useUserProfile } from "@/context/user-profile-context";
 import { format, differenceInCalendarDays, parseISO } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import OwnerSelect from "@/components/time-tracking/OwnerSelect";
@@ -60,6 +61,7 @@ const TimeTracking: React.FC = () => {
   const { settings, updateSettingsForPerson } = usePayroll();
   const { role } = useAuth();
   const { session } = useSession();
+  const { profile } = useUserProfile();
 
   // Owners derived from tasks
   const owners = React.useMemo(() => {
@@ -121,20 +123,25 @@ const TimeTracking: React.FC = () => {
   }, [role, adminUsers, owners]);
 
   // Profile/session-based guess for non-admins
-  const profile = React.useMemo(() => (typeof window !== "undefined" ? loadProfile() : null), []);
   const currentOwnerGuess = React.useMemo(() => {
     const emailToUsername = (email?: string | null) => {
       if (!email) return "";
       return String(email).split("@")[0] ?? "";
     };
+
+    const currentUserLabel = adminUsers?.find((user) => user.id === session?.user?.id)
+      ? ((adminUsers.find((user) => user.id === session?.user?.id)?.name || "").trim() || emailToUsername(adminUsers.find((user) => user.id === session?.user?.id)?.email))
+      : "";
+
     const name = profile?.name?.trim();
-    const username = emailToUsername(session?.user?.email ?? null);
-    const candidates = [name, username].filter(Boolean) as string[];
+    const email = profile?.email?.trim();
+    const username = emailToUsername(session?.user?.email ?? email ?? null);
+    const candidates = [currentUserLabel, name, username].filter(Boolean) as string[];
     for (const c of candidates) {
       if (c && ownersOptions.includes(c)) return c;
     }
     return null;
-  }, [ownersOptions, profile, session]);
+  }, [adminUsers, ownersOptions, profile?.email, profile?.name, session?.user?.email, session?.user?.id]);
 
   React.useEffect(() => {
     if (role !== "Admin") {
