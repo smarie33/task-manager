@@ -386,12 +386,20 @@ serve(async (req) => {
     })
   }
 
-  const token = authHeader.replace("Bearer ", "")
   const url = Deno.env.get("SUPABASE_URL")!
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+
+  const authSupabase = createClient(url, anonKey, {
+    global: {
+      headers: {
+        Authorization: authHeader,
+      },
+    },
+  })
   const supabase = createClient(url, serviceRoleKey)
 
-  const { data: userData, error: userError } = await supabase.auth.getUser(token)
+  const { data: userData, error: userError } = await authSupabase.auth.getUser()
   if (userError || !userData?.user) {
     console.error("[task-data] user lookup failed", { message: userError?.message })
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
