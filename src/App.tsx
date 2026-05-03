@@ -35,6 +35,7 @@ import GuidesTag from "./pages/GuidesTag";
 import GuidesCategory from "./pages/GuidesCategory";
 import GuidesAdmin from "./pages/GuidesAdmin";
 import GuidesEdit from "./pages/GuidesEdit";
+import WikiScrollToTop from "@/components/WikiScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
             <TaskDataProvider>
               <PayrollProvider>
                 <BrowserRouter>
+                  <WikiScrollToTop />
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
