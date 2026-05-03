@@ -30,6 +30,14 @@ type Tag = { id: string; name: string };
 type Category = { id: string; name: string };
 type Script = { id: string; name: string };
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "")
+    .replace(/\-+/g, "-");
+
 // Normalize literal backslash-n sequences to real newlines for correct rendering in <pre><code>
 const normalizeEntryHtml = (html: string) => {
   if (!html) return "";
@@ -180,7 +188,7 @@ const WikiEntry: React.FC = () => {
                         <div className="text-xs font-medium text-muted-foreground mb-2">Methods</div>
                         <div className="flex flex-wrap gap-2">
                           {categories.map((c) => (
-                            <Link key={c.id} to={`/wiki/categories/${encodeURIComponent(c.name)}`}>
+                            <Link key={c.id} to={`/wiki/${slugify(c.name)}`}>
                               <Badge variant="outline" className="cursor-pointer">{c.name}</Badge>
                             </Link>
                           ))}
