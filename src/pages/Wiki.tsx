@@ -81,7 +81,7 @@ const Wiki: React.FC = () => {
                       ) : null}
                     </div>
                   ) : (
-                    <ul className="space-y-2">
+                    <ul className="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2 xl:grid-cols-3">
                       {entries.map((entry) => (
                         <li key={entry.id}>
                           <Link to={`/wiki/${entry.slug}`} className="text-blue-600 hover:underline">
