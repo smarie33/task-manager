@@ -43,11 +43,14 @@ const normalizeStatus = (raw: unknown): UserStatus => {
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session } = useSession();
+  const userId = session?.user?.id ?? null;
+  const userEmail = session?.user?.email ?? null;
+  const userName = (session?.user?.user_metadata as { name?: string } | undefined)?.name ?? null;
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [loading, setLoading] = React.useState(false);
 
   const fetchProfile = React.useCallback(async () => {
-    if (!session?.user) {
+    if (!userId) {
       setProfile(null);
       return;
     }
@@ -55,8 +58,9 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", userId)
       .limit(1);
+
     if (error) {
       setProfile(null);
       setLoading(false);
@@ -64,12 +68,11 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
     const row = (data && Array.isArray(data) ? data[0] : null) as UserProfile | null;
 
-    // If no profile row exists yet, create one now so edits can persist
     if (!row) {
       const initial = {
-        id: session.user.id,
-        name: (session.user.user_metadata as any)?.name ?? null,
-        email: session.user.email ?? null,
+        id: userId,
+        name: userName,
+        email: userEmail,
         phone: null,
         address: null,
         avatar_url: null,
@@ -77,6 +80,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
         status: "pending" as UserStatus,
         updated_at: new Date().toISOString(),
       };
+
       const { data: inserted, error: insErr } = await supabase
         .from("profiles")
         .upsert(initial, { onConflict: "id" })
@@ -91,33 +95,31 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setLoading(false);
         return;
       }
-      // Fallthrough to set empty if insertion failed
       setProfile(null);
       setLoading(false);
       return;
     }
 
-    // Normalize role/status so the rest of the app can rely on consistent casing.
     setProfile({
       ...row,
       role: normalizeRole((row as any).role),
       status: normalizeStatus((row as any).status),
     });
     setLoading(false);
-  }, [session?.user]);
+  }, [userEmail, userId, userName]);
 
   React.useEffect(() => {
     fetchProfile().catch(() => {});
   }, [fetchProfile]);
 
   const updateProfile = async (fields: Partial<UserProfile>) => {
-    if (!session?.user) return;
+    if (!userId) return;
     const payload: Record<string, any> = {
-      id: session.user.id,
+      id: userId,
       ...fields,
       updated_at: new Date().toISOString(),
     };
-    // Upsert ensures the row is created if missing
+
     const { error } = await supabase
       .from("profiles")
       .upsert(payload, { onConflict: "id" });
