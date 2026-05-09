@@ -37,9 +37,16 @@ import GuidesAdmin from "./pages/GuidesAdmin";
 import GuidesEdit from "./pages/GuidesEdit";
 import WikiScrollToTop from "@/components/WikiScrollToTop";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
+
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
